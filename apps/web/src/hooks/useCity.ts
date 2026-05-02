@@ -1,0 +1,957 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { AllianceMembership, ChatChannel, ChatMessage, City, Building, BuildQueue, MailMessage, ResearchQueue, SendChatMessageRequest, SendMailMessageRequest, TrainingQueue, Unit, Resources, WorldSeasonState, WorldStateResponse, BarbarianCampMapItem, BarbarianCampDetail } from "@etheria/shared";
+import type { VillageLayoutData } from "@/lib/villageLayout";
+import villageLayoutJson from "@/data/village-layout.json";
+import { matecito } from "@/lib/matecitoClient";
+
+const API_BASE = "/api";
+const pendingUpgradeKeys = new Set<string>();
+
+function getAuthHeaders() {
+  const headers: Record<string, string> = {};
+  if (matecito.auth.token) {
+    headers.Authorization = `Bearer ${matecito.auth.token}`;
+  }
+  return headers;
+}
+
+async function fetchCity(cityId: string): Promise<City & {
+  buildings: Building[];
+  units: Unit[];
+  buildQueues: BuildQueue[];
+  trainingQueues: TrainingQueue[];
+  cityTechs: { techId: string; level: number }[];
+  researchQueue: ResearchQueue[];
+  activeResearch: { techId: string; targetLevel: number; startedAt: string; completesAt: string } | null;
+  allianceMembership: AllianceMembership | null;
+  resources: Resources;
+  goldPerHour: number;
+  woodPerHour: number;
+  stonePerHour: number;
+  foodPerHour: number;
+  maxGold: number;
+  maxWood: number;
+  maxStone: number;
+  maxFood: number;
+}> {
+  const res = await fetch(`${API_BASE}/city/${cityId}`, { cache: "no-store" });
+  if (!res.ok) {
+    const error = new Error(res.status === 404 ? "City not found" : "Failed to fetch city") as Error & { status?: number };
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export function useCity(cityId: string | null) {
+  return useQuery({
+    queryKey: ["city", cityId],
+    queryFn: () => fetchCity(cityId!),
+    enabled: !!cityId,
+    staleTime: 10_000,
+    retry: (failureCount, error: any) => {
+      if (error?.status === 404) return false;
+      return failureCount < 1;
+    },
+    refetchInterval: (query) => {
+      const data = query.state.data as
+        | {
+            buildQueues?: { completesAt: string }[];
+            trainingQueues?: { completesAt: string }[];
+            activeResearch?: { completesAt: string } | null;
+          }
+        | undefined;
+
+      if (!data) return false;
+
+      const hasActiveBuilds = (data.buildQueues?.length ?? 0) > 0;
+      const hasActiveTraining = (data.trainingQueues?.length ?? 0) > 0;
+      const hasActiveResearch = !!data.activeResearch;
+
+      return hasActiveBuilds || hasActiveTraining || hasActiveResearch ? 5000 : false;
+    },
+    refetchIntervalInBackground: false,
+  });
+}
+
+export function useBuildBuilding() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      cityId,
+      type,
+      positionX,
+      positionY,
+    }: {
+      cityId: string;
+      type: string;
+      positionX: number;
+      positionY: number;
+    }) => {
+      const res = await fetch(`${API_BASE}/city/${cityId}/build`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, positionX, positionY }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Build failed");
+      }
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+    },
+  });
+}
+
+export function useUpgradeBuilding() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      cityId,
+      buildingId,
+    }: {
+      cityId: string;
+      buildingId: string;
+    }) => {
+      const lockKey = `${cityId}:${buildingId}`;
+      if (pendingUpgradeKeys.has(lockKey)) {
+        throw new Error("Upgrade already in progress");
+      }
+
+      pendingUpgradeKeys.add(lockKey);
+      try {
+        const res = await fetch(`${API_BASE}/city/${cityId}/buildings/${buildingId}/upgrade`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Upgrade failed");
+        }
+        return res.json();
+      } finally {
+        pendingUpgradeKeys.delete(lockKey);
+      }
+    },
+    onSuccess: (data, variables) => {
+      if (data?.queue) {
+        queryClient.setQueryData(["city", variables.cityId], (current: any) => {
+          if (!current) return current;
+          const nextQueues = [...(current.buildQueues ?? []).filter((queue: any) => queue.buildingId !== data.queue.buildingId), data.queue];
+          nextQueues.sort((a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime());
+          return {
+            ...current,
+            buildQueues: nextQueues,
+            ...(data.resources ? { resources: data.resources, lastResourceUpdate: new Date().toISOString() } : {}),
+          };
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+    },
+  });
+}
+
+export function useCancelBuildQueue() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      cityId,
+      queueId,
+    }: {
+      cityId: string;
+      queueId: string;
+    }) => {
+      const res = await fetch(`${API_BASE}/city/${cityId}/build-queues/${queueId}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Cancel build failed");
+      }
+      return res.json();
+    },
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData(["city", variables.cityId], (current: any) => {
+        if (!current) return current;
+        return {
+          ...current,
+          buildQueues: (current.buildQueues ?? []).filter((queue: any) => queue.id !== data.queueId),
+          ...(data.resources ? { resources: data.resources, lastResourceUpdate: new Date().toISOString() } : {}),
+        };
+      });
+      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+    },
+  });
+}
+
+function useCancelQueue(endpoint: "training-queues" | "research-queues", queryField: "trainingQueues" | "researchQueue") {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      cityId,
+      queueId,
+    }: {
+      cityId: string;
+      queueId: string;
+    }) => {
+      const res = await fetch(`${API_BASE}/city/${cityId}/${endpoint}/${queueId}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Cancel queue failed");
+      }
+      return res.json();
+    },
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData(["city", variables.cityId], (current: any) => {
+        if (!current) return current;
+        const next = {
+          ...current,
+          [queryField]: (current[queryField] ?? []).filter((queue: any) => queue.id !== data.queueId),
+          ...(data.resources ? { resources: data.resources, lastResourceUpdate: new Date().toISOString() } : {}),
+        };
+        if (queryField === "researchQueue") {
+          next.activeResearch = next.researchQueue[0] ?? null;
+        }
+        return next;
+      });
+      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+      if (queryField === "researchQueue") {
+        queryClient.invalidateQueries({ queryKey: ["techs", variables.cityId] });
+      }
+    },
+  });
+}
+
+export function useCancelTrainingQueue() {
+  return useCancelQueue("training-queues", "trainingQueues");
+}
+
+export function useCancelResearchQueue() {
+  return useCancelQueue("research-queues", "researchQueue");
+}
+
+export function useTrainUnits() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      cityId,
+      unitType,
+      count,
+    }: {
+      cityId: string;
+      unitType: string;
+      count: number;
+    }) => {
+      const res = await fetch(`${API_BASE}/city/${cityId}/train`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ unitType, count }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Training failed");
+      }
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+    },
+  });
+}
+
+export function useCreateCity() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (name: string = "Etheria") => {
+      const res = await fetch(`${API_BASE}/city/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) throw new Error("Failed to create city");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["city", data.city.id], data.city);
+    },
+  });
+}
+
+// ─── Battle Hooks ───
+
+interface TargetCity {
+  id: string;
+  name: string;
+  userId?: string;
+  allianceId?: string | null;
+  posX: number;
+  posY: number;
+  level?: number;
+}
+
+export function useAllCities() {
+  return useQuery({
+    queryKey: ["cities", "all"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/city/list/all`);
+      if (!res.ok) throw new Error("Failed to fetch cities");
+      const data = await res.json();
+      return data.cities as TargetCity[];
+    },
+    staleTime: 30000,
+  });
+}
+
+export interface WorldMapConfig {
+  width: number;
+  height: number;
+  cameraMinZoom: number;
+  cameraMaxZoom: number;
+  cameraInitialZoom: number;
+  backgroundAssetPath: string;
+  terrainSeed: number;
+  decorDensity: number;
+  decorSafeRadius: number;
+}
+
+export interface WorldSpawnConfig {
+  strategy: "soft-clusters";
+  minCityDistance: number;
+  clusterRadius: number;
+  clusterTargetPlayers: number;
+  clusterSearchStep: number;
+  edgePadding: number;
+  maxPlacementAttempts: number;
+}
+
+export function useWorldMap() {
+  return useQuery({
+    queryKey: ["world", "map"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/city/world-map`);
+      if (!res.ok) throw new Error("Failed to fetch world map");
+      const data = await res.json();
+      return {
+        map: data.map as WorldMapConfig,
+        spawn: data.spawn as WorldSpawnConfig,
+      };
+    },
+    staleTime: 30000,
+  });
+}
+
+export function useVillageLayout() {
+  return useQuery({
+    queryKey: ["village", "layout"],
+    initialData: villageLayoutJson as VillageLayoutData,
+    queryFn: async () => {
+      const res = await fetch("/api/editor/layout");
+      if (!res.ok) throw new Error("Failed to fetch village layout");
+      return await res.json() as VillageLayoutData;
+    },
+    staleTime: 30000,
+  });
+}
+
+export function useSaveVillageLayout() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (layout: VillageLayoutData) => {
+      const res = await fetch("/api/editor/layout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(layout),
+      });
+      if (!res.ok) throw new Error("Failed to save village layout");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["village", "layout"] });
+    },
+  });
+}
+
+export function useAttackCity() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      cityId,
+      targetCityId,
+      units,
+    }: {
+      cityId: string;
+      targetCityId: string;
+      units: { type: string; count: number }[];
+    }) => {
+      const res = await fetch(`${API_BASE}/city/${cityId}/attack`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetCityId, units }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Attack failed");
+      }
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+      queryClient.invalidateQueries({ queryKey: ["battles", "active", variables.cityId] });
+    },
+  });
+}
+
+export interface BattleReport {
+  id: string;
+  battleId: string;
+  cityId: string;
+  attackerCityId: string;
+  defenderCityId: string;
+  attackerName?: string;
+  defenderName?: string;
+  status: "VICTORY" | "DEFEAT";
+  attackerLosses: Record<string, number>;
+  defenderLosses: Record<string, number>;
+  loot?: Resources;
+  read: boolean;
+  createdAt: string;
+}
+
+export function useBattleReports(cityId: string | null) {
+  return useQuery({
+    queryKey: ["battles", "reports", cityId],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/city/${cityId}/battles/reports`);
+      if (!res.ok) throw new Error("Failed to fetch reports");
+      const data = await res.json();
+      return data.reports as BattleReport[];
+    },
+    enabled: !!cityId,
+    staleTime: 60_000,
+    retry: 1,
+  });
+}
+
+export function useMarkReportRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ cityId, reportId }: { cityId: string; reportId: string }) => {
+      const res = await fetch(`${API_BASE}/city/${cityId}/battles/reports/${reportId}/read`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error("Failed to mark report as read");
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["battles", "reports", variables.cityId] });
+    },
+  });
+}
+
+export interface ActiveBattle {
+  id: string;
+  attackerCityId: string;
+  defenderCityId: string;
+  status: "MARCHING" | "RETURNING";
+  arrivesAt: string;
+  returnsAt?: string;
+  units: { type: string; count: number }[];
+}
+
+export function useActiveBattles(cityId: string | null) {
+  return useQuery({
+    queryKey: ["battles", "active", cityId],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/city/${cityId}/battles/active`);
+      if (!res.ok) throw new Error("Failed to fetch active battles");
+      const data = await res.json();
+      return data.battles as ActiveBattle[];
+    },
+    enabled: !!cityId,
+    staleTime: 60_000,
+    retry: 1,
+  });
+}
+
+// ─── Tech / Research Hooks ───
+
+export interface TechData {
+  id: string;
+  techId: string;
+  name: string;
+  description: string;
+  category: string;
+  maxLevel: number;
+  currentLevel: number;
+  canResearch: boolean;
+  researchBlockedReason?: string;
+  nextLevelCost: { gold: number; wood: number; stone: number; food: number } | null;
+  nextLevelTime: number | null;
+}
+
+export function useTechs(cityId: string | null) {
+  return useQuery({
+    queryKey: ["techs", cityId],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/city/${cityId}/techs`);
+      if (!res.ok) throw new Error("Failed to fetch techs");
+      const data = await res.json();
+      return {
+        techs: data.techs as TechData[],
+        activeResearch: data.activeResearch as { techId: string; targetLevel: number; completesAt: string } | null,
+      };
+    },
+    enabled: !!cityId,
+    staleTime: 60_000,
+    retry: 1,
+  });
+}
+
+export function useAllianceMembership() {
+  return useQuery({
+    queryKey: ["alliance", "me"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/alliances/me`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to fetch alliance membership");
+      const data = await res.json();
+      return data as {
+        gate: { allowed: boolean; reason?: string | null };
+        membership: AllianceMembership | null;
+        alliances: any[];
+        members: any[];
+        diplomacy: any[];
+        events: any[];
+        effects: any[];
+      };
+    },
+    enabled: !!matecito.auth.token,
+    staleTime: 10_000,
+  });
+}
+
+export function useUpdateAlliance() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { publicIntro?: string; forumText?: string }) => {
+      const res = await fetch(`${API_BASE}/alliances/me`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to update alliance");
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alliance", "me"] }),
+  });
+}
+
+export function useProposePeace() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { targetAllianceId: string; durationHours: number }) => {
+      const res = await fetch(`${API_BASE}/alliances/diplomacy/peace`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to propose peace");
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alliance", "me"] }),
+  });
+}
+
+export function useBreakTreaty() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${API_BASE}/alliances/diplomacy/${id}/break`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to break treaty");
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alliance", "me"] }),
+  });
+}
+
+export function useCreateAlliance() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ name, tag }: { name: string; tag: string }) => {
+      const res = await fetch(`${API_BASE}/alliances`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ name, tag }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to create alliance");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["alliance", "me"] });
+      queryClient.invalidateQueries({ queryKey: ["city"] });
+    },
+  });
+}
+
+export function useJoinAlliance() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (allianceId: string) => {
+      const res = await fetch(`${API_BASE}/alliances/${allianceId}/join`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to join alliance");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["alliance", "me"] });
+      queryClient.invalidateQueries({ queryKey: ["cities", "all"] });
+      queryClient.invalidateQueries({ queryKey: ["city"] });
+    },
+  });
+}
+
+export function useChatMessages(channel: ChatChannel, enabled = true) {
+  return useQuery({
+    queryKey: ["chat", channel],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/chat/messages?channel=${channel}`, {
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to fetch chat messages");
+      return data.messages as ChatMessage[];
+    },
+    enabled: enabled && !!matecito.auth.token,
+    staleTime: 5_000,
+  });
+}
+
+export function useSendChatMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: SendChatMessageRequest) => {
+      const res = await fetch(`${API_BASE}/chat/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to send message");
+      return data.message as ChatMessage;
+    },
+    onSuccess: (message) => {
+      queryClient.setQueryData(["chat", message.channel], (current: ChatMessage[] | undefined) => {
+        const next = [...(current ?? []).filter((item) => item.id !== message.id), message];
+        return next.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      });
+    },
+  });
+}
+
+export function useMailMessages(enabled = true) {
+  return useQuery({
+    queryKey: ["mail", "messages"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/mail/messages`, {
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to fetch mail");
+      return {
+        inbox: data.inbox as MailMessage[],
+        sent: data.sent as MailMessage[],
+        unreadCount: Number(data.unreadCount ?? 0),
+      };
+    },
+    enabled: enabled && !!matecito.auth.token,
+    staleTime: 10_000,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+  });
+}
+
+export function useSendMailMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: SendMailMessageRequest) => {
+      const res = await fetch(`${API_BASE}/mail/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to send mail");
+      return data.message as MailMessage;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["mail", "messages"] });
+    },
+  });
+}
+
+export function useMarkMailRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, read }: { id: string; read: boolean }) => {
+      const res = await fetch(`${API_BASE}/mail/messages/${id}/read`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ read }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to update mail");
+      return data as { id: string; readAt: string | null };
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["mail", "messages"], (current: any) => {
+        if (!current) return current;
+        const inbox = (current.inbox ?? []).map((message: MailMessage) =>
+          message.id === data.id ? { ...message, readAt: data.readAt } : message
+        );
+        return {
+          ...current,
+          inbox,
+          unreadCount: inbox.filter((message: MailMessage) => !message.readAt).length,
+        };
+      });
+    },
+  });
+}
+
+export function useResearchTech() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ cityId, techId }: { cityId: string; techId: string }) => {
+      const res = await fetch(`${API_BASE}/city/${cityId}/research`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ techId }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Research failed");
+      }
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["techs", variables.cityId] });
+      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+    },
+  });
+}
+
+// ─── World Season Hooks ───
+
+export function useWorldSeason() {
+  return useQuery({
+    queryKey: ["world", "season"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/world/season`);
+      if (!res.ok) throw new Error("Failed to fetch season");
+      const data = await res.json();
+      return data as { season: WorldSeasonState };
+    },
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useWorldState() {
+  return useQuery({
+    queryKey: ["world", "state"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/world/state`);
+      if (!res.ok) throw new Error("Failed to fetch world state");
+      const data = await res.json();
+      return data as WorldStateResponse;
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}
+
+// ─── Barbarian Hooks ───
+
+export function useBarbarianCamps() {
+  return useQuery({
+    queryKey: ["world", "barbarians"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/world/barbarians`);
+      if (!res.ok) throw new Error("Failed to fetch barbarian camps");
+      const data = await res.json();
+      return data.camps as BarbarianCampMapItem[];
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useBarbarianCampDetail(campId: string | null) {
+  return useQuery({
+    queryKey: ["world", "barbarians", campId],
+    queryFn: async () => {
+      if (!campId) throw new Error("No camp ID");
+      const res = await fetch(`${API_BASE}/world/barbarians/${campId}`);
+      if (!res.ok) throw new Error("Failed to fetch camp detail");
+      const data = await res.json();
+      return data as {
+        camp: BarbarianCampDetail;
+        army: { units: Record<string, number>; power: number };
+        estimatedReward: { gold: number; wood: number; stone: number; food: number };
+      };
+    },
+    enabled: !!campId,
+    staleTime: 15_000,
+  });
+}
+
+export function useAttackBarbarianCamp() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      campId,
+      cityId,
+      units,
+    }: {
+      campId: string;
+      cityId: string;
+      units: { type: string; count: number }[];
+    }) => {
+      const res = await fetch(`${API_BASE}/world/barbarians/${campId}/attack`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cityId, units }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Attack failed");
+      }
+      return res.json() as Promise<{
+        battleId: string;
+        victory: boolean;
+        losses: Record<string, number>;
+        loot?: { gold: number; wood: number; stone: number; food: number };
+      }>;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+      queryClient.invalidateQueries({ queryKey: ["world", "barbarians"] });
+    },
+  });
+}
+
+export interface BarbarianAttackAlert {
+  id: string;
+  cityId: string;
+  campId: string;
+  campName: string;
+  archetype: string;
+  estimatedPower: number;
+  arrivesAt: string;
+  warnedAt: string;
+  read: boolean;
+}
+
+export function useBarbarianAttackAlerts(cityId: string | null) {
+  return useQuery({
+    queryKey: ["barbarian", "attack-alerts", cityId],
+    queryFn: async () => {
+      if (!cityId) throw new Error("No city ID");
+      const res = await fetch(`${API_BASE}/city/${cityId}/barbarian-alerts`);
+      if (!res.ok) throw new Error("Failed to fetch attack alerts");
+      const data = await res.json();
+      return data.alerts as BarbarianAttackAlert[];
+    },
+    enabled: !!cityId,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useMarkBarbarianAlertRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ alertId }: { alertId: string }) => {
+      const res = await fetch(`${API_BASE}/barbarian-alerts/${alertId}/read`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("Failed to mark alert as read");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["barbarian", "attack-alerts"] });
+    },
+  });
+}
+
+// ─── Winter Pressure Hooks ───
+
+export interface WinterPressureData {
+  cityId: string;
+  zone: { id: string; name: string; intensity: number };
+  isWinter: boolean;
+  currentSeason: string;
+  hourlyConsumption: number;
+  effectiveProduction: number;
+  netFoodPerHour: number;
+  hoursUntilStarvation: number;
+  currentFood: number;
+  minimumReserve: number;
+  winterState: {
+    foodBalance: number;
+    starvationHours: number;
+    isStarving: boolean;
+    combatPenalty: number;
+    desertionLosses: Record<string, number>;
+  } | null;
+}
+
+export function useWinterPressure(cityId: string | null) {
+  return useQuery({
+    queryKey: ["world", "winter-pressure", cityId],
+    queryFn: async () => {
+      if (!cityId) throw new Error("No city ID");
+      const res = await fetch(`${API_BASE}/world/winter-pressure/${cityId}`);
+      if (!res.ok) throw new Error("Failed to fetch winter pressure");
+      const data = await res.json();
+      return data as WinterPressureData;
+    },
+    enabled: !!cityId,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
+}

@@ -1,0 +1,531 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id
+  email     String?  @unique
+  name      String?
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cities City[]
+  sentMail     MailMessage[] @relation("MailSender")
+  receivedMail MailMessage[] @relation("MailRecipient")
+
+  @@map("users")
+}
+
+model City {
+  id        String   @id
+  name      String
+  userId    String
+  posX      Int      @default(0)
+  posY      Int      @default(0)
+  islandId  String?
+  slotId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  gold  Int @default(500)
+  wood  Int @default(500)
+  stone Int @default(200)
+  food  Int @default(200)
+  gems  Int @default(0)
+
+  goldPerHour  Int @default(0)
+  woodPerHour  Int @default(0)
+  stonePerHour Int @default(0)
+  foodPerHour  Int @default(0)
+
+  maxGold  Int @default(1000)
+  maxWood  Int @default(1000)
+  maxStone Int @default(500)
+  maxFood  Int @default(500)
+
+  lastResourceUpdate DateTime @default(now())
+  techBonuses        Json?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  buildings      Building[]
+  units          CityUnit[]
+  buildQueues    BuildQueue[]
+  trainingQueues TrainingQueue[]
+  researchQueues ResearchQueue[]
+  cityTechs      CityTech[]
+
+  @@index([userId])
+  @@index([posX, posY])
+  @@map("cities")
+}
+
+model Building {
+  id         String       @id
+  type       BuildingType
+  level      Int          @default(1)
+  positionX  Int
+  positionY  Int
+  cityId     String
+  createdAt  DateTime     @default(now())
+  upgradedAt DateTime     @default(now())
+
+  city City @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@unique([cityId, type])
+  @@index([cityId])
+  @@map("buildings")
+}
+
+model CityUnit {
+  id     String   @id
+  type   UnitType
+  count  Int      @default(0)
+  cityId String
+
+  city City @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@unique([cityId, type])
+  @@index([cityId])
+  @@map("units")
+}
+
+model BuildQueue {
+  id           String       @id
+  cityId       String
+  buildingId   String
+  buildingType BuildingType
+  targetLevel  Int
+  startedAt    DateTime
+  completesAt  DateTime
+  isComplete   Boolean      @default(false)
+
+  city City @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@index([cityId])
+  @@index([cityId, buildingType, isComplete])
+  @@index([isComplete, completesAt])
+  @@map("build_queues")
+}
+
+model TrainingQueue {
+  id          String   @id
+  cityId      String
+  unitType    UnitType
+  count       Int
+  startedAt   DateTime
+  completesAt DateTime
+  isComplete  Boolean  @default(false)
+
+  city City @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@index([cityId])
+  @@index([isComplete, completesAt])
+  @@map("training_queues")
+}
+
+model ResearchQueue {
+  id          String   @id
+  cityId      String
+  techId      String
+  targetLevel Int
+  startedAt   DateTime
+  completesAt DateTime
+  isComplete  Boolean  @default(false)
+
+  city City @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@index([cityId])
+  @@index([isComplete, completesAt])
+  @@map("research_queues")
+}
+
+model CityTech {
+  id         String   @id
+  cityId     String
+  techId     String
+  level      Int
+  unlockedAt DateTime
+
+  city City @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@unique([cityId, techId])
+  @@index([cityId])
+  @@map("city_techs")
+}
+
+model Battle {
+  id             String       @id
+  attackerCityId String
+  defenderCityId String
+  status         BattleStatus @default(MARCHING)
+  startedAt      DateTime
+  arrivesAt      DateTime
+  resolvedAt     DateTime?
+  returnsAt      DateTime?
+  units          Json
+  loot           Json?
+  result         Json?
+
+  @@index([attackerCityId])
+  @@index([defenderCityId])
+  @@index([status, arrivesAt])
+  @@map("battles")
+}
+
+model BattleReport {
+  id             String   @id
+  battleId       String
+  cityId         String
+  attackerCityId String
+  defenderCityId String
+  attackerName   String?
+  defenderName   String?
+  status         String
+  attackerLosses Json
+  defenderLosses Json
+  loot           Json?
+  read           Boolean  @default(false)
+  createdAt      DateTime
+
+  @@index([cityId])
+  @@index([battleId])
+  @@map("battle_reports")
+}
+
+model Alliance {
+  id          String   @id
+  name        String
+  tag         String   @unique
+  ownerUserId String
+  publicIntro String   @default("")
+  forumText   String   @default("")
+  honorScore  Int      @default(100)
+  treatiesSigned Int   @default(0)
+  treatiesBroken Int   @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members   AllianceMember[]
+  messages  ChatMessage[]
+  effects   AllianceEffect[]
+  diplomacyA AllianceDiplomacy[] @relation("AllianceDiplomacyA")
+  diplomacyB AllianceDiplomacy[] @relation("AllianceDiplomacyB")
+
+  @@map("alliances")
+}
+
+model AllianceMember {
+  id         String   @id
+  allianceId String
+  userId     String
+  role       String
+  createdAt  DateTime @default(now())
+
+  alliance Alliance @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+  @@index([allianceId])
+  @@map("alliance_members")
+}
+
+model AllianceDiplomacy {
+  id          String   @id
+  allianceAId String
+  allianceBId String
+  status      DiplomacyStatus
+  proposedByAllianceId String?
+  acceptedAt  DateTime?
+  expiresAt   DateTime?
+  brokenByAllianceId String?
+  brokenAt    DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  allianceA Alliance @relation("AllianceDiplomacyA", fields: [allianceAId], references: [id], onDelete: Cascade)
+  allianceB Alliance @relation("AllianceDiplomacyB", fields: [allianceBId], references: [id], onDelete: Cascade)
+
+  @@unique([allianceAId, allianceBId])
+  @@index([status])
+  @@map("alliance_diplomacy")
+}
+
+model AllianceDiplomacyEvent {
+  id          String   @id
+  allianceId String
+  otherAllianceId String?
+  type        String
+  message     String
+  public      Boolean @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([allianceId, createdAt])
+  @@map("alliance_diplomacy_events")
+}
+
+model AllianceEffect {
+  id          String   @id
+  allianceId String
+  type        AllianceEffectType
+  value       Float
+  reason      String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  alliance Alliance @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+
+  @@index([allianceId, type, expiresAt])
+  @@map("alliance_effects")
+}
+
+model ChatMessage {
+  id           String      @id
+  channel      ChatChannel
+  senderUserId String
+  senderName   String
+  message      String
+  allianceId   String?
+  createdAt    DateTime    @default(now())
+
+  alliance Alliance? @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+
+  @@index([channel, createdAt])
+  @@index([allianceId, createdAt])
+  @@map("chat_messages")
+}
+
+model MailMessage {
+  id                String    @id
+  senderUserId      String
+  senderName        String
+  recipientUserId   String
+  recipientName     String
+  recipientCityId   String?
+  recipientCityName String?
+  subject           String
+  body              String
+  readAt            DateTime?
+  createdAt         DateTime  @default(now())
+
+  sender    User @relation("MailSender", fields: [senderUserId], references: [id], onDelete: Cascade)
+  recipient User @relation("MailRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  @@index([recipientUserId, readAt, createdAt])
+  @@index([senderUserId, createdAt])
+  @@map("mail_messages")
+}
+
+enum BuildingType {
+  TOWN_HALL
+  GOLD_MINE
+  LUMBER_MILL
+  QUARRY
+  FARM
+  BARRACKS
+  STABLE
+  ALLIANCE_CENTER
+  LIBRARY
+  STORAGE
+  TOWER
+  MARKET
+}
+
+enum UnitType {
+  WARRIOR
+  ARCHER
+  CAVALRY
+  SIEGE
+  SPY
+}
+
+enum BattleStatus {
+  MARCHING
+  ONGOING
+  VICTORY
+  DEFEAT
+  RETURNING
+}
+
+enum ChatChannel {
+  GLOBAL
+  ALLIANCE
+}
+
+enum DiplomacyStatus {
+  PROPOSED
+  PEACE
+  HOSTILE
+  BROKEN
+}
+
+enum AllianceEffectType {
+  PEACE_PRODUCTION
+  DISHONOR_ATTACK
+}
+
+// ─── Season System ───
+
+model WorldSeasonState {
+  id            String   @id
+  currentSeason SeasonType
+  nextSeason    SeasonType
+  phase         SeasonPhaseType
+  intensity     Float    @default(0)
+  startedAt     DateTime
+  peakAt        DateTime
+  transitionAt  DateTime
+  endsAt        DateTime
+  updatedAt     DateTime
+
+  @@map("world_season_state")
+}
+
+// ─── Barbarian System ───
+
+model BarbarianCamp {
+  id         String              @id
+  name       String
+  level      Int                  @default(1)
+  archetype  BarbarianArchetypeType
+  posX       Int
+  posY       Int
+  zoneId     String
+  status     BarbarianCampStatusType @default(ACTIVE)
+  spawnedAt  DateTime             @default(now())
+  expiresAt  DateTime?
+  lastActionAt DateTime?
+  nextAttackAt DateTime?
+  ownerEventId String?
+
+  army     BarbarianArmy?
+  attacks  BarbarianAttack[]
+  battles  BarbarianBattle[]
+  alerts   BarbarianAttackAlert[]
+
+  @@index([status])
+  @@index([zoneId])
+  @@index([posX, posY])
+  @@map("barbarian_camps")
+}
+
+model BarbarianArmy {
+  id     String   @id
+  campId String   @unique
+  units  Json
+  power  Int      @default(0)
+
+  camp   BarbarianCamp @relation(fields: [campId], references: [id], onDelete: Cascade)
+
+  @@index([campId])
+  @@map("barbarian_armies")
+}
+
+model BarbarianBattle {
+  id             String                    @id
+  attackerCityId String
+  targetCampId   String
+  units          Json
+  status         BarbarianBattleStatusType  @default(MARCHING)
+  startedAt      DateTime
+  arrivesAt      DateTime
+  resolvedAt     DateTime?
+  returnsAt      DateTime?
+  result         Json?
+  loot           Json?
+
+  camp           BarbarianCamp             @relation(fields: [targetCampId], references: [id])
+
+  @@index([attackerCityId])
+  @@index([targetCampId])
+  @@index([status, arrivesAt])
+  @@map("barbarian_battles")
+}
+
+model BarbarianAttack {
+  id           String                     @id
+  campId       String
+  targetCityId String
+  units        Json
+  status       BarbarianAttackStatusType  @default(MARCHING)
+  startedAt    DateTime
+  arrivesAt    DateTime
+  resolvedAt   DateTime?
+  returnsAt    DateTime?
+  result       Json?
+  loot         Json?
+
+  camp         BarbarianCamp              @relation(fields: [campId], references: [id])
+
+  @@index([campId])
+  @@index([targetCityId])
+  @@index([status, arrivesAt])
+  @@map("barbarian_attacks")
+}
+
+model BarbarianAttackAlert {
+  id             String   @id
+  cityId         String
+  campId         String
+  campName       String
+  archetype      BarbarianArchetypeType
+  estimatedPower Int
+  arrivesAt      DateTime
+  warnedAt       DateTime
+  read           Boolean  @default(false)
+
+  camp           BarbarianCamp @relation(fields: [campId], references: [id])
+
+  @@index([cityId, read, arrivesAt])
+  @@index([campId])
+  @@map("barbarian_attack_alerts")
+}
+
+// ─── Enums ───
+
+enum SeasonType {
+  SPRING
+  SUMMER
+  AUTUMN
+  WINTER
+}
+
+enum SeasonPhaseType {
+  START
+  PEAK
+  TRANSITION
+}
+
+enum BarbarianArchetypeType {
+  RAIDERS
+  HUNTERS
+  MARAUDERS
+  WARHOST
+  NOMADS
+}
+
+enum BarbarianCampStatusType {
+  ACTIVE
+  DEFEATED
+  DESPAWNING
+}
+
+enum BarbarianBattleStatusType {
+  MARCHING
+  RETURNING
+  VICTORY
+  DEFEAT
+}
+
+enum BarbarianAttackStatusType {
+  MARCHING
+  ARRIVED
+  RETURNING
+  VICTORY
+  DEFEAT
+}

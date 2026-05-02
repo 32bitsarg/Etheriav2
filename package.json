@@ -1,0 +1,25 @@
+{
+  "name": "etheria",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "db:generate": "turbo run db:generate",
+    "db:push": "turbo run db:push",
+    "db:studio": "turbo run db:studio",
+    "db:pg:generate": "pnpm --filter @etheria/database db:generate",
+    "db:pg:push": "pnpm --filter @etheria/database db:push",
+    "db:pg:studio": "pnpm --filter @etheria/database db:studio",
+    "db:seed": "node -e \"console.log('Static balance config now lives in apps/api/src/domain and no longer needs DB seeding.')\"",
+    "db:seed:legacy": "cd apps/api && npx tsx seed-matecito.ts",
+    "db:setup": "cd apps/api && npx tsx setup-matecito.ts"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.0",
+    "turbo": "^2.4.0",
+    "typescript": "^5.7.3"
+  },
+  "packageManager": "pnpm@10.12.1"
+}
