@@ -46,7 +46,7 @@ export async function ensureCity(): Promise<string> {
   const res = await fetch('/api/city/create', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: 'Etheria' }),
+    body: JSON.stringify({}),
   });
 
   if (!res.ok) {

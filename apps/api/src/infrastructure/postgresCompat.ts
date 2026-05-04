@@ -98,7 +98,7 @@ class PostgresQueryBuilder {
   }
 
   limit(count: number) {
-    this.take = Math.max(1, Math.min(200, count));
+    this.take = Math.max(1, Math.min(5000, count));
     return this;
   }
 

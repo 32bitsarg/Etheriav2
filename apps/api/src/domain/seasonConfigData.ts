@@ -1,4 +1,4 @@
-import type { SeasonConfig, PhaseCurve } from "@etheria/shared";
+import type { SeasonConfig, PhaseCurve, Season } from "@etheria/shared";
 
 export type SeasonDurationEntry = {
   serverSpeed: number;
@@ -13,12 +13,20 @@ export const SEASON_DURATION_PRESETS: SeasonDurationEntry[] = [
   { serverSpeed: 10, seasonDurationHours: 48, transitionDurationHours: 12 },   // ~2 dias
 ];
 
+export const SEASON_RESOURCE_MODIFIERS: Record<Season, Record<string, number>> = {
+  SPRING: { food: 0.10 },
+  SUMMER: { gold: 0.05, wood: 0.05, stone: 0.05, food: 0.05 },
+  AUTUMN: { food: 0.15 },
+  WINTER: { food: -0.15, wood: -0.05 },
+};
+
 export const LOCAL_SEASON_CONFIG: SeasonConfig & {
   phaseDurations: {
     startHours: number;
     peakHours: number;
     transitionHours: number;
   };
+  resourceModifiers: Record<Season, Record<string, number>>;
 } = {
   serverSpeed: Number(process.env.SERVER_SPEED ?? "1"),
   seasonDurationHours: 336,
@@ -30,6 +38,7 @@ export const LOCAL_SEASON_CONFIG: SeasonConfig & {
     peakHours: 240,
     transitionHours: 48,
   },
+  resourceModifiers: SEASON_RESOURCE_MODIFIERS,
 };
 
 export function getSeasonDurationHours(): number {

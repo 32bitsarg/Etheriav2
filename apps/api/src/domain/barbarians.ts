@@ -1,5 +1,5 @@
 import type { BarbarianArchetype, WorldSeasonState, BarbarianCamp } from '@etheria/shared';
-import { getSeasonState as fetchSeasonState } from './seasons.js';
+import { initializeSeasonState } from './seasons.js';
 import { getWorldConfig } from './worldConfig.js';
 import { resolveWorldZone } from './worldZoneConfigData.js';
 import {
@@ -12,6 +12,28 @@ import {
 import { getRewardConfig, calculateEstimatedReward } from './barbarianRewardConfigData.js';
 import { db, COLLECTIONS } from '../infrastructure/matecito.js';
 
+function assertDbOk(result: unknown, context: string) {
+  if (!result) return;
+  const err = (result as any).error ?? (result as any).err;
+  if (err) {
+    const msg = typeof err === 'string' ? err : (err.message ?? JSON.stringify(err));
+    throw new Error(`[DB] ${context}: ${msg}`);
+  }
+}
+
+async function assertRecordExists(
+  collection: string,
+  key: string,
+  value: string,
+  context: string
+): Promise<void> {
+  const res = await db.from(collection).eq(key, value).getFirst() as any;
+  assertDbOk(res, `${context}.verify()`);
+  if (!res.data) {
+    throw new Error(`[DB] ${context}: insert completed but no persisted record was found for ${key}=${value}`);
+  }
+}
+
 export interface SpawnCandidate {
   posX: number;
   posY: number;
@@ -20,6 +42,7 @@ export interface SpawnCandidate {
 
 export async function fetchCurrentSeasonState(): Promise<WorldSeasonState | null> {
   const res = await db.from(COLLECTIONS.WORLD_SEASON_STATE).getFirst() as any;
+  assertDbOk(res, 'WORLD_SEASON_STATE.getFirst()');
   return res.data ?? null;
 }
 
@@ -122,6 +145,7 @@ export async function countActiveCampsByZone(): Promise<Map<string, number>> {
     .from(COLLECTIONS.BARBARIAN_CAMPS)
     .eq('status', 'ACTIVE')
     .get() as any;
+  assertDbOk(campsRes, 'BARBARIAN_CAMPS.eq(status=ACTIVE).get()');
 
   const counts = new Map<string, number>();
   for (const camp of campsRes.data ?? []) {
@@ -144,11 +168,13 @@ export async function getAllActiveCamps(): Promise<BarbarianCamp[]> {
     .from(COLLECTIONS.BARBARIAN_CAMPS)
     .eq('status', 'ACTIVE')
     .get() as any;
+  assertDbOk(campsRes, 'BARBARIAN_CAMPS.eq(status=ACTIVE).get()');
   return campsRes.data ?? [];
 }
 
 export async function getAllCities(): Promise<{ posX: number; posY: number }[]> {
   const citiesRes = await db.from(COLLECTIONS.CITIES).get() as any;
+  assertDbOk(citiesRes, 'CITIES.get()');
   return (citiesRes.data ?? []).map((c: any) => ({ posX: c.posX, posY: c.posY }));
 }
 
@@ -183,15 +209,19 @@ export async function spawnBarbarianCamp(
     lastActionAt: now,
   };
 
-  await db.from(COLLECTIONS.BARBARIAN_CAMPS).insert(camp);
+  const campInsert = await db.from(COLLECTIONS.BARBARIAN_CAMPS).insert(camp) as any;
+  assertDbOk(campInsert, `BARBARIAN_CAMPS.insert(${campId})`);
+  await assertRecordExists(COLLECTIONS.BARBARIAN_CAMPS, 'id', campId, `BARBARIAN_CAMPS.insert(${campId})`);
 
   // Create army
-  await db.from(COLLECTIONS.BARBARIAN_ARMIES).insert({
+  const armyInsert = await db.from(COLLECTIONS.BARBARIAN_ARMIES).insert({
     id: crypto.randomUUID(),
     campId,
     units: army.units,
     power: army.power,
-  });
+  }) as any;
+  assertDbOk(armyInsert, `BARBARIAN_ARMIES.insert(campId=${campId})`);
+  await assertRecordExists(COLLECTIONS.BARBARIAN_ARMIES, 'campId', campId, `BARBARIAN_ARMIES.insert(campId=${campId})`);
 
   return camp;
 }
@@ -219,9 +249,11 @@ export async function getBarbarianCampDetail(campId: string): Promise<{
   estimatedReward: { gold: number; wood: number; stone: number; food: number };
 } | null> {
   const campRes = await db.from(COLLECTIONS.BARBARIAN_CAMPS).eq('id', campId).getFirst() as any;
+  assertDbOk(campRes, `BARBARIAN_CAMPS.eq(id=${campId}).getFirst()`);
   if (!campRes.data) return null;
 
   const armyRes = await db.from(COLLECTIONS.BARBARIAN_ARMIES).eq('campId', campId).getFirst() as any;
+  assertDbOk(armyRes, `BARBARIAN_ARMIES.eq(campId=${campId}).getFirst()`);
   const army = armyRes.data ?? { units: {}, power: 0 };
 
   const seasonState = await fetchCurrentSeasonState();
@@ -236,8 +268,7 @@ export async function getBarbarianCampDetail(campId: string): Promise<{
 }
 
 export async function processBarbarianSpawns(): Promise<void> {
-  const seasonState = await fetchCurrentSeasonState();
-  if (!seasonState) return;
+  const seasonState = await fetchCurrentSeasonState() ?? await initializeSeasonState();
 
   const campCounts = await countActiveCampsByZone();
   const worldConfig = await getWorldConfig();
@@ -250,8 +281,11 @@ export async function processBarbarianSpawns(): Promise<void> {
     const spawnChance = LOCAL_SEASONAL_SPAWN_CONFIG.spawnProbability[seasonState.currentSeason] ?? 0.3;
     if (Math.random() > spawnChance) continue;
 
-    await spawnBarbarianCamp(zoneConfig.zoneId, seasonState);
-    console.log(`🏕️ Barbarian camp spawned in zone ${zoneConfig.zoneId}`);
+    const camp = await spawnBarbarianCamp(zoneConfig.zoneId, seasonState);
+    if (camp) {
+      campCounts.set(zoneConfig.zoneId, currentCount + 1);
+      console.log(`🏕️ Barbarian camp spawned in zone ${zoneConfig.zoneId}: ${camp.id}`);
+    }
   }
 }
 

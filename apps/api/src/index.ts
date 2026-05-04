@@ -17,6 +17,7 @@ import { loadTechConfigs } from './domain/techs.js';
 import { startQueueWorker } from './workers/queueWorker.js';
 import { startSeasonWorker } from './workers/seasonWorker.js';
 import { startBarbarianSpawnWorker } from './workers/barbarianSpawnWorker.js';
+import { startBotWorker } from './workers/botWorker.js';
 
 async function bootstrap() {
   await loadBuildingConfigs();
@@ -25,6 +26,7 @@ async function bootstrap() {
   startQueueWorker();
   startSeasonWorker();
   startBarbarianSpawnWorker();
+  startBotWorker();
 
   const app = new Hono();
   setupMiddleware(app);

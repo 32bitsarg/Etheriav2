@@ -11,13 +11,62 @@ Each release is named after a legendary era in the world of Etheria.
 
 ## [Unreleased]
 
+---
+
+## [0.1.0] - La Resistencia del Invierno - 2026-05-04
+
+### Fixed
+- **[CORE] Winter Pressure timing bug (CRITICAL)**
+  - `evaluateWinterPressure` now uses real elapsed time (`hoursElapsed`) derived from `lastWinterEvaluatedAt` timestamp instead of assuming hourly ticks.
+  - Eliminated double food penalty: winter pressure now uses `effective.production.foodPerHour` (already includes season/zone modifiers) instead of reapplying `foodProductionPenalty * zoneIntensity` on top of raw production.
+  - Starvation hours, food balance, and desertion losses now scale proportionally to `hoursElapsed`, fixing the bug where armies starved/deserted in minutes instead of hours on 5-second worker ticks.
+  - `lastWinterEvaluatedAt` is now persisted per city, making winter calculations survive worker/API restarts.
+  - Added `resetWinterState()` to cleanly reset penalties when winter ends.
+- **[CORE] Production calculation precision**
+  - `calculateEffectiveProduction` now applies `Math.floor` only once at the end of the calculation chain instead of after each modifier step, recovering 1-3 units/hour in early-game production.
+
 ### Changed
+- **[CORE] Season effects config-driven**
+  - Moved hardcoded `seasonEffects` from `production.ts` to `seasonConfigData.ts` via `SEASON_RESOURCE_MODIFIERS`, following the "zero hardcoded gameplay values" guideline.
+- **[CORE] Building production curve rebalance**
+  - Changed `prodMult` formula from linear (`level * base.prodMultiplier`) to exponential (`Math.pow(base.prodMultiplier, level - 1)`), making late-game upgrades (levels 15-20) economically rational.
+  - Adjusted base multipliers: GOLD_MINE/LUMBER_MILL `1.25 → 1.20`, QUARRY/FARM `1.25 → 1.18` to prevent early-game explosion while maintaining attractive late-game ROI.
+- **[CORE] Extracted magic numbers to config**
+  - Created `cityBaseConfig.ts` with `CITY_BASE_CONFIG.baseStorage`, replacing hardcoded `1000/1000/500/500` in `calculateCityStats`.
+  - Created `battleConfigData.ts` with `BATTLE_CONFIG.lootWeights`, replacing inline `0.4/0.3/0.2/0.1` in `calculateLoot`.
+  - Barbarian attack loot/survival values now read from `LOCAL_BARBARIAN_ATTACK_CONFIG` instead of inline objects in `queueWorker.ts`.
+- **[PERF] Resource tick N+1 query elimination**
+  - `processResourceTicks` now preloads all alliance memberships and effects in two bulk queries before the city loop, replacing per-city `getActiveAllianceEffects` calls.
+
+### Added
+- **[TEST] Unit test foundation**
+  - Added Vitest setup (`vitest.config.ts`, `package.json` scripts) to `apps/api`.
+  - Added 13 tests for `winterPressure.ts` covering: food balance, starvation scaling, combat penalty, desertion, recovery, and reset.
+  - Added 8 tests for `production.ts` covering: base production, tech bonuses, seasonal modifiers (SPRING/WINTER), zone modifiers, combined modifiers, and non-negative production guarantee.
 - **[INFRA] Repository publication hygiene**
   - Rewrote `README.md` to match the current project state, setup flow, contribution limits, and security expectations.
   - Replaced real-looking values in `.env.example` with placeholders.
   - Expanded `.gitignore` for nested env files, generated builds, caches, temporary assets, logs, and secret-bearing file types.
+- **[CORE] Barbarian spawn persistence diagnostics**
+  - Barbarian spawn now initializes season state when missing instead of silently skipping camp generation.
+  - Barbarian camp and army inserts now validate DB errors and verify the persisted records after write.
+  - Barbarian camp reads now surface PostgreSQL/Matecito errors instead of treating failed queries as empty data.
 
 ### Added
+- **[CORE] World events planning**
+  - Added an implementation plan for a public world event feed covering schema, domain services, emitters, routes, UI modal, testing, and rollout order.
+- **[CORE] Bot player simulation MVP**
+  - Added a design document for bot players as live QA simulation.
+  - Added PostgreSQL bot persistence for bot identity, action logs, and metric snapshots.
+  - Added shared city action services so humans and bots execute the same build, train, research, and attack logic.
+  - Added a configurable bot worker with economy, military, tech-rusher, and balanced profiles.
+  - Added bot action metrics for attempts, successes, expected blocks, validation errors, unexpected errors, battles, and research progress.
+- **[CORE] Village power ranking and bot error reports**
+  - Added automatic markdown reports for bot validation and unexpected errors with reproduction context.
+  - Added city power calculation from buildings, army, and research.
+  - Added a city ranking endpoint and UI view that ranks villages by Fuerza using village names.
+  - Changed ranking to open as a modal from the sidebar without leaving the current view.
+  - Added city renaming from the resource HUD and randomized default names for new players and bots.
 - **[CORE] Season system - Phase 1: Visible seasons without strong impact**
   - Added shared schemas: `SeasonSchema`, `SeasonPhaseSchema`, `WorldSeasonStateSchema`, `WorldZoneSchema`, `WorldStateResponseSchema`, `SeasonConfigSchema`
   - Added `seasonConfigData.ts` with configurable season durations per server speed (x1: ~5 weeks, x3: ~10 days, dev: fast cycles)

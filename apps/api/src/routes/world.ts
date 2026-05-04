@@ -18,6 +18,7 @@ import { AttackBarbarianRequestSchema } from '@etheria/shared';
 import { calculateTravelTime } from '../domain/battles.js';
 import { getUnitStats } from '../domain/units.js';
 import { calculateTechBonuses } from '../domain/techs.js';
+import { calculateEffectiveProduction } from '../domain/production.js';
 
 const genId = () => crypto.randomUUID();
 
@@ -281,16 +282,28 @@ worldRouter.get('/winter-pressure/:cityId', async (c) => {
     units[u.type] = (units[u.type] ?? 0) + u.count;
   }
 
+  const seasonState = await fetchCurrentSeasonState();
+  const isWinter = seasonState?.currentSeason === 'WINTER';
+
+  const effective = await calculateEffectiveProduction({
+    goldPerHour: city.goldPerHour ?? 0,
+    woodPerHour: city.woodPerHour ?? 0,
+    stonePerHour: city.stonePerHour ?? 0,
+    foodPerHour: city.foodPerHour ?? 0,
+  }, {
+    techBonuses: city.techBonuses,
+    allianceEffects: [], // Simplified for summary endpoint
+    seasonState,
+    cityPosX: city.posX ?? 0,
+    cityPosY: city.posY ?? 0,
+  });
+
   const summary = getWinterPressureSummary(
     city,
-    zone.id,
-    city.foodPerHour ?? 0,
+    effective.production.foodPerHour,
     units as any,
     DEFAULT_WINTER_PRESSURE_CONFIG
   );
-
-  const seasonState = await fetchCurrentSeasonState();
-  const isWinter = seasonState?.currentSeason === 'WINTER';
 
   return c.json({
     cityId,
@@ -308,5 +321,6 @@ worldRouter.get('/winter-pressure/:cityId', async (c) => {
     currentFood: city.food,
     minimumReserve: DEFAULT_WINTER_PRESSURE_CONFIG.minimumFoodReserve,
     winterState: city.winterState ?? null,
+    lastWinterEvaluatedAt: city.lastWinterEvaluatedAt ?? null,
   });
 });

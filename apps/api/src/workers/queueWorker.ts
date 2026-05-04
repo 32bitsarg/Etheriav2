@@ -16,10 +16,12 @@ import { getSeasonState } from '../domain/seasons.js';
 import type { BarbarianArchetype } from '@etheria/shared';
 import { calculateEstimatedReward, calculateActualReward } from '../domain/barbarianRewardConfigData.js';
 import { processBarbarianAttacks } from '../domain/barbarianAttacks.js';
+import { LOCAL_BARBARIAN_ATTACK_CONFIG } from '../domain/barbarianAttackConfigData.js';
 import { resolveWorldZone } from '../domain/worldZoneConfigData.js';
 import { getWorldConfig } from '../domain/worldConfig.js';
 import {
   evaluateWinterPressure,
+  resetWinterState,
   DEFAULT_WINTER_PRESSURE_CONFIG,
   ZONE_WINTER_INTENSITY,
 } from '../domain/winterPressure.js';
@@ -235,13 +237,40 @@ async function processResourceTicks() {
   const worldConfig = await getWorldConfig();
   const isWinter = seasonState?.currentSeason === 'WINTER';
 
+  // Preload alliance effects to avoid N+1 queries per city
+  const userIds = new Set((cities.data ?? []).map((city: any) => city.userId).filter(Boolean));
+  const allianceEffectsByUserId = new Map<string, any[]>();
+  if (userIds.size > 0) {
+    const membershipsRes = await db.from(COLLECTIONS.ALLIANCE_MEMBERS).get() as any;
+    const memberships = (membershipsRes.data ?? []).filter((m: any) => userIds.has(m.userId));
+    const allianceIds = new Set(memberships.map((m: any) => m.allianceId).filter(Boolean));
+    if (allianceIds.size > 0) {
+      const effectsRes = await db.from(COLLECTIONS.ALLIANCE_EFFECTS).get() as any;
+      const nowMs = Date.now();
+      const allEffects = (effectsRes.data ?? []).filter((effect: any) =>
+        allianceIds.has(effect.allianceId) && (!effect.expiresAt || new Date(effect.expiresAt).getTime() > nowMs)
+      );
+      const effectsByAllianceId = new Map<string, any[]>();
+      for (const effect of allEffects) {
+        const list = effectsByAllianceId.get(effect.allianceId) ?? [];
+        list.push(effect);
+        effectsByAllianceId.set(effect.allianceId, list);
+      }
+      for (const m of memberships) {
+        if (m.allianceId) {
+          allianceEffectsByUserId.set(m.userId, effectsByAllianceId.get(m.allianceId) ?? []);
+        }
+      }
+    }
+  }
+
   for (const city of cities.data ?? []) {
     const lastUpdate = new Date(city.lastResourceUpdate ?? city.createdAt);
     const hoursElapsed = (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60);
 
     if (hoursElapsed < 0.001) continue;
 
-    const activeAllianceEffects = await getActiveAllianceEffects(city.userId);
+    const activeAllianceEffects = allianceEffectsByUserId.get(city.userId) ?? [];
     const effective = await calculateEffectiveProduction({
       goldPerHour: city.goldPerHour ?? 0,
       woodPerHour: city.woodPerHour ?? 0,
@@ -258,33 +287,30 @@ async function processResourceTicks() {
     let newFood = Math.min(city.maxFood, Math.floor(city.food + effective.production.foodPerHour * hoursElapsed));
 
     // Winter pressure: troop food consumption
-    if (isWinter) {
-      const zone = resolveWorldZone(city.posX ?? 0, city.posY ?? 0, worldConfig.map.width, worldConfig.map.height);
-      const unitsRes = await db.from(COLLECTIONS.UNITS).eq('cityId', city.id).get() as any;
-      const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 };
-      for (const u of unitsRes.data ?? []) {
-        units[u.type as UnitType] = (units[u.type as UnitType] ?? 0) + u.count;
-      }
+    const unitsRes = await db.from(COLLECTIONS.UNITS).eq('cityId', city.id).get() as any;
+    const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 };
+    for (const u of unitsRes.data ?? []) {
+      units[u.type as UnitType] = (units[u.type as UnitType] ?? 0) + u.count;
+    }
 
+    if (isWinter) {
       const totalTroops = Object.values(units).reduce((s, c) => s + c, 0);
       if (totalTroops > 0) {
         const winterState = evaluateWinterPressure(
           city,
-          zone.id,
-          city.foodPerHour ?? 0,
+          effective.production.foodPerHour,
           units,
           city.winterState ?? null,
+          now,
           DEFAULT_WINTER_PRESSURE_CONFIG
         );
 
-        // Apply food consumption directly
-        const hourlyConsumption = Object.entries(units).reduce((sum, [type, count]) => {
-          return sum + count * (DEFAULT_WINTER_PRESSURE_CONFIG.troopFoodConsumptionPerHour[type as UnitType] ?? 0);
-        }, 0);
-        const totalConsumption = Math.floor(hourlyConsumption * hoursElapsed);
-        newFood = Math.max(0, newFood - totalConsumption);
+        // foodBalance already accounts for netFood (production - consumption) over elapsed time.
+        // We apply the final food amount directly from the winter state balance,
+        // clamped to storage cap.
+        newFood = Math.min(city.maxFood, Math.max(0, Math.floor(winterState.foodBalance)));
 
-        // Persist winter state for tracking
+        // Persist winter state and evaluation timestamp
         await db.from(COLLECTIONS.CITIES).eq('id', city.id).merge({
           winterState: {
             cityId: city.id,
@@ -294,6 +320,7 @@ async function processResourceTicks() {
             combatPenalty: winterState.combatPenalty,
             desertionLosses: winterState.desertionLosses,
           },
+          lastWinterEvaluatedAt: now.toISOString(),
         }).execute() as any;
 
         // Apply desertion losses if starving long enough
@@ -312,6 +339,15 @@ async function processResourceTicks() {
             }
           }
         }
+      }
+    } else {
+      // Not winter: reset winter state if it exists so next winter starts fresh
+      if (city.winterState) {
+        const cleared = resetWinterState(city.id, newFood);
+        await db.from(COLLECTIONS.CITIES).eq('id', city.id).merge({
+          winterState: cleared,
+          lastWinterEvaluatedAt: null,
+        }).execute() as any;
       }
     }
 
@@ -919,10 +955,7 @@ async function resolveBarbarianAttack(attack: any) {
   // Calculate loot if barbarians win
   let loot = { gold: 0, wood: 0, stone: 0, food: 0 };
   if (result.victory) {
-    const config = {
-      maxLootPercentage: 0.3,
-      minSurvivalResources: { gold: 100, wood: 100, stone: 100, food: 100 },
-    };
+    const config = LOCAL_BARBARIAN_ATTACK_CONFIG;
 
     const totalResources = {
       gold: defenderCity.gold ?? 0,
@@ -931,7 +964,7 @@ async function resolveBarbarianAttack(attack: any) {
       food: defenderCity.food ?? 0,
     };
 
-    // Loot up to 30% but leave minimum survival resources
+    // Loot up to maxLootPercentage but leave minimum survival resources
     for (const resource of ['gold', 'wood', 'stone', 'food'] as const) {
       const maxLootable = Math.max(0, totalResources[resource] - config.minSurvivalResources[resource]);
       loot[resource] = Math.floor(Math.min(maxLootable, totalResources[resource] * config.maxLootPercentage));

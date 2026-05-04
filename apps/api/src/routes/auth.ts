@@ -11,6 +11,7 @@ import {
   registerUser,
   touchSession,
 } from "../domain/authService.js";
+import { generateCityName, generatePlayerName } from "../domain/nameGenerator.js";
 
 export const authRouter = new Hono();
 
@@ -27,8 +28,8 @@ authRouter.post("/register", zValidator("json", RegisterSchema), async (c) => {
   const result = await registerUser({
     email: data.email,
     password: data.password,
-    name: (data.name ?? "Commander").trim(),
-    cityName: (data.cityName ?? "Etheria").trim(),
+    name: (data.name ?? generatePlayerName(data.email)).trim(),
+    cityName: (data.cityName ?? generateCityName(data.email)).trim(),
     remember: data.remember,
   });
   if ("error" in result) return c.json({ error: result.error }, (result as any).status ?? 500);

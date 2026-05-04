@@ -1,5 +1,6 @@
 import { BuildingTypeSchema, type BuildingType, type Resources } from '@etheria/shared';
 import { BASE_BUILDING_CONFIGS, generateBuildingLevelConfig } from './buildingConfigSeedData.js';
+import { CITY_BASE_CONFIG } from './cityBaseConfig.js';
 
 interface ConfigRecord {
   id: string;
@@ -133,10 +134,10 @@ export function calculateCityStats(buildings: { type: BuildingType; level: numbe
   let stonePerHour = 0;
   let foodPerHour = 0;
 
-  let maxGold = 1000;
-  let maxWood = 1000;
-  let maxStone = 500;
-  let maxFood = 500;
+  let maxGold = CITY_BASE_CONFIG.baseStorage.maxGold;
+  let maxWood = CITY_BASE_CONFIG.baseStorage.maxWood;
+  let maxStone = CITY_BASE_CONFIG.baseStorage.maxStone;
+  let maxFood = CITY_BASE_CONFIG.baseStorage.maxFood;
 
   for (const b of buildings) {
     const prod = getProductionRates(b.type, b.level);

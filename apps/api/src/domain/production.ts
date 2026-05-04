@@ -2,6 +2,7 @@ import type { Season, WorldSeasonState, WorldZone } from '@etheria/shared';
 import { LOCAL_WORLD_ZONE_CONFIGS, resolveWorldZone } from './worldZoneConfigData.js';
 import { getSeasonState } from './seasons.js';
 import { getWorldConfig } from './worldConfig.js';
+import { LOCAL_SEASON_CONFIG } from './seasonConfigData.js';
 
 export interface BaseProduction {
   goldPerHour: number;
@@ -38,7 +39,7 @@ export async function calculateEffectiveProduction(
   // Step 1: Start with base production
   let production = { ...baseProduction };
 
-  // Step 2: Apply tech bonuses
+  // Step 2: Apply tech bonuses (keep precision, floor at the end)
   const resourceBonus = (techBonuses as any)?.resourceProdBonus ?? {};
   const allianceProductionBonus = allianceEffects
     .filter((effect: any) => effect.type === 'PEACE_PRODUCTION')
@@ -47,11 +48,11 @@ export async function calculateEffectiveProduction(
   const bonusFor = (resource: string) =>
     (resourceBonus.all ?? 0) + (resourceBonus[resource] ?? 0) + allianceProductionBonus;
 
-  production = {
-    goldPerHour: Math.floor(production.goldPerHour * (1 + bonusFor('gold'))),
-    woodPerHour: Math.floor(production.woodPerHour * (1 + bonusFor('wood'))),
-    stonePerHour: Math.floor(production.stonePerHour * (1 + bonusFor('stone'))),
-    foodPerHour: Math.floor(production.foodPerHour * (1 + bonusFor('food'))),
+  let rawProduction = {
+    goldPerHour: production.goldPerHour * (1 + bonusFor('gold')),
+    woodPerHour: production.woodPerHour * (1 + bonusFor('wood')),
+    stonePerHour: production.stonePerHour * (1 + bonusFor('stone')),
+    foodPerHour: production.foodPerHour * (1 + bonusFor('food')),
   };
 
   // Step 3: Apply season modifier
@@ -60,25 +61,18 @@ export async function calculateEffectiveProduction(
     const season = seasonState.currentSeason as Season;
     const intensity = seasonState.intensity;
 
-    // Season effects on resources (configurable, not hardcoded in workers)
-    const seasonEffects: Record<Season, Record<string, number>> = {
-      SPRING: { food: 0.10 },
-      SUMMER: { gold: 0.05, wood: 0.05, stone: 0.05, food: 0.05 },
-      AUTUMN: { food: 0.15 },
-      WINTER: { food: -0.15, wood: -0.05 },
-    };
-
-    const effects = seasonEffects[season] ?? {};
+    // Season effects on resources loaded from config
+    const effects = LOCAL_SEASON_CONFIG.resourceModifiers[season] ?? {};
     for (const [resource, baseMod] of Object.entries(effects)) {
       seasonModifier[resource] = 1 + baseMod * intensity;
     }
   }
 
-  production = {
-    goldPerHour: Math.floor(production.goldPerHour * seasonModifier.gold),
-    woodPerHour: Math.floor(production.woodPerHour * seasonModifier.wood),
-    stonePerHour: Math.floor(production.stonePerHour * seasonModifier.stone),
-    foodPerHour: Math.floor(production.foodPerHour * seasonModifier.food),
+  rawProduction = {
+    goldPerHour: rawProduction.goldPerHour * seasonModifier.gold,
+    woodPerHour: rawProduction.woodPerHour * seasonModifier.wood,
+    stonePerHour: rawProduction.stonePerHour * seasonModifier.stone,
+    foodPerHour: rawProduction.foodPerHour * seasonModifier.food,
   };
 
   // Step 4: Apply geographic zone modifier
@@ -93,19 +87,19 @@ export async function calculateEffectiveProduction(
     }
   }
 
-  production = {
-    goldPerHour: Math.floor(production.goldPerHour * zoneModifier.gold),
-    woodPerHour: Math.floor(production.woodPerHour * zoneModifier.wood),
-    stonePerHour: Math.floor(production.stonePerHour * zoneModifier.stone),
-    foodPerHour: Math.floor(production.foodPerHour * zoneModifier.food),
+  rawProduction = {
+    goldPerHour: rawProduction.goldPerHour * zoneModifier.gold,
+    woodPerHour: rawProduction.woodPerHour * zoneModifier.wood,
+    stonePerHour: rawProduction.stonePerHour * zoneModifier.stone,
+    foodPerHour: rawProduction.foodPerHour * zoneModifier.food,
   };
 
-  // Step 5: Ensure non-negative production
+  // Step 5: Floor once at the end and ensure non-negative
   production = {
-    goldPerHour: Math.max(0, production.goldPerHour),
-    woodPerHour: Math.max(0, production.woodPerHour),
-    stonePerHour: Math.max(0, production.stonePerHour),
-    foodPerHour: Math.max(0, production.foodPerHour),
+    goldPerHour: Math.max(0, Math.floor(rawProduction.goldPerHour)),
+    woodPerHour: Math.max(0, Math.floor(rawProduction.woodPerHour)),
+    stonePerHour: Math.max(0, Math.floor(rawProduction.stonePerHour)),
+    foodPerHour: Math.max(0, Math.floor(rawProduction.foodPerHour)),
   };
 
   // Calculate total multiplier for transparency
