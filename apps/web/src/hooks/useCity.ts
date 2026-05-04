@@ -274,17 +274,40 @@ export function useCreateCity() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (name: string = "Etheria") => {
+    mutationFn: async (name?: string) => {
       const res = await fetch(`${API_BASE}/city/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify(name ? { name } : {}),
       });
       if (!res.ok) throw new Error("Failed to create city");
       return res.json();
     },
     onSuccess: (data) => {
       queryClient.setQueryData(["city", data.city.id], data.city);
+    },
+  });
+}
+
+export function useRenameCity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ cityId, name }: { cityId: string; name: string }) => {
+      const res = await fetch(`${API_BASE}/city/${cityId}/name`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.error ?? "Failed to rename city");
+      }
+      return res.json();
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["city", vars.cityId] });
+      queryClient.invalidateQueries({ queryKey: ["cities", "all"] });
+      queryClient.invalidateQueries({ queryKey: ["cities", "ranking"] });
     },
   });
 }
@@ -299,6 +322,22 @@ interface TargetCity {
   posX: number;
   posY: number;
   level?: number;
+  power?: number;
+}
+
+export interface CityRankingEntry {
+  rank: number;
+  cityId: string;
+  cityName: string;
+  userId: string;
+  posX: number;
+  posY: number;
+  power: number;
+  powerBreakdown: {
+    buildings: number;
+    army: number;
+    research: number;
+  };
 }
 
 export function useAllCities() {
@@ -309,6 +348,19 @@ export function useAllCities() {
       if (!res.ok) throw new Error("Failed to fetch cities");
       const data = await res.json();
       return data.cities as TargetCity[];
+    },
+    staleTime: 30000,
+  });
+}
+
+export function useCityRanking() {
+  return useQuery({
+    queryKey: ["cities", "ranking"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/city/ranking/all`);
+      if (!res.ok) throw new Error("Failed to fetch city ranking");
+      const data = await res.json();
+      return data.ranking as CityRankingEntry[];
     },
     staleTime: 30000,
   });

@@ -33,25 +33,25 @@ export const BASE_BUILDING_CONFIGS: BaseBuildingConfig[] = [
     type: 'GOLD_MINE', maxLevel: 20,
     baseCost: { gold: 50, wood: 100, stone: 20, food: 0, gems: 0 },
     baseBuildTimeSeconds: 30, costMultiplier: 1.45, timeMultiplier: 1.3,
-    prodGold: 100, storageMultiplier: 1.0, prodMultiplier: 1.25,
+    prodGold: 100, storageMultiplier: 1.0, prodMultiplier: 1.20,
   },
   {
     type: 'LUMBER_MILL', maxLevel: 20,
     baseCost: { gold: 50, wood: 50, stone: 20, food: 0, gems: 0 },
     baseBuildTimeSeconds: 30, costMultiplier: 1.45, timeMultiplier: 1.3,
-    prodWood: 100, storageMultiplier: 1.0, prodMultiplier: 1.25,
+    prodWood: 100, storageMultiplier: 1.0, prodMultiplier: 1.20,
   },
   {
     type: 'QUARRY', maxLevel: 20,
     baseCost: { gold: 100, wood: 150, stone: 0, food: 0, gems: 0 },
     baseBuildTimeSeconds: 45, costMultiplier: 1.5, timeMultiplier: 1.35,
-    prodStone: 60, storageMultiplier: 1.0, prodMultiplier: 1.25,
+    prodStone: 60, storageMultiplier: 1.0, prodMultiplier: 1.18,
   },
   {
     type: 'FARM', maxLevel: 20,
     baseCost: { gold: 40, wood: 80, stone: 10, food: 0, gems: 0 },
     baseBuildTimeSeconds: 30, costMultiplier: 1.45, timeMultiplier: 1.3,
-    prodFood: 60, storageMultiplier: 1.0, prodMultiplier: 1.25,
+    prodFood: 60, storageMultiplier: 1.0, prodMultiplier: 1.18,
   },
   {
     type: 'BARRACKS', maxLevel: 20,
@@ -101,7 +101,7 @@ export const BASE_BUILDING_CONFIGS: BaseBuildingConfig[] = [
 export function generateBuildingLevelConfig(base: BaseBuildingConfig, level: number) {
   const costMult = Math.pow(base.costMultiplier, level - 1);
   const timeMult = Math.pow(base.timeMultiplier, level - 1);
-  const prodMult = level * base.prodMultiplier;
+  const prodMult = Math.pow(base.prodMultiplier, level - 1);
   const storageMult = level * base.storageMultiplier;
 
   return {

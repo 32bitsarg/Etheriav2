@@ -12,14 +12,76 @@ model User {
   email     String?  @unique
   name      String?
   avatar    String?
+  isBot     Boolean  @default(false)
+  botProfile String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   cities City[]
   sentMail     MailMessage[] @relation("MailSender")
   receivedMail MailMessage[] @relation("MailRecipient")
+  botPlayer    BotPlayer?
 
   @@map("users")
+}
+
+model BotPlayer {
+  id         String    @id
+  userId     String    @unique
+  cityId     String    @unique
+  profile    BotProfile
+  status     BotStatus @default(ACTIVE)
+  state      Json?
+  createdAt  DateTime  @default(now())
+  lastTickAt DateTime?
+  nextTickAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs BotActionLog[]
+
+  @@index([status, nextTickAt])
+  @@index([profile])
+  @@map("bot_players")
+}
+
+model BotActionLog {
+  id           String          @id
+  botId        String
+  cityId       String
+  actionType   BotActionType
+  status       BotActionStatus
+  reason       String?
+  errorKind    String?
+  errorMessage String?
+  payload      Json?
+  createdAt    DateTime        @default(now())
+
+  bot BotPlayer @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  @@index([botId, createdAt])
+  @@index([actionType, status, createdAt])
+  @@map("bot_action_logs")
+}
+
+model BotMetricsSnapshot {
+  id                    String   @id
+  windowStartedAt       DateTime
+  windowEndedAt         DateTime
+  attemptedByType       Json
+  successfulActions     Int      @default(0)
+  expectedBlocks        Int      @default(0)
+  validationErrors      Int      @default(0)
+  unexpectedErrors      Int      @default(0)
+  blockedByQueue        Int      @default(0)
+  blockedByResources    Int      @default(0)
+  battlesCreated        Int      @default(0)
+  battlesResolved       Int      @default(0)
+  researchStarted       Int      @default(0)
+  researchCompleted     Int      @default(0)
+  createdAt             DateTime @default(now())
+
+  @@index([windowStartedAt, windowEndedAt])
+  @@map("bot_metrics_snapshots")
 }
 
 model City {
@@ -51,6 +113,8 @@ model City {
 
   lastResourceUpdate DateTime @default(now())
   techBonuses        Json?
+  winterState        Json?
+  lastWinterEvaluatedAt DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -528,4 +592,32 @@ enum BarbarianAttackStatusType {
   RETURNING
   VICTORY
   DEFEAT
+}
+
+enum BotProfile {
+  ECONOMIST
+  MILITARIST
+  TECH_RUSHER
+  BALANCED
+}
+
+enum BotStatus {
+  ACTIVE
+  PAUSED
+  ERROR
+}
+
+enum BotActionType {
+  UPGRADE_BUILDING
+  TRAIN_UNITS
+  START_RESEARCH
+  ATTACK_CITY
+  IDLE
+}
+
+enum BotActionStatus {
+  SUCCESS
+  EXPECTED_BLOCKED
+  VALIDATION_ERROR
+  UNEXPECTED_ERROR
 }

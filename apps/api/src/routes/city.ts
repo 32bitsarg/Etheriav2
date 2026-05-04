@@ -22,6 +22,14 @@ import {
 import { applyTrainingCostReduction, getUnitCost, getTrainingTime, getUnitStats } from "../domain/units.js";
 import { calculateTravelTime } from "../domain/battles.js";
 import {
+  attackCityAction,
+  CityActionError,
+  createBuildingAction,
+  startResearchAction,
+  trainUnitsAction,
+  upgradeBuildingAction,
+} from "../domain/cityActions.js";
+import {
   loadTechConfigs,
   getAllTechConfigs,
   getResearchCost,
@@ -45,6 +53,8 @@ import { getAllianceMembershipForUser } from "../domain/alliances.js";
 import { normalizeBuildingsByType } from "../domain/buildingNormalization.js";
 import { calculateEffectiveProduction } from "../domain/production.js";
 import { getSeasonState } from "../domain/seasons.js";
+import { getCityPowerMap } from "../domain/cityPower.js";
+import { generateCityName, generatePlayerName } from "../domain/nameGenerator.js";
 
 const genId = () => crypto.randomUUID();
 const citySnapshotCache = new Map<string, { data: any; cachedAt: number }>();
@@ -93,6 +103,13 @@ function calculateCancellationRefund(cost: { gold: number; wood: number; stone: 
     food: Math.floor(cost.food * 0.5),
     gems: Math.floor(cost.gems * 0.5),
   };
+}
+
+function actionErrorResponse(c: any, error: unknown) {
+  if (error instanceof CityActionError) {
+    return c.json({ error: error.message, ...error.details }, error.status as any);
+  }
+  throw error;
 }
 
 // ─── Helper: Get city with live resources ───
@@ -357,7 +374,7 @@ cityRouter.post("/bootstrap", requireMatecitoAuth(), async (c) => {
   const userId = c.get("userId");
   const body = await c.req.json().catch(() => ({}));
   const desiredCityName =
-    typeof body.cityName === "string" && body.cityName.trim().length >= 2 ? body.cityName.trim() : "Etheria";
+    typeof body.cityName === "string" && body.cityName.trim().length >= 2 ? body.cityName.trim() : generateCityName(userId);
 
   // Game profile doc (separate from Matecito Auth users).
   const profileRes = await db.from(COLLECTIONS.USERS).eq("id", userId).getFirst() as any;
@@ -366,7 +383,7 @@ cityRouter.post("/bootstrap", requireMatecitoAuth(), async (c) => {
     await db.from(COLLECTIONS.USERS).insert({
       id: userId,
       email: typeof body.email === "string" ? body.email : null,
-      name: typeof body.name === "string" ? body.name : "Commander",
+      name: typeof body.name === "string" ? body.name : generatePlayerName(userId),
       createdAt: now,
       updatedAt: now,
     });
@@ -400,7 +417,7 @@ cityRouter.post("/create", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const cityName = typeof body.name === "string" && body.name.trim().length >= 2
     ? body.name.trim()
-    : "New City";
+    : generateCityName(String(Date.now()));
 
   const now = new Date().toISOString();
   const userId = genId();
@@ -409,7 +426,7 @@ cityRouter.post("/create", async (c) => {
   await db.from(COLLECTIONS.USERS).insert({
     id: userId,
     email: `player_${Date.now()}@etheria.game`,
-    name: "Commander",
+    name: generatePlayerName(userId),
     createdAt: now,
   });
 
@@ -418,6 +435,76 @@ cityRouter.post("/create", async (c) => {
 
   const fullCity = await getCityWithResources(created.cityId);
   return c.json({ city: fullCity, message: "City created with starter buildings" });
+});
+
+// ─── List cities (for attack target selection) ───
+
+cityRouter.get("/list/all", async (c) => {
+  const citiesRes = await db.from(COLLECTIONS.CITIES).get() as any;
+  const rawCities = (citiesRes.data ?? []) as any[];
+  const membershipsRes = await db.from(COLLECTIONS.ALLIANCE_MEMBERS).get() as any;
+  const memberships = membershipsRes.data ?? [];
+  const allianceByUser = new Map(memberships.map((m: any) => [m.userId, m.allianceId]));
+  const powerByCity = await getCityPowerMap(rawCities.map((city: any) => city.id));
+
+  const cities = rawCities.map((city: any) => ({
+    id: city.id,
+    name: city.name,
+    userId: city.userId,
+    allianceId: allianceByUser.get(city.userId) ?? null,
+    posX: city.posX,
+    posY: city.posY,
+    power: powerByCity.get(city.id)?.total ?? 0,
+  }));
+  return c.json({ cities });
+});
+
+cityRouter.get("/ranking/all", async (c) => {
+  const citiesRes = await db.from(COLLECTIONS.CITIES).limit(100).get() as any;
+  const cities = (citiesRes.data ?? []) as any[];
+  const powerByCity = await getCityPowerMap(cities.map((city) => city.id));
+
+  const ranking = cities
+    .map((city) => {
+      const power = powerByCity.get(city.id) ?? { buildings: 0, army: 0, research: 0, total: 0 };
+      return {
+        cityId: city.id,
+        cityName: city.name,
+        userId: city.userId,
+        posX: city.posX,
+        posY: city.posY,
+        power: power.total,
+        powerBreakdown: {
+          buildings: power.buildings,
+          army: power.army,
+          research: power.research,
+        },
+      };
+    })
+    .sort((a, b) => b.power - a.power)
+    .map((entry, index) => ({ rank: index + 1, ...entry }));
+
+  return c.json({ ranking });
+});
+
+cityRouter.patch("/:id/name", async (c) => {
+  const cityId = c.req.param("id");
+  const body = await c.req.json().catch(() => ({}));
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  if (name.length < 2 || name.length > 30) {
+    return c.json({ error: "City name must be between 2 and 30 characters" }, 400);
+  }
+
+  const cityRes = await db.from(COLLECTIONS.CITIES).eq("id", cityId).getFirst() as any;
+  const city = cityRes.data;
+  if (!city) return c.json({ error: "City not found" }, 404);
+
+  await mergeRecordBySelector(COLLECTIONS.CITIES, city, {
+    name,
+    updatedAt: new Date().toISOString(),
+  });
+
+  return c.json({ success: true, city: { ...city, name } });
 });
 
 // Get city
@@ -432,165 +519,24 @@ cityRouter.get("/:id", async (c) => {
 cityRouter.post("/:id/build", zValidator("json", CreateBuildingRequestSchema), async (c) => {
   const cityId = c.req.param("id");
   const data = c.req.valid("json");
-
   const city = await getCityWithResources(cityId);
-  if (!city) return c.json({ error: "City not found" }, 404);
-
-  const townHall = city.buildings.find((b: any) => b.type === "TOWN_HALL");
-  const townHallLevel = townHall?.level ?? 1;
-
-  // Check max buildings per type
-  const existingCount = city.buildings.filter((b: any) => {
-    if (data.type === "TOWER") return b.type === "TOWER" || b.type === "WALL";
-    return b.type === data.type;
-  }).length;
-  const maxAllowed = 1;
-  if (existingCount >= maxAllowed) {
-    return c.json({ error: `Maximum ${maxAllowed} ${data.type} allowed` }, 400);
+  try {
+    return c.json(await createBuildingAction({ cityId, ...data, actor: { type: "human" }, citySnapshot: city }));
+  } catch (error) {
+    return actionErrorResponse(c, error);
   }
-
-  // Check area is free (building may occupy multiple tiles)
-  const size = BUILDING_SIZES[data.type] ?? { w: 1, h: 1 };
-  const isAreaFree = !city.buildings.some((b: any) => {
-    const bSize = BUILDING_SIZES[b.type] ?? { w: 1, h: 1 };
-    return (
-      data.positionX < b.positionX + bSize.w &&
-      data.positionX + size.w > b.positionX &&
-      data.positionY < b.positionY + bSize.h &&
-      data.positionY + size.h > b.positionY
-    );
-  });
-  if (!isAreaFree) return c.json({ error: "Area occupied" }, 400);
-
-  const cost = getBuildingCost(data.type, 1);
-  if (!canAfford(city.resources, cost)) {
-    return c.json({ error: "Not enough resources", required: cost, available: city.resources }, 400);
-  }
-
-  const now = new Date().toISOString();
-  const buildingId = genId();
-
-  // Deduct resources
-  const newResources = subtractResources(city.resources, cost);
-  await mergeRecordBySelector(COLLECTIONS.CITIES, city, {
-    gold: newResources.gold,
-    wood: newResources.wood,
-    stone: newResources.stone,
-    food: newResources.food,
-    gems: newResources.gems,
-    lastResourceUpdate: now,
-  });
-
-  // Create building
-  await db.from(COLLECTIONS.BUILDINGS).insert({
-    id: buildingId,
-    cityId,
-    type: data.type,
-    level: 1,
-    positionX: data.positionX,
-    positionY: data.positionY,
-    createdAt: now,
-    upgradedAt: now,
-  });
-
-  // Recalculate city stats
-  const buildingsRes = await db.from(COLLECTIONS.BUILDINGS).eq("cityId", cityId).get() as any;
-  const stats = calculateCityStats(buildingsRes.data ?? []);
-  await mergeRecordBySelector(COLLECTIONS.CITIES, city, {
-    goldPerHour: stats.production.goldPerHour,
-    woodPerHour: stats.production.woodPerHour,
-    stonePerHour: stats.production.stonePerHour,
-    foodPerHour: stats.production.foodPerHour,
-    maxGold: stats.storage.maxGold,
-    maxWood: stats.storage.maxWood,
-    maxStone: stats.storage.maxStone,
-    maxFood: stats.storage.maxFood,
-  });
-
-  return c.json({
-    building: { id: buildingId, type: data.type, level: 1, positionX: data.positionX, positionY: data.positionY },
-    message: "Building created",
-  });
 });
 
 // Upgrade building
 cityRouter.post("/:id/buildings/:buildingId/upgrade", async (c) => {
   const cityId = c.req.param("id");
   const buildingId = c.req.param("buildingId");
-
   const city = await getCityWithResources(cityId);
-  if (!city) return c.json({ error: "City not found" }, 404);
-
-  const building = city.buildings.find((b: any) => b.id === buildingId);
-  if (!building) return c.json({ error: "Building not found" }, 404);
-
-  const townHall = city.buildings.find((b: any) => b.type === "TOWN_HALL");
-  const townHallLevel = townHall?.level ?? 1;
-  const maxLevel = getBuildingMaxLevelForTownHall(townHallLevel, building.type as BuildingType);
-
-  if (building.level >= maxLevel) return c.json({ error: "Max level reached" }, 400);
-
-  const pendingQueueRes = await db.from(COLLECTIONS.BUILD_QUEUES)
-    .eq("cityId", cityId)
-    .eq("buildingType", building.type)
-    .eq("isComplete", false)
-    .get() as any;
-  if ((pendingQueueRes.data ?? []).length > 0) {
-    return c.json({ error: "Upgrade already queued" }, 409);
+  try {
+    return c.json(await upgradeBuildingAction({ cityId, buildingId, actor: { type: "human" }, citySnapshot: city }));
+  } catch (error) {
+    return actionErrorResponse(c, error);
   }
-
-  const nextLevel = building.level + 1;
-  const cost = getBuildingCost(building.type as BuildingType, nextLevel);
-  if (!canAfford(city.resources, cost)) {
-    return c.json({ error: "Not enough resources", required: cost, available: city.resources }, 400);
-  }
-
-  const buildTime = getBuildingTime(building.type as BuildingType, nextLevel);
-  const now = new Date();
-  const nowIso = now.toISOString();
-  const completesAt = new Date(now.getTime() + buildTime * 1000).toISOString();
-  const queueId = genId();
-
-  // Deduct resources
-  const newResources = subtractResources(city.resources, cost);
-  await mergeRecordBySelector(COLLECTIONS.CITIES, city, {
-    gold: newResources.gold,
-    wood: newResources.wood,
-    stone: newResources.stone,
-    food: newResources.food,
-    gems: newResources.gems,
-    lastResourceUpdate: nowIso,
-  });
-
-  // Create build queue
-  await db.from(COLLECTIONS.BUILD_QUEUES).insert({
-    id: queueId,
-    cityId,
-    buildingId,
-    buildingType: building.type,
-    targetLevel: nextLevel,
-    startedAt: nowIso,
-    completesAt,
-    isComplete: false,
-  });
-
-  return c.json({
-    success: true,
-    nextLevel,
-    completesIn: buildTime,
-    completesAt,
-    resources: newResources,
-    queue: {
-      id: queueId,
-      cityId,
-      buildingId,
-      buildingType: building.type,
-      targetLevel: nextLevel,
-      startedAt: nowIso,
-      completesAt,
-      isComplete: false,
-    },
-  });
 });
 
 cityRouter.post("/:id/build-queues/:queueId/cancel", async (c) => {
@@ -648,46 +594,12 @@ cityRouter.post("/:id/build-queues/:queueId/cancel", async (c) => {
 cityRouter.post("/:id/train", zValidator("json", TrainUnitsRequestSchema), async (c) => {
   const cityId = c.req.param("id");
   const data = c.req.valid("json");
-
   const city = await getCityWithResources(cityId);
-  if (!city) return c.json({ error: "City not found" }, 404);
-
-  const cost = applyTrainingCostReduction(
-    getUnitCost(data.unitType, data.count),
-    city.techBonuses?.trainingCostReduction ?? 0
-  );
-  if (!canAfford(city.resources, cost)) {
-    return c.json({ error: "Not enough resources", required: cost, available: city.resources }, 400);
+  try {
+    return c.json(await trainUnitsAction({ cityId, ...data, actor: { type: "human" }, citySnapshot: city }));
+  } catch (error) {
+    return actionErrorResponse(c, error);
   }
-
-  const trainingTime = getTrainingTime(data.unitType, data.count);
-  const now = new Date();
-  const nowIso = now.toISOString();
-  const completesAt = new Date(now.getTime() + trainingTime * 1000).toISOString();
-
-  // Deduct resources
-  const newResources = subtractResources(city.resources, cost);
-  await mergeRecordBySelector(COLLECTIONS.CITIES, city, {
-    gold: newResources.gold,
-    wood: newResources.wood,
-    stone: newResources.stone,
-    food: newResources.food,
-    gems: newResources.gems,
-    lastResourceUpdate: nowIso,
-  });
-
-  // Create training queue
-  await db.from(COLLECTIONS.TRAINING_QUEUES).insert({
-    id: genId(),
-    cityId,
-    unitType: data.unitType,
-    count: data.count,
-    startedAt: nowIso,
-    completesAt,
-    isComplete: false,
-  });
-
-  return c.json({ success: true, completesIn: trainingTime, completesAt });
 });
 
 cityRouter.post("/:id/training-queues/:queueId/cancel", async (c) => {
@@ -734,60 +646,18 @@ cityRouter.post("/:id/training-queues/:queueId/cancel", async (c) => {
 cityRouter.post("/:id/attack", zValidator("json", AttackRequestSchema), async (c) => {
   const attackerCityId = c.req.param("id");
   const data = c.req.valid("json");
-
   const attackerCity = await getCityWithResources(attackerCityId);
-  if (!attackerCity) return c.json({ error: "City not found" }, 404);
-
-  const defenderRes = await db.from(COLLECTIONS.CITIES).eq('id', data.targetCityId).getFirst() as any;
-  const defenderCity = defenderRes.data;
-  if (!defenderCity) return c.json({ error: "Target city not found" }, 404);
-
-  // Validate attacker has enough units
-  for (const unit of data.units) {
-    const available = attackerCity.units.find((u: any) => u.type === unit.type);
-    if (!available || available.count < unit.count) {
-      return c.json({ error: `Not enough ${unit.type}` }, 400);
-    }
+  try {
+    return c.json(await attackCityAction({
+      attackerCityId,
+      targetCityId: data.targetCityId,
+      units: data.units as any,
+      actor: { type: "human" },
+      citySnapshot: attackerCity,
+    }));
+  } catch (error) {
+    return actionErrorResponse(c, error);
   }
-
-  // Calculate slowest unit speed for travel time
-  const speeds = data.units.map((u) => getUnitStats(u.type as UnitType, 1, attackerCity.techBonuses).speed);
-  const minSpeed = Math.min(...speeds);
-  const travelTime = calculateTravelTime(
-    attackerCity.posX,
-    attackerCity.posY,
-    defenderCity.posX,
-    defenderCity.posY,
-    minSpeed
-  );
-
-  const now = new Date();
-  const nowIso = now.toISOString();
-  const arrivesAt = new Date(now.getTime() + travelTime * 1000).toISOString();
-  const battleId = genId();
-
-  // Create battle
-  await db.from(COLLECTIONS.BATTLES).insert({
-    id: battleId,
-    attackerCityId,
-    defenderCityId: data.targetCityId,
-    status: "MARCHING",
-    startedAt: nowIso,
-    arrivesAt,
-    units: data.units.map((u) => ({ type: u.type, count: u.count })),
-  });
-
-  // Subtract units from attacker city
-  for (const unit of data.units) {
-    const existing = attackerCity.units.find((u: any) => u.type === unit.type);
-    if (existing) {
-      await mergeRecordBySelector(COLLECTIONS.UNITS, existing, {
-        count: existing.count - unit.count,
-      });
-    }
-  }
-
-  return c.json({ battleId, travelTime, arrivesAt });
 });
 
 // Get queues
@@ -808,26 +678,6 @@ cityRouter.get("/:id/queue", async (c) => {
   trainingQueues.sort((a: any, b: any) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime());
 
   return c.json({ buildQueues, trainingQueues });
-});
-
-// ─── List cities (for attack target selection) ───
-
-cityRouter.get("/list/all", async (c) => {
-  const citiesRes = await db.from(COLLECTIONS.CITIES).get() as any;
-  const rawCities = (citiesRes.data ?? []) as any[];
-  const membershipsRes = await db.from(COLLECTIONS.ALLIANCE_MEMBERS).get() as any;
-  const memberships = membershipsRes.data ?? [];
-  const allianceByUser = new Map(memberships.map((m: any) => [m.userId, m.allianceId]));
-
-  const cities = rawCities.map((city: any) => ({
-    id: city.id,
-    name: city.name,
-    userId: city.userId,
-    allianceId: allianceByUser.get(city.userId) ?? null,
-    posX: city.posX,
-    posY: city.posY,
-  }));
-  return c.json({ cities });
 });
 
 // ─── Battle Reports ───
@@ -913,62 +763,12 @@ cityRouter.get("/:id/techs", async (c) => {
 cityRouter.post("/:id/research", zValidator("json", StartResearchRequestSchema), async (c) => {
   const cityId = c.req.param("id");
   const data = c.req.valid("json");
-
   const city = await getCityWithResources(cityId);
-  if (!city) return c.json({ error: "City not found" }, 404);
-
-  const [cityTechsRes, researchQueueRes] = await Promise.all([
-    db.from(COLLECTIONS.CITY_TECHS).eq("cityId", cityId).get() as any,
-    db.from(COLLECTIONS.RESEARCH_QUEUES).eq("cityId", cityId).eq("isComplete", false).get() as any,
-  ]);
-
-  const cityTechs = (cityTechsRes.data ?? []).map((t: any) => ({ techId: t.techId, level: t.level }));
-  const activeResearch = researchQueueRes.data?.[0] ?? null;
-
-  const cfg = getAllTechConfigs().find((t) => t.techId === data.techId);
-  if (!cfg) return c.json({ error: "Tech not found" }, 404);
-
-  const currentLevel = cityTechs.find((t: any) => t.techId === data.techId)?.level ?? 0;
-  const targetLevel = currentLevel + 1;
-  const check = canResearch(data.techId, targetLevel, cityTechs, activeResearch);
-  if (!check.allowed) {
-    return c.json({ error: check.reason }, 400);
+  try {
+    return c.json(await startResearchAction({ cityId, techId: data.techId, actor: { type: "human" }, citySnapshot: city }));
+  } catch (error) {
+    return actionErrorResponse(c, error);
   }
-
-  const cost = getResearchCost(data.techId, targetLevel);
-  const researchTime = getResearchTime(data.techId, targetLevel);
-
-  if (!canAfford(city.resources, cost)) {
-    return c.json({ error: "Not enough resources", required: cost, available: city.resources }, 400);
-  }
-
-  const now = new Date();
-  const nowIso = now.toISOString();
-  const completesAt = new Date(now.getTime() + researchTime * 1000).toISOString();
-
-  // Deduct resources
-  const newResources = subtractResources(city.resources, cost);
-  await mergeRecordBySelector(COLLECTIONS.CITIES, city, {
-    gold: newResources.gold,
-    wood: newResources.wood,
-    stone: newResources.stone,
-    food: newResources.food,
-    gems: newResources.gems,
-    lastResourceUpdate: nowIso,
-  });
-
-  // Create research queue
-  await db.from(COLLECTIONS.RESEARCH_QUEUES).insert({
-    id: genId(),
-    cityId,
-    techId: data.techId,
-    targetLevel,
-    startedAt: nowIso,
-    completesAt,
-    isComplete: false,
-  });
-
-  return c.json({ success: true, techId: data.techId, targetLevel, completesIn: researchTime, completesAt });
 });
 
 cityRouter.post("/:id/research-queues/:queueId/cancel", async (c) => {

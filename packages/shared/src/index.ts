@@ -78,6 +78,18 @@ export const UnitSchema = z.object({
 
 export type Unit = z.infer<typeof UnitSchema>;
 
+// ─── City Winter State ───
+export const CityWinterStateSchema = z.object({
+  cityId: z.string().uuid(),
+  foodBalance: z.number(),
+  starvationHours: z.number(),
+  isStarving: z.boolean(),
+  combatPenalty: z.number(),
+  desertionLosses: z.record(UnitTypeSchema, z.number().int()),
+});
+
+export type CityWinterState = z.infer<typeof CityWinterStateSchema>;
+
 // ─── City ───
 export const CitySchema = z.object({
   id: z.string().uuid(),
@@ -94,6 +106,8 @@ export const CitySchema = z.object({
   slotId: z.string().uuid().nullable().optional(),
   cityTechs: z.array(z.object({ techId: z.string(), level: z.number() })).optional(),
   techBonuses: TechBonusesSchema.optional(),
+  winterState: CityWinterStateSchema.optional(),
+  lastWinterEvaluatedAt: z.string().datetime().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

@@ -8,7 +8,7 @@ El proyecto vive en un monorepo con frontend Next.js, backend Hono, paquetes com
 
 Etheria esta en una etapa temprana. Hay sistemas funcionales, pero la API, el balance, los datos persistidos y la direccion visual todavia pueden cambiar sin garantia de compatibilidad.
 
-Version documentada: `0.0.4` con trabajo activo en `[Unreleased]`.
+Version documentada: `0.1.0` con trabajo activo en `[Unreleased]`.
 
 ### Ya Implementado
 
@@ -21,13 +21,15 @@ Version documentada: `0.0.4` con trabajo activo en `[Unreleased]`.
 - Alianzas, roles basicos, diplomacia, correo y chat global/de alianza.
 - Temporadas con efectos progresivos sobre produccion, zonas y presion invernal.
 - Configuracion de balance en codigo local versionado bajo `apps/api/src/domain`.
+- Tests unitarios con Vitest para logica de dominio (`winterPressure`, `production`).
+- Soporte dual MatecitoDB / PostgreSQL con compat layer (`postgresCompat.ts`).
 
 ### En Desarrollo
 
 - Pulido visual de ciudad, mapa y HUD.
 - Balance fino de economia, combate, temporadas y barbaros.
 - Herramientas de administracion y operaciones.
-- Endurecimiento de seguridad, tests y flujo de despliegue.
+- Endurecimiento de seguridad y flujo de despliegue.
 - Mejoras de onboarding, accesibilidad y feedback de usuario.
 
 ## Stack
@@ -84,7 +86,13 @@ Completa `.env` con tus credenciales locales. No publiques claves reales. El bac
 pnpm db:setup
 ```
 
-4. Levantar el proyecto:
+4. Si usas PostgreSQL (legado), sincroniza el schema despues de pullar cambios:
+
+```bash
+pnpm db:pg:push
+```
+
+5. Levantar el proyecto:
 
 ```bash
 pnpm dev
@@ -101,6 +109,8 @@ Servicios por defecto:
 pnpm dev                    # Levanta frontend y backend
 pnpm build                  # Compila todo el monorepo
 pnpm lint                   # Typecheck/lint segun cada paquete
+pnpm test                   # Corre tests unitarios (Vitest)
+pnpm test:run               # Corre tests una sola vez (CI)
 pnpm db:setup               # Crea colecciones runtime en MatecitoDB
 pnpm db:seed                # Nota informativa: balance estatico vive en codigo
 pnpm db:seed:legacy         # Seed legado de configuraciones antiguas

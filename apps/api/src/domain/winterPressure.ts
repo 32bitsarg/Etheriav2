@@ -1,4 +1,4 @@
-import type { UnitType, Season, City } from '@etheria/shared';
+import type { UnitType, City, CityWinterState } from '@etheria/shared';
 
 // ─── Winter Pressure Configuration ───
 // Controls how winter creates resource pressure on cities.
@@ -15,8 +15,6 @@ export interface WinterPressureConfig {
   desertionAfterHours: number;
   /** Fraction of troops that desert per hour once desertion starts */
   desertionRatePerHour: number;
-  /** Food production penalty during winter (0.3 = -30% food production) */
-  foodProductionPenalty: number;
   /** Minimum food reserve that must be maintained (per city) */
   minimumFoodReserve: number;
 }
@@ -33,7 +31,6 @@ export const DEFAULT_WINTER_PRESSURE_CONFIG: WinterPressureConfig = {
   starvationCombatPenalty: 0.8,
   desertionAfterHours: 12,
   desertionRatePerHour: 0.05,
-  foodProductionPenalty: 0.3,
   minimumFoodReserve: 100,
 };
 
@@ -50,20 +47,6 @@ export const ZONE_WINTER_INTENSITY: Record<string, number> = {
   PLAINS: 1.0,
 };
 
-export interface CityWinterState {
-  cityId: string;
-  /** Current food deficit (negative = deficit, positive = surplus) */
-  foodBalance: number;
-  /** Hours the city has been in starvation */
-  starvationHours: number;
-  /** Whether the city is currently starving */
-  isStarving: boolean;
-  /** Combat penalty multiplier (1.0 = no penalty) */
-  combatPenalty: number;
-  /** Estimated troop losses from desertion this winter cycle */
-  desertionLosses: Record<UnitType, number>;
-}
-
 export function calculateHourlyFoodConsumption(
   units: Record<UnitType, number>,
   config: WinterPressureConfig = DEFAULT_WINTER_PRESSURE_CONFIG
@@ -76,30 +59,29 @@ export function calculateHourlyFoodConsumption(
   return total;
 }
 
-export function calculateWinterFoodProduction(
-  baseFoodProduction: number,
-  zoneId: string,
-  config: WinterPressureConfig = DEFAULT_WINTER_PRESSURE_CONFIG
-): number {
-  const zoneIntensity = ZONE_WINTER_INTENSITY[zoneId] ?? 1.0;
-  // Penalty scales with zone intensity: north gets full penalty * 1.35
-  const effectivePenalty = config.foodProductionPenalty * zoneIntensity;
-  return Math.max(0, baseFoodProduction * (1 - effectivePenalty));
-}
-
+/**
+ * Evaluate winter pressure for a city using real elapsed time.
+ * Uses effective food production (already includes season/zone modifiers)
+ * and scales all effects by hoursElapsed derived from lastWinterEvaluatedAt.
+ */
 export function evaluateWinterPressure(
   city: City,
-  zoneId: string,
-  hourlyFoodProduction: number,
+  effectiveFoodProduction: number,
   units: Record<UnitType, number>,
   currentWinterState: CityWinterState | null,
+  now: Date,
   config: WinterPressureConfig = DEFAULT_WINTER_PRESSURE_CONFIG
 ): CityWinterState {
   const hourlyConsumption = calculateHourlyFoodConsumption(units, config);
-  const effectiveProduction = calculateWinterFoodProduction(hourlyFoodProduction, zoneId, config);
-  const netFood = effectiveProduction - hourlyConsumption;
+  const netFoodPerHour = effectiveFoodProduction - hourlyConsumption;
 
-  const state = currentWinterState ?? {
+  const lastEvaluated = currentWinterState
+    ? new Date(city.lastWinterEvaluatedAt ?? city.createdAt)
+    : new Date(city.createdAt);
+
+  const hoursElapsed = Math.max(0, (now.getTime() - lastEvaluated.getTime()) / (1000 * 60 * 60));
+
+  const state: CityWinterState = currentWinterState ?? {
     cityId: city.id,
     foodBalance: city.resources.food,
     starvationHours: 0,
@@ -108,33 +90,39 @@ export function evaluateWinterPressure(
     desertionLosses: { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 },
   };
 
-  // Update food balance
-  state.foodBalance = Math.max(0, state.foodBalance + netFood);
+  // Update food balance by net food over elapsed time
+  state.foodBalance = Math.max(0, state.foodBalance + netFoodPerHour * hoursElapsed);
 
   // Check if below minimum reserve
   if (state.foodBalance < config.minimumFoodReserve) {
     state.isStarving = true;
-    state.starvationHours += 1;
+    state.starvationHours += hoursElapsed;
 
     // Apply combat penalty after grace period
     if (state.starvationHours >= config.starvationGraceHours) {
       state.combatPenalty = config.starvationCombatPenalty;
     }
 
-    // Apply desertion after extended starvation
+    // Apply desertion after extended starvation, scaled by elapsed time
     if (state.starvationHours >= config.desertionAfterHours) {
-      const desertionLosses: Record<UnitType, number> = { ...state.desertionLosses };
+      const desertionLosses: Record<UnitType, number> = {
+        WARRIOR: state.desertionLosses.WARRIOR ?? 0,
+        ARCHER: state.desertionLosses.ARCHER ?? 0,
+        CAVALRY: state.desertionLosses.CAVALRY ?? 0,
+        SIEGE: state.desertionLosses.SIEGE ?? 0,
+        SPY: state.desertionLosses.SPY ?? 0,
+      };
       for (const [unitType, count] of Object.entries(units)) {
-        const loss = Math.floor(count * config.desertionRatePerHour);
-        desertionLosses[unitType as UnitType] = (desertionLosses[unitType as UnitType] ?? 0) + loss;
+        const loss = Math.floor(count * config.desertionRatePerHour * hoursElapsed);
+        desertionLosses[unitType as UnitType] = desertionLosses[unitType as UnitType] + loss;
       }
       state.desertionLosses = desertionLosses;
     }
   } else {
-    // Recovering: reduce starvation hours gradually
+    // Recovering: reduce starvation hours gradually (2x speed when fed)
     state.isStarving = false;
     if (state.starvationHours > 0) {
-      state.starvationHours = Math.max(0, state.starvationHours - 2);
+      state.starvationHours = Math.max(0, state.starvationHours - hoursElapsed * 2);
     }
     if (state.starvationHours === 0) {
       state.combatPenalty = 1.0;
@@ -145,10 +133,24 @@ export function evaluateWinterPressure(
   return state;
 }
 
+/**
+ * Reset winter state when season is not winter.
+ * Clears penalties and resets lastWinterEvaluatedAt so next winter starts fresh.
+ */
+export function resetWinterState(cityId: string, currentFood: number): CityWinterState {
+  return {
+    cityId,
+    foodBalance: currentFood,
+    starvationHours: 0,
+    isStarving: false,
+    combatPenalty: 1.0,
+    desertionLosses: { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 },
+  };
+}
+
 export function getWinterPressureSummary(
   city: City,
-  zoneId: string,
-  hourlyFoodProduction: number,
+  effectiveFoodProduction: number,
   units: Record<UnitType, number>,
   config: WinterPressureConfig = DEFAULT_WINTER_PRESSURE_CONFIG
 ): {
@@ -159,8 +161,7 @@ export function getWinterPressureSummary(
   zoneIntensity: number;
 } {
   const hourlyConsumption = calculateHourlyFoodConsumption(units, config);
-  const effectiveProduction = calculateWinterFoodProduction(hourlyFoodProduction, zoneId, config);
-  const netFoodPerHour = effectiveProduction - hourlyConsumption;
+  const netFoodPerHour = effectiveFoodProduction - hourlyConsumption;
 
   const hoursUntilStarvation = netFoodPerHour < 0
     ? Math.floor((city.resources.food - config.minimumFoodReserve) / Math.abs(netFoodPerHour))
@@ -168,9 +169,9 @@ export function getWinterPressureSummary(
 
   return {
     hourlyConsumption,
-    effectiveProduction,
+    effectiveProduction: effectiveFoodProduction,
     netFoodPerHour,
     hoursUntilStarvation: Math.max(0, hoursUntilStarvation),
-    zoneIntensity: ZONE_WINTER_INTENSITY[zoneId] ?? 1.0,
+    zoneIntensity: 1.0, // Zone effect is already baked into effectiveFoodProduction
   };
 }

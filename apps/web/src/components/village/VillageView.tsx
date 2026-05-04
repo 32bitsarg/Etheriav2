@@ -8,7 +8,7 @@ import { BuildingSprite } from "@/components/village/BuildingIcon";
 import { VillageStage } from "@/components/village/VillageStage";
 import { VillageImmersiveDock } from "@/components/village/VillageImmersiveDock";
 import { ResourceIconSVG } from "@/components/village/ResourceIconSVG";
-import { useAllCities, useAllianceMembership, useBarbarianCamps, useBreakTreaty, useCreateAlliance, useJoinAlliance, useMailMessages, useMarkMailRead, useProposePeace, useResearchTech, useSendMailMessage, useTechs, useTrainUnits, useUpdateAlliance, useUpgradeBuilding, useVillageLayout, useWorldMap } from "@/hooks/useCity";
+import { useAllCities, useAllianceMembership, useBarbarianCamps, useBreakTreaty, useCityRanking, useCreateAlliance, useJoinAlliance, useMailMessages, useMarkMailRead, useProposePeace, useRenameCity, useResearchTech, useSendMailMessage, useTechs, useTrainUnits, useUpdateAlliance, useUpgradeBuilding, useVillageLayout, useWorldMap } from "@/hooks/useCity";
 import { WorldMapCanvas } from "@/components/worldmap/WorldMapCanvas";
 import { BarbarianAttackAlertBanner } from "@/components/barbarians/BarbarianAttackAlertBanner";
 import { WinterPressureBanner } from "@/components/barbarians/WinterPressureBanner";
@@ -39,6 +39,8 @@ export function VillageView() {
   const [upgradingBuildingId, setUpgradingBuildingId] = useState<string | null>(null);
   const [isMailOpen, setIsMailOpen] = useState(false);
   const [isAllianceOpen, setIsAllianceOpen] = useState(false);
+  const [isRankingOpen, setIsRankingOpen] = useState(false);
+  const [isRenameOpen, setIsRenameOpen] = useState(false);
   const upgradeLockRef = useRef<string | null>(null);
   const cityName = useGameStore((s) => s.name);
   const cityId = useGameStore((s) => s.cityId);
@@ -277,6 +279,15 @@ export function VillageView() {
             </button>
           ))}
           <button
+            onClick={() => setIsRankingOpen(true)}
+            className={isImmersiveView
+              ? "relative rounded-2xl border border-etheria-border-dim px-2 py-3 text-center font-serif text-[11px] uppercase tracking-[0.14em] text-etheria-text-muted transition-colors hover:text-etheria-gold-soft"
+              : "nav-btn relative"}
+            style={isImmersiveView ? { backgroundImage: "url('/assets/ui/sidebar/sidebar-button-glow.png')", backgroundSize: "100% 100%" } : undefined}
+          >
+            <span>Ranking</span>
+          </button>
+          <button
             onClick={() => setIsMailOpen(true)}
             className={isImmersiveView
               ? "relative rounded-2xl border border-etheria-border-dim px-2 py-3 text-center font-serif text-[11px] uppercase tracking-[0.14em] text-etheria-text-muted transition-colors hover:text-etheria-gold-soft"
@@ -303,33 +314,15 @@ export function VillageView() {
       </aside>
 
       {/* ─── Top Bar ─── */}
-      <header className={`village-topbar col-start-2 col-end-4 border-b border-etheria-border flex items-center gap-2 px-3 overflow-x-auto ${isImmersiveView ? "hidden" : ""}`} style={{
-        background: "linear-gradient(180deg, #161a19, #090c0c), repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0 1px, transparent 1px 7px)",
-      }}>
-        {[
-          { key: "gold", label: "Oro", val: resources.gold, max: storage.maxGold, perHour: production.goldPerHour, color: "" },
-          { key: "wood", label: "Madera", val: resources.wood, max: storage.maxWood, perHour: production.woodPerHour, color: "green" },
-          { key: "stone", label: "Piedra", val: resources.stone, max: storage.maxStone, perHour: production.stonePerHour, color: "blue" },
-          { key: "food", label: "Cereal", val: resources.food, max: storage.maxFood, perHour: production.foodPerHour, color: "" },
-          { key: "gems", label: "Gemas", val: resources.gems, max: 2000, perHour: 0, color: "blue" },
-        ].map((r) => (
-          <div key={r.key} className="flex items-center gap-2 min-w-[150px] flex-1 px-3 py-1.5 rounded-xl border border-etheria-border-dim" style={{
-            background: "linear-gradient(180deg, rgba(255,255,255,.045), transparent), linear-gradient(135deg, rgba(31,39,31,.9), rgba(8,10,10,.92))",
-            boxShadow: "inset 0 0 18px rgba(0,0,0,.42)",
-          }}>
-            <ResourceIconSVG type={r.key} size={32} />
-            <div className="flex-1 min-w-0">
-              <div className="flex justify-between font-serif font-bold text-etheria-gold-soft text-sm">
-                <span>{r.label}</span>
-                <span className="font-mono text-etheria-text text-[13px]">{formatNumber(r.val)} / {formatNumber(r.max)}</span>
-              </div>
-              <div className="mt-0.5 font-mono text-[10px] text-etheria-success">+{formatNumber(r.perHour)}/h</div>
-              <div className={`progress-bar ${r.color} mt-1`}>
-                <div style={{ width: `${Math.min((r.val / r.max) * 100, 100)}%` }} />
-              </div>
-            </div>
-          </div>
-        ))}
+      <header className={`village-topbar col-start-2 col-end-4 border-b border-etheria-border ${isImmersiveView ? "hidden" : ""}`}>
+        <ResourceHud
+          cityName={cityName}
+          resources={resources}
+          storage={storage}
+          production={production}
+          onRename={() => setIsRenameOpen(true)}
+          variant="bar"
+        />
       </header>
 
       {/* ─── Main Content ─── */}
@@ -339,18 +332,22 @@ export function VillageView() {
             buildings={uniqueBuildings}
             selectedBuildingId={selectedBuildingId}
             onSelectBuilding={setSelectedBuildingId}
+            cityName={cityName}
             resources={resources}
             storage={storage}
             production={production}
+            onRename={() => setIsRenameOpen(true)}
             pendingUpgradeBuildingIds={pendingUpgradeBuildingIds}
           />
         )}
         {activeView === "mapa" && (
           <MapaView
+            cityName={cityName}
             resources={resources}
             storage={storage}
             production={production}
             allianceData={allianceData}
+            onRename={() => setIsRenameOpen(true)}
             onEnterVillage={() => setActiveView("pueblo")}
           />
         )}
@@ -378,6 +375,8 @@ export function VillageView() {
 
       {isMailOpen && <MailModal onClose={() => setIsMailOpen(false)} />}
       {isAllianceOpen && <AllianceModal onClose={() => setIsAllianceOpen(false)} />}
+      {isRankingOpen && <RankingModal myCityId={cityId} onClose={() => setIsRankingOpen(false)} />}
+      {isRenameOpen && <RenameCityModal cityId={cityId} currentName={cityName} onClose={() => setIsRenameOpen(false)} />}
 
       {/* ─── Right Panel ─── */}
       <aside className={`village-right-panel col-start-3 row-start-2 row-end-4 m-2 ml-0 rounded-lg p-3 overflow-hidden ${isImmersiveView ? "hidden" : ""}`} style={{
@@ -405,13 +404,15 @@ export function VillageView() {
 }
 
 /* ─── Pueblo View ─── */
-function PuebloView({ buildings, selectedBuildingId, onSelectBuilding, resources, storage, production, pendingUpgradeBuildingIds }: {
+function PuebloView({ buildings, selectedBuildingId, onSelectBuilding, cityName, resources, storage, production, onRename, pendingUpgradeBuildingIds }: {
   buildings: any[];
   selectedBuildingId: string | null;
   onSelectBuilding: (id: string) => void;
+  cityName: string;
   resources: any;
   storage: any;
   production: { goldPerHour: number; woodPerHour: number; stonePerHour: number; foodPerHour: number };
+  onRename: () => void;
   pendingUpgradeBuildingIds: string[];
 }) {
   const { data: layout } = useVillageLayout();
@@ -459,31 +460,7 @@ function PuebloView({ buildings, selectedBuildingId, onSelectBuilding, resources
             className="h-full w-full"
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_8%,rgba(0,0,0,0.16)_70%,rgba(0,0,0,0.4)_100%)]" />
-            <div className="absolute left-1/2 top-4 z-30 flex w-[min(980px,calc(100%-160px))] -translate-x-1/2 gap-2 overflow-x-auto rounded-[24px] border border-etheria-border bg-black/38 px-3 py-2 backdrop-blur-[4px]">
-              {[
-                { key: "gold", label: "Oro", val: resources.gold, max: storage.maxGold, perHour: production.goldPerHour },
-                { key: "wood", label: "Madera", val: resources.wood, max: storage.maxWood, perHour: production.woodPerHour },
-                { key: "stone", label: "Piedra", val: resources.stone, max: storage.maxStone, perHour: production.stonePerHour },
-                { key: "food", label: "Cereal", val: resources.food, max: storage.maxFood, perHour: production.foodPerHour },
-                { key: "gems", label: "Gemas", val: resources.gems, max: 2000, perHour: 0 },
-              ].map((r) => (
-                <div key={r.key} className="min-w-[150px] flex-1 rounded-2xl border border-etheria-border-dim bg-black/24 px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <ResourceIconSVG type={r.key} size={24} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2 text-xs font-serif text-etheria-gold-soft">
-                        <span>{r.label}</span>
-                        <span className="font-mono text-etheria-text">{formatNumber(r.val)} / {formatNumber(r.max)}</span>
-                      </div>
-                      <div className="mt-0.5 font-mono text-[10px] text-etheria-success">+{formatNumber(r.perHour)}/h</div>
-                      <div className="progress-bar mt-1">
-                        <div style={{ width: `${Math.min((r.val / r.max) * 100, 100)}%` }} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <ResourceHud cityName={cityName} resources={resources} storage={storage} production={production} onRename={onRename} variant="overlay" />
           </VillageStage>
         </div>
       )}
@@ -863,11 +840,76 @@ function resolveNonOverlappingBuildings<T extends { id: string; type: BuildingTy
   return chosen.sort((a, b) => (a.positionY - b.positionY) || (a.positionX - b.positionX));
 }
 
-function MapaView({ resources, storage, production, allianceData, onEnterVillage }: {
+function RankingModal({ myCityId, onClose }: { myCityId: string | null; onClose: () => void }) {
+  const { data: ranking, isLoading, error } = useCityRanking();
+
+  return (
+    <div className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onMouseDown={onClose}>
+      <div className="max-h-[86vh] w-[min(980px,calc(100vw-32px))] overflow-hidden rounded-lg border border-etheria-border bg-[#0b1111] shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-end justify-between gap-3">
+          <div className="px-4 pt-4">
+            <h2 className="font-serif text-2xl font-bold text-etheria-gold-soft">Ranking de Aldeas</h2>
+            <p className="mt-1 text-sm text-etheria-text-muted">Ordenado por Fuerza total: edificios, ejército e investigación.</p>
+          </div>
+          <button onClick={onClose} className="mr-4 rounded border border-etheria-border px-3 py-1.5 text-sm text-etheria-text-muted hover:text-etheria-gold-soft">Cerrar</button>
+        </div>
+
+        <div className="max-h-[68vh] overflow-auto border-t border-etheria-border bg-black/25">
+          <div className="grid grid-cols-[70px_1fr_120px_120px_120px_120px] gap-2 border-b border-etheria-border bg-black/35 px-4 py-2 font-serif text-xs uppercase tracking-[0.12em] text-etheria-gold">
+            <span>#</span>
+            <span>Aldea</span>
+            <span className="text-right">Fuerza</span>
+            <span className="text-right">Edificios</span>
+            <span className="text-right">Ejército</span>
+            <span className="text-right">Invest.</span>
+          </div>
+
+          {isLoading && (
+            <div className="px-4 py-6 text-sm text-etheria-text-muted">Cargando ranking...</div>
+          )}
+          {error && (
+            <div className="px-4 py-6 text-sm text-red-300">No se pudo cargar el ranking.</div>
+          )}
+          {!isLoading && !error && (ranking ?? []).length === 0 && (
+            <div className="px-4 py-6 text-sm text-etheria-text-muted">Todavía no hay aldeas rankeadas.</div>
+          )}
+
+          {(ranking ?? []).map((entry) => {
+            const isMine = entry.cityId === myCityId;
+            return (
+              <div
+                key={entry.cityId}
+                className={`grid grid-cols-[70px_1fr_120px_120px_120px_120px] gap-2 border-b border-etheria-border/50 px-4 py-3 text-sm last:border-b-0 ${
+                  isMine ? "bg-etheria-teal/12 text-etheria-gold-soft" : "text-etheria-text"
+                }`}
+              >
+                <span className="font-mono text-etheria-text-muted">#{entry.rank}</span>
+                <div className="min-w-0">
+                  <div className="truncate font-serif font-bold">{entry.cityName}</div>
+                  <div className="font-mono text-[11px] text-etheria-text-muted">
+                    {entry.posX}, {entry.posY}
+                  </div>
+                </div>
+                <span className="text-right font-mono font-bold text-etheria-gold-soft">{formatNumber(entry.power)}</span>
+                <span className="text-right font-mono text-etheria-text-muted">{formatNumber(entry.powerBreakdown.buildings)}</span>
+                <span className="text-right font-mono text-etheria-text-muted">{formatNumber(entry.powerBreakdown.army)}</span>
+                <span className="text-right font-mono text-etheria-text-muted">{formatNumber(entry.powerBreakdown.research)}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MapaView({ cityName, resources, storage, production, allianceData, onRename, onEnterVillage }: {
+  cityName: string;
   resources: any;
   storage: any;
   production: { goldPerHour: number; woodPerHour: number; stonePerHour: number; foodPerHour: number };
   allianceData: any;
+  onRename: () => void;
   onEnterVillage: () => void;
 }) {
   const { data: cities } = useAllCities();
@@ -893,7 +935,7 @@ function MapaView({ resources, storage, production, allianceData, onEnterVillage
 
   return (
     <div className="relative h-full overflow-hidden">
-      <MapResourceHud resources={resources} storage={storage} production={production} />
+      <ResourceHud cityName={cityName} resources={resources} storage={storage} production={production} onRename={onRename} variant="overlay" />
       {isEntering && <div className="etheria-map-enter-zoom pointer-events-none absolute inset-0 z-50" />}
       <div className="absolute inset-0">
         <WorldMapCanvas
@@ -982,33 +1024,116 @@ function MapCityRadial({ cityName, isOwnCity, position, onClose, onEnter, onAtta
   );
 }
 
-function MapResourceHud({ resources, storage, production }: {
+function ResourceHud({ cityName, resources, storage, production, onRename, variant }: {
+  cityName: string;
   resources: any;
   storage: any;
   production: { goldPerHour: number; woodPerHour: number; stonePerHour: number; foodPerHour: number };
+  onRename: () => void;
+  variant: "bar" | "overlay";
 }) {
+  const resourceItems = [
+    { key: "gold", label: "Oro", val: resources.gold, max: storage.maxGold, perHour: production.goldPerHour },
+    { key: "wood", label: "Madera", val: resources.wood, max: storage.maxWood, perHour: production.woodPerHour },
+    { key: "stone", label: "Piedra", val: resources.stone, max: storage.maxStone, perHour: production.stonePerHour },
+    { key: "food", label: "Cereal", val: resources.food, max: storage.maxFood, perHour: production.foodPerHour },
+    { key: "gems", label: "Gemas", val: resources.gems, max: 2000, perHour: 0 },
+  ];
+  const outerClass = variant === "overlay"
+    ? "absolute left-1/2 top-3 z-30 w-[min(760px,calc(100%-190px))] -translate-x-1/2"
+    : "h-full w-full";
+
   return (
-    <div className="absolute left-1/2 top-4 z-30 flex w-[min(980px,calc(100%-180px))] -translate-x-1/2 gap-2 overflow-x-auto rounded-[24px] border border-etheria-border bg-black/38 px-3 py-2 backdrop-blur-[4px]">
-      {[
-        { key: "gold", label: "Oro", val: resources.gold, max: storage.maxGold, perHour: production.goldPerHour },
-        { key: "wood", label: "Madera", val: resources.wood, max: storage.maxWood, perHour: production.woodPerHour },
-        { key: "stone", label: "Piedra", val: resources.stone, max: storage.maxStone, perHour: production.stonePerHour },
-        { key: "food", label: "Cereal", val: resources.food, max: storage.maxFood, perHour: production.foodPerHour },
-        { key: "gems", label: "Gemas", val: resources.gems, max: 2000, perHour: 0 },
-      ].map((r) => (
-        <div key={r.key} className="min-w-[150px] flex-1 rounded-2xl border border-etheria-border-dim bg-black/24 px-3 py-2">
-          <div className="flex items-center gap-2">
-            <ResourceIconSVG type={r.key} size={26} />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2 font-serif text-xs text-etheria-gold-soft">
-                <span>{r.label}</span>
-                <span className="font-mono text-[11px] text-etheria-text">{formatNumber(r.val)} / {formatNumber(r.max)}</span>
+    <div className={outerClass}>
+      <div
+        className={`flex min-h-[42px] items-center overflow-x-auto border border-etheria-border bg-black/42 backdrop-blur-[5px] ${
+          variant === "overlay" ? "rounded-[16px] shadow-[0_12px_32px_rgba(0,0,0,.34)]" : "h-full border-x-0 border-t-0"
+        }`}
+        style={{ background: "linear-gradient(180deg, rgba(14,20,20,.86), rgba(6,9,9,.82))" }}
+      >
+        <button
+          onClick={onRename}
+          className="absolute left-1/2 top-1/2 z-10 flex max-w-[220px] -translate-x-1/2 -translate-y-1/2 flex-col items-center px-3 text-center transition-colors hover:bg-white/[0.035]"
+        >
+          <span className="font-serif text-[9px] uppercase tracking-[0.18em] text-etheria-text-muted">Aldea</span>
+          <span className="max-w-[220px] truncate font-serif text-[15px] font-bold leading-tight text-etheria-gold-soft">{cityName || "Aldea"}</span>
+        </button>
+        <div className="flex min-w-0 flex-1 items-center px-2">
+          {resourceItems.map((r, index) => {
+            const percent = Math.max(0, Math.min(100, (Number(r.val ?? 0) / Math.max(1, Number(r.max ?? 1))) * 100));
+            return (
+              <div key={r.key} className={`relative min-w-[82px] flex-1 px-2 py-1.5 ${index === 2 ? "mr-[210px]" : ""}`}>
+                {index > 0 && <div className="absolute left-0 top-1/2 h-6 w-px -translate-y-1/2 bg-etheria-border/60" />}
+                <div className="flex items-center gap-2">
+                  <ResourceIconSVG type={r.key} size={18} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="truncate font-serif text-[10px] text-etheria-gold-soft">{r.label}</span>
+                      <span className="font-mono text-[11px] text-etheria-text">{formatNumber(r.val)}</span>
+                    </div>
+                    <div className="mt-0.5 flex items-center justify-between gap-2 font-mono text-[9px]">
+                      <span className="text-etheria-success">+{formatNumber(r.perHour)}/h</span>
+                      <span className="text-etheria-text-muted">{formatNumber(r.max)}</span>
+                    </div>
+                    <div className="mt-0.5 h-px bg-white/10"><div className="h-px bg-etheria-gold/70" style={{ width: `${percent}%` }} /></div>
+                  </div>
+                </div>
               </div>
-              <div className="mt-0.5 font-mono text-[10px] text-etheria-success">+{formatNumber(r.perHour)}/h</div>
-            </div>
-          </div>
+            );
+          })}
         </div>
-      ))}
+      </div>
+    </div>
+  );
+}
+
+function RenameCityModal({ cityId, currentName, onClose }: { cityId: string | null; currentName: string; onClose: () => void }) {
+  const [name, setName] = useState(currentName || "");
+  const renameCity = useRenameCity();
+  const setCity = useGameStore((s) => s.setCity);
+  const addToast = useToastStore((s) => s.addToast);
+
+  const submit = () => {
+    if (!cityId) return;
+    const nextName = name.trim();
+    if (nextName.length < 2 || nextName.length > 30) {
+      addToast({ type: "error", title: "Nombre inválido", message: "Usá entre 2 y 30 caracteres." });
+      return;
+    }
+    renameCity.mutate(
+      { cityId, name: nextName },
+      {
+        onSuccess: () => {
+          setCity({ name: nextName });
+          addToast({ type: "success", title: "Aldea renombrada", message: nextName });
+          onClose();
+        },
+        onError: (error) => {
+          addToast({ type: "error", title: "No se pudo renombrar", message: error.message });
+        },
+      }
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 z-[95] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onMouseDown={onClose}>
+      <div className="w-[min(420px,calc(100vw-32px))] rounded-lg border border-etheria-border bg-[#0b1111] p-4 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
+        <h2 className="font-serif text-xl font-bold text-etheria-gold-soft">Cambiar nombre</h2>
+        <label className="mt-4 block text-xs uppercase tracking-[0.14em] text-etheria-text-muted">Nombre de la aldea</label>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={30}
+          className="mt-2 w-full rounded border border-etheria-border bg-black/35 px-3 py-2 text-etheria-text outline-none focus:border-etheria-gold/60"
+          autoFocus
+        />
+        <div className="mt-4 flex justify-end gap-2">
+          <button onClick={onClose} className="rounded border border-etheria-border px-3 py-2 text-sm text-etheria-text-muted hover:text-etheria-gold-soft">Cancelar</button>
+          <button onClick={submit} disabled={renameCity.isPending} className="rounded border border-etheria-gold/50 bg-etheria-gold/15 px-3 py-2 text-sm font-bold text-etheria-gold-soft disabled:opacity-50">
+            Guardar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { UnitType, Resources, TechBonuses } from "@etheria/shared";
 import { getUnitStats } from "./units.js";
 import { getWallBonusMultiplier, getTowerDamagePerRound } from "./techs.js";
+import { BATTLE_CONFIG } from "./battleConfigData.js";
 
 export interface BattleResult {
   victory: boolean;
@@ -144,8 +145,8 @@ export function calculateLoot(
     totalCarry += stats.carry * count;
   }
 
-  // Loot distribution: 40% gold, 30% wood, 20% stone, 10% food
-  const weights = { gold: 0.4, wood: 0.3, stone: 0.2, food: 0.1, gems: 0 };
+  // Loot distribution loaded from config
+  const weights = BATTLE_CONFIG.lootWeights;
   const weightedTotal =
     defenderResources.gold * weights.gold +
     defenderResources.wood * weights.wood +

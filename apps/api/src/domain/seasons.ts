@@ -5,6 +5,15 @@ import { LOCAL_SEASON_CONFIG, getSeasonDurationHours, getTransitionDurationHours
 
 const SEASON_ORDER: Season[] = ['SPRING', 'SUMMER', 'AUTUMN', 'WINTER'];
 
+function assertDbOk(result: unknown, context: string) {
+  if (!result) return;
+  const err = (result as any).error ?? (result as any).err;
+  if (err) {
+    const msg = typeof err === 'string' ? err : (err.message ?? JSON.stringify(err));
+    throw new Error(`[DB] ${context}: ${msg}`);
+  }
+}
+
 function getNextSeason(season: Season): Season {
   const idx = SEASON_ORDER.indexOf(season);
   return SEASON_ORDER[(idx + 1) % SEASON_ORDER.length];
@@ -22,6 +31,7 @@ function getSeasonDisplayName(season: Season): string {
 
 export async function getSeasonState(): Promise<WorldSeasonState | null> {
   const res = await db.from(COLLECTIONS.WORLD_SEASON_STATE).getFirst() as any;
+  assertDbOk(res, 'WORLD_SEASON_STATE.getFirst()');
   return res.data ?? null;
 }
 
@@ -51,7 +61,7 @@ export async function initializeSeasonState(): Promise<WorldSeasonState> {
     updatedAt: now.toISOString(),
   };
 
-  await db.from(COLLECTIONS.WORLD_SEASON_STATE).insert({
+  const insert = await db.from(COLLECTIONS.WORLD_SEASON_STATE).insert({
     id: state.id,
     currentSeason: state.currentSeason,
     nextSeason: state.nextSeason,
@@ -62,7 +72,13 @@ export async function initializeSeasonState(): Promise<WorldSeasonState> {
     transitionAt: state.transitionAt,
     endsAt: state.endsAt,
     updatedAt: state.updatedAt,
-  });
+  }) as any;
+  assertDbOk(insert, `WORLD_SEASON_STATE.insert(${state.id})`);
+
+  const saved = await getSeasonState();
+  if (!saved) {
+    throw new Error(`[DB] WORLD_SEASON_STATE.insert(${state.id}): insert completed but no persisted season state was found`);
+  }
 
   console.log(`🌍 Season initialized: ${getSeasonDisplayName(currentSeason)} (START)`);
   return state;
