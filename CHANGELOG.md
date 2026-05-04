@@ -11,6 +11,28 @@ Each release is named after a legendary era in the world of Etheria.
 
 ## [Unreleased]
 
+### Added
+- **[WEB] Landing page pública para Conquest of Etheria]**
+  - Nueva landing page en `/` con diseño moderno y minimalista: Hero, Features, Screenshots, Lore, Footer, y sección de última versión.
+  - Todo el contenido de marketing configurable desde `landingContent.ts` (zero hardcodeo).
+  - Sección `LatestVersionSection` que muestra la última versión del changelog directamente en la landing.
+  - Diseño dark fantasy refinado: glassmorphism sutil, gradientes ambientales, tipografía elegante.
+- **[WEB] Blog de changelog sincronizado automáticamente]**
+  - Rutas `/changelog` y `/changelog/[version]` con SSG y páginas estáticas.
+  - Parser robusto en `changelogParser.ts` con búsqueda recursiva del archivo para build time.
+  - `getLatestRelease()` utilidad para obtener la versión más reciente.
+- **[WEB] Layout público compartido]**
+  - Route group `(public)` con layout compartido que incluye Navbar fija y Footer en todas las páginas públicas.
+  - Navbar y Footer visibles siempre en landing, login, registro y changelog.
+  - Footer con atribución: "Desarrollado por 32bitsarg <3".
+- **[WEB] Juego movido a `/play]`
+  - Ruta `/play` es la nueva entrada al cliente de juego.
+  - Login y registro redirigen a `/play` tras autenticación exitosa.
+  - `GameInitializer` actualizado para permitir rutas públicas sin redirección forzada.
+- **[WEB] Login y Registro rediseñados]**
+  - Nuevo diseño minimalista con tarjetas glassmorphism, mejor espaciado y tipografía.
+  - Inputs con bordes redondeados, estados focus mejorados, y mensajes de error refinados.
+
 ---
 
 ## [0.1.0] - La Resistencia del Invierno - 2026-05-04

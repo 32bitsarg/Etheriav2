@@ -104,8 +104,9 @@ export function GameInitializer() {
   // Require Matecito auth for the main game.
   useEffect(() => {
     if (!mounted) return;
-    const inAuth = pathname === "/login" || pathname === "/registro";
-    if (inAuth) return;
+    const publicPaths = ["/login", "/registro", "/", "/changelog"];
+    const inPublic = publicPaths.some((p) => pathname === p || pathname.startsWith("/changelog/"));
+    if (inPublic) return;
     if (!auth.ready) return;
     if (!auth.isLoggedIn) {
       router.replace("/login");
