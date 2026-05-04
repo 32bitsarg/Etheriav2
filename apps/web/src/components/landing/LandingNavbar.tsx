@@ -7,21 +7,21 @@ export function LandingNavbar() {
   const { gameName } = landingContent;
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-etheria-bg/70 backdrop-blur-xl">
+    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-stone-800 bg-[#0c0a09]/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link href="/" className="font-display text-lg font-bold text-[#f1e2bd] tracking-wide">
+        <Link href="/" className="text-lg font-bold text-white tracking-wide">
           {gameName}
         </Link>
         <div className="flex items-center gap-8">
-          <Link href="/changelog" className="text-[13px] font-medium text-etheria-text-muted hover:text-etheria-gold-soft transition-colors">
+          <Link href="/changelog" className="text-sm font-medium text-stone-400 hover:text-amber-400 transition-colors">
             Changelog
           </Link>
-          <Link href="/login" className="text-[13px] font-medium text-etheria-text-muted hover:text-etheria-gold-soft transition-colors">
+          <Link href="/login" className="text-sm font-medium text-stone-400 hover:text-amber-400 transition-colors">
             Iniciar Sesión
           </Link>
           <Link
             href="/registro"
-            className="rounded-lg border border-etheria-border-gold/60 bg-etheria-gold/10 px-4 py-2 text-[13px] font-medium text-etheria-gold-soft hover:bg-etheria-gold/15 transition-colors"
+            className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 transition-colors"
           >
             Jugar Ahora
           </Link>

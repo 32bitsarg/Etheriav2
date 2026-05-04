@@ -1,43 +1,43 @@
-import { getChangelogReleases, getLatestRelease } from "@/lib/changelogParser";
+import { changelogReleases } from "@/data/changelogData";
 import Link from "next/link";
 
 export default function ChangelogPage() {
-  const releases = getChangelogReleases();
-
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
-      <h1 className="font-display text-4xl font-bold text-[#f1e2bd]">Changelog</h1>
-      <p className="mt-2 text-etheria-text-muted">
-        Historia de cambios de Conquest of Etheria.
-      </p>
+    <main className="mx-auto max-w-4xl px-6 py-16">
+      <div className="mb-16 text-center">
+        <h1 className="text-4xl font-bold text-white">Changelog</h1>
+        <p className="mt-3 text-stone-400">
+          Historia de cambios de Conquest of Etheria
+        </p>
+      </div>
 
-      <div className="mt-12 space-y-8">
-        {releases.length === 0 && (
-          <p className="text-etheria-text-muted">No hay versiones publicadas aún.</p>
-        )}
-        {releases.map((release) => (
+      <div className="space-y-8">
+        {changelogReleases.map((release) => (
           <article
             key={release.version}
-            className="rounded-2xl border border-etheria-border bg-etheria-panel/40 p-6 backdrop-blur-sm"
+            className="rounded-2xl border border-stone-800 bg-stone-900/50 p-6 sm:p-8"
           >
-            <div className="flex flex-wrap items-baseline gap-3">
-              <h2 className="font-display text-xl font-bold text-etheria-gold-soft">
-                {release.version}
+            <div className="mb-6 flex flex-wrap items-center gap-4">
+              <span className="rounded-lg bg-amber-500 px-3 py-1 text-sm font-bold text-stone-950">
+                v{release.version}
+              </span>
+              <h2 className="text-xl font-bold text-white">
+                {release.name}
               </h2>
-              <span className="text-sm text-etheria-text-dim">— {release.name}</span>
-              <span className="ml-auto text-xs text-etheria-text-dim">{release.date}</span>
+              <span className="ml-auto text-sm text-stone-500">{release.date}</span>
             </div>
 
-            <div className="mt-4 space-y-4">
-              {release.sections.slice(0, 2).map((section) => (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {release.sections.slice(0, 3).map((section) => (
                 <div key={section.heading}>
-                  <h3 className="text-xs uppercase tracking-wider text-etheria-gold/60">
+                  <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-amber-400">
                     {section.heading}
                   </h3>
-                  <ul className="mt-2 space-y-1">
+                  <ul className="space-y-2">
                     {section.items.slice(0, 3).map((item, i) => (
-                      <li key={i} className="text-sm text-etheria-text-muted line-clamp-2">
-                        • {item}
+                      <li key={i} className="flex gap-2 text-sm text-stone-300">
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                        <span className="line-clamp-2">{item}</span>
                       </li>
                     ))}
                   </ul>
@@ -47,9 +47,9 @@ export default function ChangelogPage() {
 
             <Link
               href={`/changelog/${release.version}`}
-              className="mt-4 inline-block text-sm text-etheria-gold hover:text-etheria-gold-soft transition-colors"
+              className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-amber-400 hover:text-amber-300"
             >
-              Leer más →
+              Ver todos los cambios →
             </Link>
           </article>
         ))}

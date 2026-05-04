@@ -20,6 +20,7 @@ export interface LandingContent {
   heroSubtitle: string;
   ctaPlay: string;
   ctaLearnMore: string;
+  stats: { label: string; value: string }[];
   featuresTitle: string;
   featuresSubtitle: string;
   features: LandingFeature[];
@@ -44,9 +45,15 @@ export const landingContent: LandingContent = {
   gameName: "Conquest of Etheria",
   tagline: "Construye. Alía. Conquista.",
   heroSubtitle:
-    "Un mundo persistente de estrategia en tiempo real donde cada decisión forja el destino de tu imperio. Desde la primera aldea hasta la era de los imperios.",
+    "Un mundo persistente de estrategia en tiempo real donde cada decisión forja el destino de tu imperio.",
   ctaPlay: "Comenzar Aventura",
   ctaLearnMore: "Descubrir el Mundo",
+  stats: [
+    { value: "13+", label: "Edificios" },
+    { value: "5", label: "Unidades" },
+    { value: "22", label: "Tecnologías" },
+    { value: "7", label: "Zonas Climáticas" },
+  ],
   featuresTitle: "Elige tu camino",
   featuresSubtitle: "Seis pilares que definen la experiencia de Etheria",
   features: [

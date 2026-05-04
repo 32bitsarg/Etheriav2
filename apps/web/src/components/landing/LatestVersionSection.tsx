@@ -1,4 +1,4 @@
-import { getLatestRelease } from "@/lib/changelogParser";
+import { getLatestRelease } from "@/data/changelogData";
 import Link from "next/link";
 import { landingContent } from "@/config/landingContent";
 
@@ -8,37 +8,37 @@ export function LatestVersionSection() {
 
   if (!release) return null;
 
+  const topSections = release.sections.slice(0, 3);
+
   return (
-    <section className="relative px-6 py-20">
-      <div className="mx-auto max-w-4xl">
-        <div className="text-center mb-10">
-          <h2 className="font-display text-2xl font-bold text-[#f1e2bd]">{latestVersionTitle}</h2>
-          <p className="mt-2 text-sm text-etheria-text-muted">{latestVersionSubtitle}</p>
+    <section className="px-6 py-20">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-10 text-center">
+          <h2 className="text-3xl font-bold text-white">{latestVersionTitle}</h2>
+          <p className="mt-2 text-stone-400">{latestVersionSubtitle}</p>
         </div>
 
-        <Link href={`/changelog/${release.version}`}>
-          <div className="group rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8 backdrop-blur-sm transition-all hover:border-etheria-gold/20 hover:bg-white/[0.03]">
-            <div className="flex flex-wrap items-baseline gap-3 mb-4">
-              <span className="rounded-lg bg-etheria-gold/10 px-3 py-1 text-xs font-semibold text-etheria-gold-soft">
+        <Link href={`/changelog/${release.version}`} className="group block">
+          <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-950/40 to-stone-950 p-8 transition-all hover:border-amber-500/40">
+            <div className="mb-6 flex flex-wrap items-center gap-4">
+              <span className="rounded-lg bg-amber-500 px-3 py-1 text-sm font-bold text-stone-950">
                 v{release.version}
               </span>
-              <span className="font-display text-lg font-semibold text-[#f1e2bd]">
-                {release.name}
-              </span>
-              <span className="ml-auto text-xs text-etheria-text-dim">{release.date}</span>
+              <span className="text-xl font-bold text-white">{release.name}</span>
+              <span className="ml-auto text-sm text-stone-500">{release.date}</span>
             </div>
 
-            <div className="space-y-3">
-              {release.sections.slice(0, 2).map((section) => (
+            <div className="grid gap-8 sm:grid-cols-3">
+              {topSections.map((section) => (
                 <div key={section.heading}>
-                  <h3 className="text-[11px] uppercase tracking-wider text-etheria-gold/50 mb-2">
+                  <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-amber-400">
                     {section.heading}
                   </h3>
-                  <ul className="space-y-1.5">
-                    {section.items.slice(0, 2).map((item, i) => (
-                      <li key={i} className="flex gap-2 text-sm text-etheria-text-muted/80">
-                        <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-etheria-gold/40" />
-                        <span className="line-clamp-1">{item}</span>
+                  <ul className="space-y-2">
+                    {section.items.slice(0, 3).map((item, i) => (
+                      <li key={i} className="flex gap-2 text-sm text-stone-300">
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                        <span className="line-clamp-2">{item}</span>
                       </li>
                     ))}
                   </ul>
@@ -46,9 +46,8 @@ export function LatestVersionSection() {
               ))}
             </div>
 
-            <div className="mt-6 flex items-center gap-2 text-sm text-etheria-gold/70 group-hover:text-etheria-gold-soft transition-colors">
-              Ver detalles completos
-              <span className="transition-transform group-hover:translate-x-1">→</span>
+            <div className="mt-6 flex items-center gap-2 text-sm font-semibold text-amber-400 group-hover:text-amber-300">
+              Ver detalles completos →
             </div>
           </div>
         </Link>
