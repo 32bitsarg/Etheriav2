@@ -481,10 +481,13 @@
   },
   "play": {
     "settings": {
-      "title": "Ajustes",
+      "title": "Configuracion",
       "close": "Cerrar",
       "language": "Idioma",
-      "logout": "Cerrar sesión"
+      "audio": "Audio",
+      "mute": "Silenciar",
+      "unmute": "Activar sonido",
+      "logout": "Cerrar sesion"
     },
     "sidebar": {
       "village": "Pueblo",
@@ -502,7 +505,17 @@
       "knowledge": "Saber",
       "noConstruction": "Sin construcciones.",
       "noTraining": "Sin entrenamiento.",
-      "noResearch": "Sin investigaciones."
+      "noResearch": "Sin investigaciones.",
+      "marches": "Marchas",
+      "noMarches": "Sin marchas activas.",
+      "marchingTo": "Marchando al objetivo",
+      "returningFrom": "Regresando",
+      "enemyMarching": "¡Enemigo acercandose!",
+      "enemyReturning": "Enemigo regresando",
+      "trade": "Comercio",
+      "noTrade": "Sin comercio activo.",
+      "tradeMarching": "En camino",
+      "tradeReturning": "Regresando"
     },
     "resources": {
       "gold": "Oro",
@@ -641,11 +654,19 @@
     "seasons": {
       "spring": "Primavera",
       "summer": "Verano",
-      "autumn": "Otoño",
+      "autumn": "Otono",
       "winter": "Invierno",
       "start": "Inicio",
       "mid": "Pleno",
-      "transition": "Transición"
+      "transition": "Transicion",
+      "intensity": "Intensidad",
+      "winterPressure": "Las tropas consumen comida",
+      "impact": {
+        "spring": "Crecimiento equilibrado",
+        "summer": "Produccion fortalecida",
+        "autumn": "Ventana de acopio",
+        "winter": "Presion alimentaria"
+      }
     },
     "inspection": {
       "title": "Panel de Inspección",
@@ -729,12 +750,14 @@
       "inbox": "Bandeja",
       "sent": "Enviados",
       "reports": "Reportes",
+      "compose": "Redactar",
       "new": "Nuevo",
       "loading": "Cargando...",
       "empty": "Sin mensajes.",
       "to": "Para",
       "from": "De",
       "recipient": "Destinatario",
+      "selectRecipient": "Seleccionar destinatario...",
       "selectCity": "Seleccionar ciudad...",
       "subjectPlaceholder": "Asunto",
       "bodyPlaceholder": "Escribí tu mensaje...",
@@ -793,6 +816,7 @@
       "targetCity": "Ciudad Objetivo",
       "selectTarget": "Selecciona un objetivo...",
       "troops": "Tropas",
+      "available": "Disponible",
       "noTroops": "No hay tropas disponibles. Entrena unidades en el Cuartel.",
       "sending": "Enviando...",
       "sendAttack": "Enviar Ataque",
@@ -812,7 +836,8 @@
       "enemyReturning": "Enemigo regresando",
       "attackSent": "Ataque enviado",
       "attackSentMsg": "Tus tropas marchan hacia el objetivo.",
-      "attackFailed": "Ataque fallido"
+      "attackFailed": "Ataque fallido",
+      "selectTroops": "Abre Comando de Batalla en la barra lateral para seleccionar tropas y enviar un ataque."
     },
     "buildConfirm": {
       "started": "Construcción iniciada",
@@ -885,17 +910,25 @@
       "created": "Creado:"
     },
     "research": {
-      "title": "Investigación",
-      "subtitle": "tecnologías activas y niveles acumulados de desarrollo.",
-      "eyebrow": "Desarrollo tecnológico",
+      "title": "Investigacion",
+      "subtitle": "tecnologias activas y niveles acumulados de desarrollo.",
+      "eyebrow": "Desarrollo tecnologico",
       "notResearched": "No investigada",
       "research": "Investigar",
       "ready": "Lista",
       "blocked": "Bloqueada",
       "no": "No",
       "go": "Ir",
+      "empty": "No hay tecnologias en esta categoria.",
+      "researching": "Investigando",
+      "max": "MAX",
+      "cost": "Costo",
+      "researchBtn": "Investigar",
+      "locked": "Bloqueado",
+      "researchedOnly": "Investigadas",
+      "activeBonuses": "Bonos Activos",
       "categories": {
-        "economy": "Economía",
+        "economy": "Economia",
         "military": "Militar",
         "defense": "Defensa"
       }
@@ -912,12 +945,19 @@
       "amount": "Cantidad",
       "atk": "Atq",
       "def": "Def",
-      "hp": "HP"
+      "hp": "HP",
+      "speed": "Veloc",
+      "carry": "Carga",
+      "ap": "PA"
     },
     "training": {
       "title": "Entrenar",
       "ready": "Listas",
-      "train": "Entrenar"
+      "train": "Entrenar",
+      "owned": "Disponibles",
+      "quantity": "Cant",
+      "timePerUnit": "Por unidad",
+      "total": "Total"
     },
     "notifications": {
       "mailTitle": "Nuevo mensaje",

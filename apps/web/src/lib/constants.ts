@@ -319,9 +319,42 @@ export const UNIT_TRAINING_TIME: Record<UnitType, number> = {
   SPY: 60,
 };
 
+export const UNIT_STATS: Record<UnitType, { attack: number; defense: number; hp: number; speed: number; carry: number; armorPenetration: number }> = {
+  WARRIOR: { attack: 10, defense: 15, hp: 100, speed: 160, carry: 20, armorPenetration: 0 },
+  ARCHER: { attack: 20, defense: 8,  hp: 60,  speed: 130, carry: 15, armorPenetration: 5 },
+  CAVALRY: { attack: 40, defense: 25, hp: 120, speed: 280, carry: 50, armorPenetration: 10 },
+  SIEGE:   { attack: 80, defense: 10, hp: 80,  speed: 70,  carry: 100, armorPenetration: 30 },
+  SPY:     { attack: 0,  defense: 2,  hp: 30,  speed: 400, carry: 0,  armorPenetration: 0 },
+};
+
 // ─── Tech Display Info ───
 
-export const TECH_INFO: Record<string, { nameKey: string; icon: string; descriptionKey: string; category: "ECONOMY" | "MILITARY" | "DEFENSE"; baseCost: { gold: number; wood?: number; stone?: number; food?: number }; timeSeconds: number }> = {
+export const TECH_ICON_PATHS: Record<string, string> = {
+  COLLECTION_EFFICIENT_I: "/assets/icons/techs/collection-efficient-i.png",
+  COLLECTION_EFFICIENT_II: "/assets/icons/techs/collection-efficient-ii.png",
+  COLLECTION_EFFICIENT_III: "/assets/icons/techs/collection-efficient-iii.png",
+  ADVANCED_STORAGE: "/assets/icons/techs/advanced-storage.png",
+  WARTIME_ECONOMY: "/assets/icons/techs/wartime-economy.png",
+  TRADE: "/assets/icons/techs/trade.png",
+  WEAPON_FORGE_I: "/assets/icons/techs/weapon-forge-i.png",
+  WEAPON_FORGE_II: "/assets/icons/techs/weapon-forge-ii.png",
+  REINFORCED_BOWS: "/assets/icons/techs/reinforced-bows.png",
+  HORSE_BREEDING: "/assets/icons/techs/horse-breeding.png",
+  HEAVY_CAVALRY: "/assets/icons/techs/heavy-cavalry.png",
+  SIEGE_ENGINEERING: "/assets/icons/techs/siege-engineering.png",
+  BALLISTICS: "/assets/icons/techs/ballistics.png",
+  GUERRILLA_TACTICS: "/assets/icons/techs/guerrilla-tactics.png",
+  MASONRY: "/assets/icons/techs/masonry.png",
+  STONE_WALLS: "/assets/icons/techs/stone-walls.png",
+  WATCHTOWER: "/assets/icons/techs/watchtower.png",
+  POISONED_ARROWS: "/assets/icons/techs/poisoned-arrows.png",
+  FORTIFICATIONS: "/assets/icons/techs/fortifications.png",
+  SPY_NETWORK: "/assets/icons/techs/spy-network.png",
+  SPEC_SIEGE: "/assets/icons/techs/spec-siege.png",
+  SPEC_CAVALRY: "/assets/icons/techs/spec-cavalry.png",
+};
+
+export const TECH_INFO: Record<string, { nameKey: string; icon: string; iconPath?: string; descriptionKey: string; category: "ECONOMY" | "MILITARY" | "DEFENSE"; baseCost: { gold: number; wood?: number; stone?: number; food?: number }; timeSeconds: number }> = {
   COLLECTION_EFFICIENT_I: { nameKey: "play.tech.names.efficient_collection_1", icon: "⛏️", descriptionKey: "play.tech.desc.efficient_collection_1", category: "ECONOMY", baseCost: { gold: 200, wood: 100, stone: 50, food: 50 }, timeSeconds: 300 },
   COLLECTION_EFFICIENT_II: { nameKey: "play.tech.names.efficient_collection_2", icon: "⛏️", descriptionKey: "play.tech.desc.efficient_collection_2", category: "ECONOMY", baseCost: { gold: 500, wood: 300, stone: 150, food: 150 }, timeSeconds: 600 },
   COLLECTION_EFFICIENT_III: { nameKey: "play.tech.names.efficient_collection_3", icon: "⛏️", descriptionKey: "play.tech.desc.efficient_collection_3", category: "ECONOMY", baseCost: { gold: 1200, wood: 800, stone: 400, food: 400 }, timeSeconds: 1200 },
@@ -345,6 +378,10 @@ export const TECH_INFO: Record<string, { nameKey: string; icon: string; descript
   SPEC_SIEGE: { nameKey: "play.tech.names.siege_mastery", icon: "🔨", descriptionKey: "play.tech.desc.siege_mastery", category: "MILITARY", baseCost: { gold: 2500, wood: 1800, stone: 1200, food: 500 }, timeSeconds: 2400 },
   SPEC_CAVALRY: { nameKey: "play.tech.names.cavalry_mastery", icon: "🐎", descriptionKey: "play.tech.desc.cavalry_mastery", category: "MILITARY", baseCost: { gold: 2500, wood: 1500, stone: 800, food: 1000 }, timeSeconds: 2400 },
 };
+
+export function getTechIconPath(techId: string): string | undefined {
+  return TECH_ICON_PATHS[techId];
+}
 
 export function getTrainingCost(unitType: UnitType, count: number): Record<string, number> {
   const base = UNIT_TRAINING_COST[unitType];

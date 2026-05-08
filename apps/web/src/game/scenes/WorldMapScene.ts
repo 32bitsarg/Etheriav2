@@ -510,7 +510,7 @@ export function createWorldMapScene(Phaser: typeof import("phaser")) {
           : new Date(m.arrivesAt).getTime();
         const duration = endT - startT;
         const elapsed = now - startT;
-        const visualDuration = duration > 0 ? Math.min(duration, 8 * 60 * 1000) : duration;
+        const visualDuration = duration;
         let progress = visualDuration > 0 ? Phaser.Math.Clamp(elapsed / visualDuration, 0, 1) : NaN;
 
         // Fallback visual animation when timeline fields are missing/invalid.

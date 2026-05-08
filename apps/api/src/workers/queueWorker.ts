@@ -549,6 +549,18 @@ async function resolveAndProcessBattle(battle: any) {
     `Losses - ATK: ${JSON.stringify(result.attackerLosses)}, DEF: ${JSON.stringify(result.defenderLosses)} | ` +
     `Loot: ${JSON.stringify(loot)} | Returns at: ${returnsAt}`
   );
+
+  // Mark incoming attack reports as read for the defender
+  const incomingReports = await db.from(COLLECTIONS.GAME_REPORTS)
+    .eq("type", "INCOMING_ATTACK")
+    .eq("cityId", battle.defenderCityId)
+    .get() as any;
+  for (const report of incomingReports.data ?? []) {
+    if (report.payload?.battleId === battleId) {
+      await db.from(COLLECTIONS.GAME_REPORTS).eq("id", report.id)
+        .merge({ readAt: new Date().toISOString() }).execute();
+    }
+  }
 }
 
 // ─── Battle Returns ───

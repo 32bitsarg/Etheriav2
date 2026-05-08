@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useGameStore } from "@/stores/gameStore";
 import { useTechs, useResearchTech, type TechData } from "@/hooks/useCity";
-import { formatTime } from "@/lib/constants";
+import { formatTime, getTechIconPath } from "@/lib/constants";
 import { Panel } from "@/components/ui/Panel";
 import { PanelHeader } from "@/components/ui/PanelHeader";
 import { TabBar } from "@/components/ui/TabBar";
@@ -151,6 +151,7 @@ function TechCard({
 }) {
   const isMaxed = tech.currentLevel >= tech.maxLevel;
   const canResearch = tech.canResearch && !isResearching && !isPending;
+  const iconPath = getTechIconPath(tech.techId);
 
   return (
     <div className={`rounded-lg border p-3 transition-all ${
@@ -161,6 +162,13 @@ function TechCard({
         : "bg-etheria-bg-light/30 border-etheria-border/50 hover:border-etheria-border-light"
     }`}>
       <div className="flex items-start justify-between gap-2">
+        <div className="shrink-0 w-10 h-10 rounded-lg bg-black/30 border border-white/10 flex items-center justify-center overflow-hidden">
+          {iconPath ? (
+            <img src={iconPath} alt="" className="h-9 w-9 object-contain" />
+          ) : (
+            <span className="text-xs text-etheria-text-dim">{tech.techId.slice(0, 2)}</span>
+          )}
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <span className={`text-[9px] font-bold uppercase ${CATEGORY_COLORS[tech.category as Category]}`}>

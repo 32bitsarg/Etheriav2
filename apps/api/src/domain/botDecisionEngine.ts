@@ -6,6 +6,36 @@ import { getUnlockedUnits, getUnitCost } from "./units.js";
 import type { BotProfile, BotSimulationConfig } from "./botConfigData.js";
 import { getCityQueueConfig } from "./queueConfigData.js";
 
+const UNLOCK_TECHS = ["HORSE_BREEDING", "SIEGE_ENGINEERING", "SPY_NETWORK"];
+
+const MARKET_FEE_RATE = 0.05;
+
+function hashString(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h) + s.charCodeAt(i);
+    h |= 0;
+  }
+  return Math.abs(h);
+}
+
+function shuffleWithSeed<T>(arr: T[], seed: number): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = seed % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+    seed = Math.floor(seed / (i + 1));
+  }
+  return a;
+}
+
+function techPrefScore(category: string, profile: BotProfile): number {
+  if (profile === "MILITARIST") return category === "MILITARY" ? 2 : category === "ECONOMY" ? 1 : 0;
+  if (profile === "TECH_RUSHER") return category === "MILITARY" ? 2 : category === "DEFENSE" ? 2 : 1;
+  if (profile === "ECONOMIST") return category === "ECONOMY" ? 2 : 1;
+  return 1;
+}
+
 export type BotActionType = "UPGRADE_BUILDING" | "TRAIN_UNITS" | "START_RESEARCH" | "ATTACK_CITY" | "ATTACK_BARBARIAN" | "SEND_RESOURCES" | "CREATE_MARKET_OFFER" | "ACCEPT_MARKET_OFFER" | "CONTRIBUTE_ALLIANCE_OBJECTIVE" | "SCOUT_TARGET" | "IDLE";
 export type BotSocialActionType = "CREATE_ALLIANCE" | "JOIN_ALLIANCE" | "SEND_CHAT" | "SEND_MAIL";
 
@@ -73,6 +103,27 @@ function criticalResources(snapshot: BotSnapshot, config: BotSimulationConfig) {
   return (["gold", "wood", "stone", "food"] as const).filter((key) => resources[key] <= caps[key] * config.criticalResourceRatio);
 }
 
+function availableTroops(snapshot: BotSnapshot): Array<{ type: string; count: number }> {
+  const committed = new Map<string, number>();
+  for (const battle of snapshot.activeOutgoingBattles) {
+    for (const unit of battle.units ?? []) {
+      committed.set(unit.type, (committed.get(unit.type) ?? 0) + unit.count);
+    }
+  }
+  return snapshot.units.map((u: any) => ({
+    type: u.type,
+    count: Math.max(0, u.count - (committed.get(u.type) ?? 0)),
+  }));
+}
+
+function totalAvailableTroops(snapshot: BotSnapshot): number {
+  return availableTroops(snapshot).reduce((s, u) => s + u.count, 0);
+}
+
+function hasIncomingAttacks(snapshot: BotSnapshot): boolean {
+  return (snapshot.state?.incomingAttacks ?? []).length > 0;
+}
+
 function canSpendWithoutBreakingReserve(resources: Resources, caps: ReturnType<typeof capsOf>, cost: Resources, config: BotSimulationConfig, protectedKeys: Array<keyof Resources>) {
   if (!canAfford(resources, cost)) return false;
   return protectedKeys.every((key) => {
@@ -100,15 +151,30 @@ function chooseUpgrade(snapshot: BotSnapshot, profile: BotProfile, config: BotSi
   const townHall = snapshot.buildings.find((b) => b.type === "TOWN_HALL");
   const townHallLevel = townHall?.level ?? 1;
   const weights = config.profileWeights[profile];
-  const isWinter = snapshot.seasonState?.currentSeason === "WINTER";
+  const season = snapshot.seasonState?.currentSeason;
+  const postRaid = snapshot.state?.postRaidRecovery;
 
-  const buildings = [...preferredBuildings(profile)];
+  const seed = hashString(snapshot.city.id ?? "0");
+  const buildings = shuffleWithSeed([...preferredBuildings(profile)], seed);
+
+  if (postRaid) {
+    buildings.unshift("STORAGE", "TOWER", "FARM", "LUMBER_MILL", "QUARRY");
+  }
+  if (hasIncomingAttacks(snapshot)) {
+    buildings.unshift("TOWER", "BARRACKS", "STABLE");
+  }
+  if (season === "WINTER") buildings.unshift("FARM", "STORAGE");
+  if (season === "SUMMER") buildings.unshift("GOLD_MINE", "BARRACKS");
+  if (season === "AUTUMN") buildings.unshift("FARM", "STORAGE");
+  if (season === "SPRING") buildings.unshift("TOWN_HALL", "LUMBER_MILL");
   if (critical.includes("wood")) buildings.unshift("LUMBER_MILL", "STORAGE");
   if (critical.includes("food")) buildings.unshift("FARM", "STORAGE");
   if (critical.includes("gold")) buildings.unshift("GOLD_MINE", "STORAGE");
   if (critical.includes("stone")) buildings.unshift("QUARRY", "STORAGE");
-  if (isWinter) {
-    buildings.unshift("FARM", "STORAGE");
+
+  const totalUpgrades = snapshot.buildings.reduce((s: number, b: any) => s + (b.level ?? 1) - 1, 0);
+  if (totalUpgrades > 0 && totalUpgrades % 6 === 0 && !buildings.includes("TOWER")) {
+    buildings.push("TOWER");
   }
 
   for (const type of buildings) {
@@ -119,12 +185,30 @@ function chooseUpgrade(snapshot: BotSnapshot, profile: BotProfile, config: BotSi
     const nextLevel = (building.level ?? 1) + 1;
     const cost = getBuildingCost(type, nextLevel);
     if (!canSpendWithoutBreakingReserve(resources, caps, cost, config, critical as Array<keyof Resources>)) continue;
+    const seasonLabel = (season === "WINTER" && (type === "FARM" || type === "STORAGE")) ? "WINTER priority" :
+      (season === "SUMMER" && type === "GOLD_MINE") ? "SUMMER boost" :
+      (postRaid) ? "post-raid rebuild" : "";
     return {
       type: "UPGRADE_BUILDING",
-      reason: isWinter && (type === "FARM" || type === "STORAGE") ? `${profile} WINTER food priority` : `${profile} upgrade priority ${type}`,
+      reason: seasonLabel || `${profile} upgrade ${type}`,
       payload: { buildingId: building.id, buildingType: type },
-      score: weights.economy + (type === "TOWN_HALL" ? 2 : 0) + (isWinter && type === "FARM" ? 3 : 0),
+      score: weights.economy + (type === "TOWN_HALL" ? 2 : 0) + (season === "WINTER" && type === "FARM" ? 3 : 0),
     };
+  }
+
+  const existingTypes = new Set(snapshot.buildings.map((b: any) => b.type));
+  const missing = preferredBuildings(profile).filter((t) => !existingTypes.has(t));
+  if (missing.length > 0) {
+    const type = missing[0];
+    const cost = getBuildingCost(type, 1);
+    if (canSpendWithoutBreakingReserve(resources, caps, cost, config, critical as Array<keyof Resources>)) {
+      return {
+        type: "UPGRADE_BUILDING",
+        reason: `${profile} rebuild missing ${type}`,
+        payload: { buildingId: "", buildingType: type },
+        score: 3.0,
+      };
+    }
   }
 
   return null;
@@ -149,11 +233,12 @@ function chooseResearch(snapshot: BotSnapshot, profile: BotProfile, config: BotS
     })
     .filter(({ cfg, targetLevel }) => targetLevel <= cfg.maxLevel)
     .sort((a, b) => {
-      const aText = `${a.cfg.name} ${a.cfg.description}`.toLowerCase();
-      const bText = `${b.cfg.name} ${b.cfg.description}`.toLowerCase();
-      const aFav = profile === "MILITARIST" ? /attack|unit|siege|cavalry|archer/.test(aText) : /resource|production|storage|building/.test(aText);
-      const bFav = profile === "MILITARIST" ? /attack|unit|siege|cavalry|archer/.test(bText) : /resource|production|storage|building/.test(bText);
-      return Number(bFav) - Number(aFav);
+      const aScore = techPrefScore(a.cfg.category, profile);
+      const bScore = techPrefScore(b.cfg.category, profile);
+      if (bScore !== aScore) return bScore - aScore;
+      if (profile === "TECH_RUSHER" && UNLOCK_TECHS.includes(a.cfg.techId)) return -1;
+      if (profile === "TECH_RUSHER" && UNLOCK_TECHS.includes(b.cfg.techId)) return 1;
+      return 0;
     });
 
   for (const { cfg, targetLevel } of configs) {
@@ -185,14 +270,29 @@ function chooseTraining(snapshot: BotSnapshot, profile: BotProfile, config: BotS
   const preferred: UnitType[] = profile === "MILITARIST"
     ? ["CAVALRY", "SIEGE", "ARCHER", "WARRIOR", "SPY"]
     : ["WARRIOR", "ARCHER", "CAVALRY", "SPY", "SIEGE"];
-  const unitType = preferred.find((type) => unlocked.includes(type)) ?? "WARRIOR";
+
+  const season = snapshot.seasonState?.currentSeason;
+  if (season === "WINTER") {
+    const idx = preferred.indexOf("SPY");
+    if (idx > -1) preferred.splice(idx, 1);
+  }
+  if (season === "SUMMER") {
+    preferred.unshift("CAVALRY", "WARRIOR");
+  }
+
+  const unitCounts = new Map<string, number>();
+  for (const u of snapshot.units) unitCounts.set(u.type, u.count);
+  const sorted = preferred
+    .filter((t) => unlocked.includes(t))
+    .sort((a, b) => (unitCounts.get(a) ?? 0) - (unitCounts.get(b) ?? 0));
+  const unitType = sorted[0] ?? "WARRIOR";
 
   for (const count of [10, 5, 2, 1]) {
     const cost = getUnitCost(unitType, count);
     if (canSpendWithoutBreakingReserve(resources, caps, cost, config, critical as Array<keyof Resources>)) {
       return {
         type: "TRAIN_UNITS",
-        reason: `${profile} train ${unitType}`,
+        reason: `${profile} train ${unitType} (balance)`,
         payload: { unitType, count },
         score: config.profileWeights[profile].military,
       };
@@ -214,7 +314,7 @@ function chooseSocial(snapshot: BotSnapshot, profile: BotProfile, config: BotSim
       .filter((alliance) => Number(alliance.honorScore ?? 100) >= 60)
       .sort((a, b) => Number(b.honorScore ?? 100) - Number(a.honorScore ?? 100))[0];
 
-    if (joinTarget && profile !== "ECONOMIST") {
+    if (joinTarget) {
       return {
         type: "JOIN_ALLIANCE",
         reason: `${profile} joins reputable alliance`,
@@ -223,7 +323,7 @@ function chooseSocial(snapshot: BotSnapshot, profile: BotProfile, config: BotSim
       };
     }
 
-    if (profile === "ECONOMIST" || profile === "BALANCED") {
+    if (!joinTarget && (profile === "ECONOMIST" || profile === "BALANCED")) {
       return {
         type: "CREATE_ALLIANCE",
         reason: `${profile} founds alliance`,
@@ -272,7 +372,13 @@ function chooseTrade(snapshot: BotSnapshot, profile: BotProfile, config: BotSimu
 
   if (totalExcess < 100) return null;
 
-  const target = snapshot.targets[Math.floor(Math.random() * snapshot.targets.length)];
+  const allianceId = snapshot.allianceMembership?.allianceId;
+  const allies = allianceId
+    ? snapshot.targets.filter((t: any) => t.allianceId === allianceId)
+    : [];
+  const target = allies.length > 0
+    ? allies[Math.floor(Math.random() * allies.length)]
+    : null;
   if (!target) return null;
 
   return {
@@ -293,12 +399,14 @@ function chooseMarketOffer(snapshot: BotSnapshot, profile: BotProfile, config: B
   const scarce = resourceKeys.find((key) => resources[key] < caps[key] * 0.35);
   const excess = resourceKeys.find((key) => resources[key] > caps[key] * 0.75 && key !== scarce);
 
-  const acceptable = (snapshot.marketOffers ?? []).find((offer) =>
-    offer.creatorCityId !== snapshot.city.id &&
-    offer.status === "OPEN" &&
-    resources[offer.wantResource as keyof Resources] >= Number(offer.wantAmount ?? 0) &&
-    (!scarce || offer.giveResource === scarce)
-  );
+  const acceptable = (snapshot.marketOffers ?? []).find((offer) => {
+    const wantAmount = Number(offer.wantAmount ?? 0);
+    const fee = Math.ceil(wantAmount * (Number(offer.feeRate ?? 0) || MARKET_FEE_RATE));
+    return offer.creatorCityId !== snapshot.city.id &&
+      offer.status === "OPEN" &&
+      resources[offer.wantResource as keyof Resources] >= wantAmount + fee &&
+      (!scarce || offer.giveResource === scarce);
+  });
   if (acceptable) {
     return {
       type: "ACCEPT_MARKET_OFFER",
@@ -360,11 +468,19 @@ function chooseScout(snapshot: BotSnapshot, profile: BotProfile, config: BotSimu
 function chooseBarbarianHunt(snapshot: BotSnapshot, profile: BotProfile, config: BotSimulationConfig, now: Date): BotDecision | null {
   if (snapshot.barbarianCamps.length === 0 || snapshot.activeOutgoingBattles.length >= config.maxActiveOutgoingBattles) return null;
 
-  const totalTroops = snapshot.units.reduce((s, u) => s + u.count, 0);
+  const totalTroops = totalAvailableTroops(snapshot);
   if (totalTroops < config.minAttackTroops) return null;
 
-  const camp = snapshot.barbarianCamps[0];
-  const units = snapshot.units
+  if (hasIncomingAttacks(snapshot)) return null;
+
+  const avgBuildingLevel = snapshot.buildings.reduce((s: number, b: any) => s + (b.level ?? 1), 0) / Math.max(1, snapshot.buildings.length);
+  const targetLevel = Math.max(1, Math.floor(avgBuildingLevel / 3));
+  const sorted = [...snapshot.barbarianCamps].sort((a: any, b: any) =>
+    Math.abs((a.level ?? 1) - targetLevel) - Math.abs((b.level ?? 1) - targetLevel)
+  );
+  const camp = sorted[0];
+  const available = availableTroops(snapshot);
+  const units = available
     .map((u) => ({ type: u.type as UnitType, count: Math.floor(u.count * 0.4) }))
     .filter((u) => u.count > 0);
 
@@ -386,8 +502,17 @@ function chooseAttack(snapshot: BotSnapshot, profile: BotProfile, config: BotSim
   const lastAttackAt = snapshot.state?.lastAttackAt ? new Date(snapshot.state.lastAttackAt).getTime() : 0;
   if (now.getTime() - lastAttackAt < cooldownMinutes * 60_000) return null;
 
-  const totalTroops = snapshot.units.reduce((s, u) => s + u.count, 0);
+  const totalTroops = totalAvailableTroops(snapshot);
   if (totalTroops < config.minAttackTroops) return null;
+
+  if (hasIncomingAttacks(snapshot)) return null;
+
+  const mem = memorySummary(snapshot.state);
+  const lastLossResult = mem.lastLossAt ? new Date(mem.lastLossAt).getTime() : 0;
+  const effectiveConsecutiveLosses = (mem.consecutiveLosses >= 2 && now.getTime() - lastLossResult > 30 * 60_000)
+    ? 0
+    : mem.consecutiveLosses;
+  if (effectiveConsecutiveLosses >= 2) return null;
 
   const targetCooldowns = snapshot.state?.targetCooldowns ?? {};
   const incomingAttacks = snapshot.state?.incomingAttacks ?? [];
@@ -395,6 +520,21 @@ function chooseAttack(snapshot: BotSnapshot, profile: BotProfile, config: BotSim
   const recentAttackerCityIds = new Set(incomingAttacks.map((a: any) => a.attackerCityId));
   let target = snapshot.targets.find(t => recentAttackerCityIds.has(t.id));
   let isRevenge = !!target;
+
+  if (!target) {
+    target = snapshot.targets.find((candidate) => {
+      if (!mem.favoredTargets.has(candidate.id)) return false;
+      const successCount = [...mem.favoredTargetCounts.entries()]
+        .filter(([id]) => id === candidate.id)
+        .reduce((s, [, c]) => s + c, 0);
+      // Anti-bullying: if we've hit this target 3+ times successfully, double cooldown
+      const effectiveCooldown = successCount >= 3
+        ? config.targetCooldownMinutes * 2
+        : config.targetCooldownMinutes;
+      const lastTargetAt = targetCooldowns[candidate.id] ? new Date(targetCooldowns[candidate.id]).getTime() : 0;
+      return now.getTime() - lastTargetAt >= effectiveCooldown * 60_000;
+    });
+  }
 
   if (!target) {
     target = snapshot.targets.find((candidate) => {
@@ -406,12 +546,18 @@ function chooseAttack(snapshot: BotSnapshot, profile: BotProfile, config: BotSim
   if (!target) return null;
 
   const spies = snapshot.units.find(u => u.type === "SPY")?.count ?? 0;
-  if (spies > 0 && Math.random() > 0.5) {
-     // Simulated intelligence check
+  const scouted = snapshot.state?.scoutedTargets ?? {};
+  if (spies > 0 && scouted[target.id]) {
+    const scoutAge = now.getTime() - new Date(scouted[target.id]).getTime();
+    if (scoutAge < 30 * 60_000 && target.estimatedPower > snapshot.city.power * 1.5) {
+      return null;
+    }
   }
 
-  const units = snapshot.units
-    .map((u) => ({ type: u.type as UnitType, count: Math.floor(u.count * 0.5) }))
+  const available = availableTroops(snapshot);
+  const pct = profile === "MILITARIST" ? 0.4 : 0.3;
+  const units = available
+    .map((u) => ({ type: u.type as UnitType, count: Math.floor(u.count * pct) }))
     .filter((u) => u.count > 0);
 
   if (units.reduce((sum, unit) => sum + unit.count, 0) < config.minAttackTroops) return null;
@@ -453,4 +599,41 @@ export function decideBotAction(snapshot: BotSnapshot, profile: BotProfile, conf
 export function botActionType(decision: BotDecision): BotActionType {
   if (["CREATE_ALLIANCE", "JOIN_ALLIANCE", "SEND_CHAT", "SEND_MAIL"].includes(decision.type)) return "IDLE";
   return decision.type as BotActionType;
+}
+
+export function updateBotMemory(state: any, decision: BotDecision, result: "success" | "blocked" | "error", now: Date): any {
+  const actionLog: Array<{ type: string; payload: any; result: string; timestamp: string }> = state?.actionLog ?? [];
+  actionLog.push({
+    type: decision.type,
+    payload: decision.payload,
+    result,
+    timestamp: now.toISOString(),
+  });
+  const next = {
+    ...(state ?? {}),
+    actionLog: actionLog.slice(-20),
+  };
+  if (decision.type === "ATTACK_CITY" && result !== "success") {
+    next.lastLossAt = now.toISOString();
+  }
+  return next;
+}
+
+export function memorySummary(state: any): { consecutiveLosses: number; lastLossAt: string | null; favoredTargets: Set<string>; favoredTargetCounts: Map<string, number>; recentActions: string[] } {
+  const log: Array<{ type: string; payload: any; result: string }> = state?.actionLog ?? [];
+  const recentActions = log.slice(-10).map((a) => a.type);
+  let consecutiveLosses = 0;
+  for (let i = log.length - 1; i >= 0; i--) {
+    if (log[i].result !== "success") consecutiveLosses++;
+    else break;
+  }
+  const favoredTargets = new Set<string>();
+  const favoredTargetCounts = new Map<string, number>();
+  for (const entry of log) {
+    if (entry.type === "ATTACK_CITY" && entry.result === "success" && entry.payload?.targetCityId) {
+      favoredTargets.add(entry.payload.targetCityId);
+      favoredTargetCounts.set(entry.payload.targetCityId, (favoredTargetCounts.get(entry.payload.targetCityId) ?? 0) + 1);
+    }
+  }
+  return { consecutiveLosses, lastLossAt: state?.lastLossAt ?? null, favoredTargets, favoredTargetCounts, recentActions };
 }

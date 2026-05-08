@@ -1,6 +1,6 @@
 "use client";
 
-type SidebarNavIconId = "summary" | "village" | "buildings" | "army" | "research" | "map";
+type SidebarNavIconId = "summary" | "village" | "buildings" | "army" | "research" | "map" | "quests";
 
 const ICON_PATH: Record<SidebarNavIconId, string> = {
   summary: "/assets/ui/nav-icons/summary.png",
@@ -10,6 +10,7 @@ const ICON_PATH: Record<SidebarNavIconId, string> = {
   army: "/assets/ui/nav-icons/army.png",
   research: "/assets/ui/nav-icons/research.png",
   map: "/assets/ui/nav-icons/map.png",
+  quests: "/assets/ui/nav-icons/quests.png",
 };
 
 export function SidebarNavIcon({

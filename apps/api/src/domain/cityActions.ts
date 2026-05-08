@@ -26,8 +26,18 @@ import {
 } from "./units.js";
 import { getCityQueueConfig, type CityQueueKind } from "./queueConfigData.js";
 import { advanceQuest } from "./quests.js";
+import { createGameReport } from "./reports.js";
 
 const genId = () => crypto.randomUUID();
+
+function formatTravelTime(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (m < 60) return `${m}m ${s}s`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m`;
+}
 
 const BUILDING_SIZES: Record<string, { w: number; h: number }> = {
   TOWN_HALL: { w: 4, h: 4 },
@@ -479,6 +489,15 @@ export async function attackCityAction(input: {
     startedAt: nowIso,
     arrivesAt,
     units: input.units.map((u) => ({ type: u.type, count: u.count })),
+  });
+
+  await createGameReport({
+    type: "INCOMING_ATTACK",
+    userId: defenderCity.userId,
+    cityId: input.targetCityId,
+    title: `Incoming attack from ${attackerCity.name}`,
+    summary: `${attackerCity.name} is attacking. Enemy troops arrive in ${formatTravelTime(travelTime)}.`,
+    payload: { attackerCityId: input.attackerCityId, attackerName: attackerCity.name, arrivesAt, battleId, units: input.units },
   });
 
   for (const unit of input.units) {
