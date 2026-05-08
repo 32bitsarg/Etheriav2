@@ -24,7 +24,7 @@ export function startBotWorker(): void {
       if (result.processed > 0 || result.errors > 0) {
         console.log(`🤖 Bot tick processed=${result.processed} errors=${result.errors}`);
       }
-      if (Date.now() - lastMetricsAt > 15 * 60_000) {
+      if (Date.now() - lastMetricsAt > config.metricsWindowMinutes * 60_000) {
         lastMetricsAt = Date.now();
         await writeBotMetricsSnapshot();
       }

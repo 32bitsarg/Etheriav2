@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter, Cinzel, Cinzel_Decorative } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/components/QueryProvider";
+import { I18nClientProvider } from "@/components/I18nClientProvider";
+import { MusicController } from "@/components/game/MusicController";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const cinzel = Cinzel({ subsets: ["latin"], variable: "--font-cinzel" });
@@ -24,7 +26,10 @@ export default function RootLayout({
         style={{ backgroundColor: "#fafaf9", color: "#1c1917" }}
       >
         <QueryProvider>
-          {children}
+          <I18nClientProvider>
+            <MusicController />
+            {children}
+          </I18nClientProvider>
         </QueryProvider>
       </body>
     </html>

@@ -77,7 +77,7 @@ export async function sendResourcesAction(input: {
   });
 
   // 4. Calculate travel time (fixed speed for merchants)
-  const merchantSpeed = readNumber("TRADE_MERCHANT_SPEED", 100);
+  const merchantSpeed = readNumber("TRADE_MERCHANT_SPEED", 200);
   const world = await getWorldConfig();
   const terrainSpeed = calculatePathSpeedMultiplier(sender.posX, sender.posY, recipient.posX, recipient.posY, world.map.width, world.map.height);
   const travelTimeSeconds = calculateTravelTimeWithMultiplier(

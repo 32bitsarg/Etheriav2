@@ -2,18 +2,21 @@
 
 import type { BuildingType, MailMessage, UnitType } from "@etheria/shared";
 import { useGameStore } from "@/stores/gameStore";
-import { useToastStore } from "@/stores/toastStore";
-import { BUILDING_INFO, BUILDING_NAMES, BUILDING_SIZES, MAX_BUILDING_LEVEL, getUpgradeCost, getUpgradeTimeSeconds, UNIT_INFO, UNIT_IMAGE_PATHS, UNIT_TRAINING_COST, applyTrainingCostReduction, getTrainingCost, getTrainingTimeSeconds, TECH_INFO, getTechCost, getTechTimeSeconds, formatTime, formatNumber, getBuildingDescriptionKey } from "@/lib/constants";
+import { useToastStore, type ToastType } from "@/stores/toastStore";
+import { useAudioStore } from "@/stores/audioStore";
+import { BUILDING_INFO, BUILDING_NAMES, BUILDING_SIZES, MAX_BUILDING_LEVEL, getUpgradeCost, getUpgradeTimeSeconds, UNIT_INFO, UNIT_IMAGE_PATHS, UNIT_TRAINING_COST, UNIT_STATS, applyTrainingCostReduction, getTrainingCost, getTrainingTimeSeconds, TECH_INFO, getTechCost, getTechTimeSeconds, getTechIconPath, formatTime, formatNumber, getBuildingDescriptionKey } from "@/lib/constants";
 import { BuildingSprite } from "@/components/village/BuildingIcon";
 import { VillageCanvas } from "@/components/village/VillageCanvas";
 import { ResourceIconSVG } from "@/components/village/ResourceIconSVG";
-import { useAcceptMarketOffer, useAllCities, useAllianceMembership, useBarbarianCamps, useBreakTreaty, useCancelBuildQueue, useCancelResearchQueue, useCancelTrainingQueue, useCityRanking, useClaimQuest, useContributeAllianceObjective, useCreateAlliance, useCreateMarketOffer, useDisbandAlliance, useGameReports, useJoinAlliance, useKickAllianceMember, useLeaveAlliance, useMailMessages, useMarkGameReportRead, useMarkMailRead, useMarkMapOpened, useMarketOffers, usePlayerQuests, useProposePeace, useRenameCity, useResearchTech, useScoutTarget, useSendMailMessage, useTechs, useTrainUnits, useTransferAllianceLeadership, useUpdateAlliance, useUpdateAllianceMemberRole, useUpgradeBuilding, useVillageLayout, useWorldMap, useWorldMovements, useWorldSeason } from "@/hooks/useCity";
+import { useAcceptMarketOffer, useActiveBattles, useAllCities, useAllianceMembership, useAttackCity, useBarbarianCamps, useBattleReports, useBreakTreaty, useCancelBuildQueue, useCancelResearchQueue, useCancelTrainingQueue, useCityRanking, useClaimQuest, useContributeAllianceObjective, useCreateAlliance, useCreateMarketOffer, useDisbandAlliance, useGameReports, useJoinAlliance, useKickAllianceMember, useLeaveAlliance, useMailMessages, useMarkGameReportRead, useMarkMailRead, useMarkMapOpened, useMarketOffers, usePlayerQuests, useProposePeace, useRenameCity, useResearchTech, useScoutTarget, useSendMailMessage, useTechs, useTrainUnits, useTransferAllianceLeadership, useUpdateAlliance, useUpdateAllianceMemberRole, useUpgradeBuilding, useVillageLayout, useWorldMap, useWorldMovements, useWorldSeason } from "@/hooks/useCity";
 import { WorldMapCanvas } from "@/components/worldmap/WorldMapCanvas";
 import { BarbarianAttackAlertBanner } from "@/components/barbarians/BarbarianAttackAlertBanner";
 import { WinterPressureBanner } from "@/components/barbarians/WinterPressureBanner";
 import { BarbarianCampModal } from "@/components/barbarians/BarbarianCampModal";
 import { ResourceBar } from "@/components/ui/ResourceBar";
+import { SeasonHUD } from "@/components/game/SeasonHUD";
 import { SettingsModal } from "@/components/village/SettingsModal";
+import { SidebarNavIcon } from "@/components/ui/SidebarNavIcon";
 import { useState, useMemo, useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useI18n } from "@/i18n";
 import { normalizeVillageLayout, resolveVillageRenderableBuildings } from "@/lib/villageLayout";
@@ -28,6 +31,12 @@ const ISO_MAP_SIZE = 24;
 export function VillageView() {
   const { t } = useI18n();
   const [activeView, setActiveView] = useState<ViewId>("pueblo");
+  const notifyViewChange = useAudioStore((s) => s.notifyViewChange);
+
+  useEffect(() => {
+    notifyViewChange();
+  }, [activeView, notifyViewChange]);
+
   const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
   const [upgradingBuildingId, setUpgradingBuildingId] = useState<string | null>(null);
   const [isMailOpen, setIsMailOpen] = useState(false);
@@ -63,6 +72,14 @@ export function VillageView() {
   const { data: mailData } = useMailMessages(true);
   const { data: reportsData } = useGameReports(true);
   const { data: allianceData } = useAllianceMembership();
+  const { data: activeBattles } = useActiveBattles(cityId);
+  const { data: worldMoves } = useWorldMovements();
+
+  const myBattles = activeBattles ?? [];
+  const myName = useGameStore((s) => s.name);
+  const myTradeMoves = (worldMoves ?? []).filter(
+    (m) => m.type === "TRADE" && (m.from.name === myName || m.to.name === myName)
+  );
 
   const resources = getLiveResources();
   const isPuebloView = activeView === "pueblo";
@@ -162,7 +179,8 @@ export function VillageView() {
     <div className="village-shell relative z-10 grid h-screen w-screen overflow-hidden">
       <BarbarianAttackAlertBanner />
       <WinterPressureBanner />
-      <header className="village-resource-header pointer-events-none absolute left-[calc(var(--sidebar-width)+12px)] right-3 top-2 z-50">
+      <header className="village-resource-header pointer-events-none absolute left-[calc(var(--sidebar-width)+12px)] right-3 top-2 z-50 flex items-center gap-3">
+        <SeasonHUD />
         <ResourceBar />
       </header>
       <aside className="grepolis-sidebar village-sidebar">
@@ -191,7 +209,7 @@ export function VillageView() {
             <span className="grepolis-nav-item__label">{t("play.sidebar.mail")}</span>
           </button>
           <button onClick={() => setIsQuestsOpen(true)} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap"><span className="grepolis-nav-item__icon">?</span></span>
+            <span className="grepolis-nav-item__icon-wrap"><SidebarNavIcon id="quests" className="grepolis-nav-item__icon" /></span>
             <span className="grepolis-nav-item__label">{t("play.quests.title")}</span>
           </button>
           <button onClick={() => setIsAllianceOpen(true)} className="grepolis-nav-item">
@@ -239,6 +257,9 @@ export function VillageView() {
         buildQueues={buildQueues}
         trainingQueues={trainingQueues}
         researchQueues={researchQueue.length > 0 ? researchQueue : activeResearch ? [activeResearch] : []}
+        battles={myBattles}
+        tradeMoves={myTradeMoves}
+        cityName={myName}
         t={t}
       />
 
@@ -271,10 +292,13 @@ export function VillageView() {
   );
 }
 
-function QueueRail({ buildQueues, trainingQueues, researchQueues, t }: {
+function QueueRail({ buildQueues, trainingQueues, researchQueues, battles, tradeMoves, cityName, t }: {
   buildQueues: any[];
   trainingQueues: any[];
   researchQueues: any[];
+  battles: any[];
+  tradeMoves: any[];
+  cityName: string;
   t: (key: string) => string;
 }) {
   const cityId = useGameStore((s) => s.cityId);
@@ -282,7 +306,7 @@ function QueueRail({ buildQueues, trainingQueues, researchQueues, t }: {
   const cancelTrainingQueue = useCancelTrainingQueue();
   const cancelResearchQueue = useCancelResearchQueue();
   const addToast = useToastStore((s) => s.addToast);
-  const hasQueues = buildQueues.length > 0 || trainingQueues.length > 0 || researchQueues.length > 0;
+  const hasQueues = buildQueues.length > 0 || trainingQueues.length > 0 || researchQueues.length > 0 || battles.length > 0 || tradeMoves.length > 0;
 
   const showCancelResult = (title: string, data?: any) => {
     const refundText = Object.entries(data?.refund ?? {})
@@ -290,6 +314,11 @@ function QueueRail({ buildQueues, trainingQueues, researchQueues, t }: {
       .map(([key, value]) => `${t(`play.resources.${key}`)}: ${formatNumber(value as number)}`)
       .join(" · ");
     addToast({ type: "success", title, message: refundText || t("play.dock.refund50") });
+  };
+
+  const marchIcon = (type: string) => {
+    const icons: Record<string, string> = { WARRIOR: "⚔️", ARCHER: "🏹", CAVALRY: "🐴", SIEGE: "🔨", SPY: "🕵️" };
+    return icons[type] ?? "⚔️";
   };
 
   return (
@@ -363,27 +392,79 @@ function QueueRail({ buildQueues, trainingQueues, researchQueues, t }: {
         </QueueSection>
 
         <QueueSection title={t("play.queues.knowledge")} emptyText={t("play.queues.noResearch")}>
-          {researchQueues.map((queue) => (
-            <QueueRailItem
-              key={queue.id}
-              icon={<span className="text-lg leading-none">{TECH_INFO[queue.techId]?.icon ?? "?"}</span>}
-              title={t(TECH_INFO[queue.techId]?.nameKey ?? queue.techId)}
-              subtitle={`${t("play.building.level")} ${queue.targetLevel}`}
-              completesAt={queue.completesAt}
-              cancelLabel={t("play.dock.cancel")}
-              isCancelling={cancelResearchQueue.variables?.queueId === queue.id}
-              onCancel={() => {
-                if (!cityId) return;
-                cancelResearchQueue.mutate(
-                  { cityId, queueId: queue.id },
-                  {
-                    onSuccess: (data) => showCancelResult(t("play.dock.researchCancelled"), data),
-                    onError: (error) => addToast({ type: "error", title: t("play.dock.cancelFailed"), message: error.message }),
-                  }
-                );
-              }}
-            />
-          ))}
+          {researchQueues.map((queue) => {
+            const iconPath = getTechIconPath(queue.techId);
+            const icon = iconPath
+              ? <img src={iconPath} alt="" className="h-8 w-8 object-contain" />
+              : <span className="text-lg leading-none">{TECH_INFO[queue.techId]?.icon ?? "?"}</span>;
+            return (
+              <QueueRailItem
+                key={queue.id}
+                icon={icon}
+                title={t(TECH_INFO[queue.techId]?.nameKey ?? queue.techId)}
+                subtitle={`${t("play.building.level")} ${queue.targetLevel}`}
+                completesAt={queue.completesAt}
+                cancelLabel={t("play.dock.cancel")}
+                isCancelling={cancelResearchQueue.variables?.queueId === queue.id}
+                onCancel={() => {
+                  if (!cityId) return;
+                  cancelResearchQueue.mutate(
+                    { cityId, queueId: queue.id },
+                    {
+                      onSuccess: (data) => showCancelResult(t("play.dock.researchCancelled"), data),
+                      onError: (error) => addToast({ type: "error", title: t("play.dock.cancelFailed"), message: error.message }),
+                    }
+                  );
+                }}
+              />
+            );
+          })}
+        </QueueSection>
+
+        <QueueSection title={t("play.queues.marches")} emptyText={t("play.queues.noMarches")}>
+          {battles.map((battle: any) => {
+            const isOutgoing = battle.attackerCityId === cityId;
+            const isMarching = battle.status === "MARCHING";
+            const isReturning = battle.status === "RETURNING";
+            const targetLabel = isMarching
+              ? (isOutgoing ? t("play.queues.marchingTo") : t("play.queues.enemyMarching"))
+              : (isOutgoing ? t("play.queues.returningFrom") : t("play.queues.enemyReturning"));
+            const subLines = [targetLabel];
+            if (battle.units && Array.isArray(battle.units)) {
+              const comp = battle.units.map((u: any) => `${u.count}${marchIcon(u.type)}`).join(" ");
+              subLines.push(comp);
+            }
+            return (
+              <QueueRailItem
+                key={battle.id}
+                icon={<span className="text-lg leading-none">{isOutgoing ? "⚔️" : "🛡️"}</span>}
+                title={isMarching ? t("play.battle.marching") : t("play.battle.returningHome")}
+                subtitle={subLines.join(" · ")}
+                completesAt={isReturning ? battle.returnsAt : battle.arrivesAt}
+              />
+            );
+          })}
+        </QueueSection>
+
+        <QueueSection title={t("play.queues.trade")} emptyText={t("play.queues.noTrade")}>
+          {tradeMoves.map((move: any) => {
+            const isOutgoing = move.from.name === cityName;
+            const isMarching = move.status === "MARCHING";
+            const timeKey = isMarching ? move.arrivesAt : move.returnsAt;
+            const dir = isMarching
+              ? (isOutgoing ? "→" : "←")
+              : (isOutgoing ? "←" : "→");
+            const peer = isOutgoing ? move.to.name : move.from.name;
+            return (
+              <QueueRailItem
+                key={move.id}
+                icon={<span className="text-lg leading-none">{dir}</span>}
+                title={peer}
+                subtitle={isMarching ? t("play.queues.tradeMarching") : t("play.queues.tradeReturning")}
+                completesAt={timeKey}
+              />
+            );
+          })}
         </QueueSection>
       </div>
     </aside>
@@ -493,8 +574,11 @@ function MapaView({ cityName, resources, storage, production, allianceData, onRe
   const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
   const [radialPosition, setRadialPosition] = useState({ x: 0, y: 0 });
   const [isEntering, setIsEntering] = useState(false);
+  const [attackTarget, setAttackTarget] = useState<{ id: string; name: string } | null>(null);
 
   const myCityId = useGameStore((s) => s.cityId);
+  const units = useGameStore((s) => s.units);
+  const attackCity = useAttackCity();
   const setSelectedCamp = useGameStore((s) => s.setSelectedCamp);
   const setShowCampModal = useGameStore((s) => s.setShowCampModal);
   const addToast = useToastStore((s) => s.addToast);
@@ -552,7 +636,7 @@ function MapaView({ cityName, resources, storage, production, allianceData, onRe
           t={t}
           onClose={() => setSelectedCityId(null)}
           onEnter={enterVillage}
-          onAttack={() => addToast({ type: "info", title: t("play.battle.title"), message: t("play.battle.selectTroops") })}
+          onAttack={() => { if (selectedCityId && selectedCity) setAttackTarget({ id: selectedCityId, name: selectedCity.name }); }}
           onSpy={() => {
             if (!myCityId || !selectedCityId) return;
             scoutTarget.mutate(
@@ -565,6 +649,109 @@ function MapaView({ cityName, resources, storage, production, allianceData, onRe
           }}
         />
       )}
+      {attackTarget && (
+        <AttackCityModal
+          targetCityId={attackTarget.id}
+          targetCityName={attackTarget.name}
+          units={units}
+          cityId={myCityId}
+          attackCity={attackCity}
+          t={t}
+          addToast={addToast}
+          onClose={() => setAttackTarget(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function AttackCityModal({ targetCityId, targetCityName, units, cityId, attackCity, t, addToast, onClose }: {
+  targetCityId: string;
+  targetCityName: string;
+  units: { type: UnitType; count: number }[];
+  cityId: string | null;
+  attackCity: ReturnType<typeof useAttackCity>;
+  t: (key: string) => string;
+  addToast: (toast: { type: ToastType; title: string; message: string }) => void;
+  onClose: () => void;
+}) {
+  const [counts, setCounts] = useState<Record<UnitType, number>>({
+    WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0,
+  });
+
+  const totalSelected = Object.values(counts).reduce((s, v) => s + v, 0);
+
+  function owned(type: UnitType): number {
+    return units.find((u) => u.type === type)?.count ?? 0;
+  }
+
+  function adjust(type: UnitType, delta: number) {
+    setCounts((prev) => {
+      const next = Math.max(0, Math.min(owned(type), prev[type] + delta));
+      return { ...prev, [type]: next };
+    });
+  }
+
+  function handleSend() {
+    if (!cityId || totalSelected === 0) return;
+    const selected = Object.entries(counts)
+      .filter(([, c]) => c > 0)
+      .map(([type, c]) => ({ type, count: c }));
+    attackCity.mutate(
+      { cityId, targetCityId, units: selected },
+      {
+        onSuccess: () => {
+          addToast({ type: "success", title: t("play.battle.attackSent"), message: t("play.battle.attackSentMsg") });
+          onClose();
+        },
+        onError: (err) => addToast({ type: "error", title: t("play.battle.attackFailed"), message: err.message }),
+      }
+    );
+  }
+
+  const types: UnitType[] = ["WARRIOR", "ARCHER", "CAVALRY", "SIEGE", "SPY"];
+
+  return (
+    <div className="fixed inset-0 z-[90] grid place-items-center bg-black/75 backdrop-blur-md p-4" onClick={onClose}>
+      <div className="w-[min(420px,calc(100vw-32px))] rounded-2xl border border-etheria-border bg-[#0b1111] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-etheria-border px-5 py-4">
+          <h2 className="font-serif text-lg text-etheria-gold-soft">{t("play.battle.attack")}</h2>
+          <button onClick={onClose} className="rounded-lg border border-etheria-border-dim px-3 py-1 text-xs text-etheria-text-muted hover:text-etheria-gold-soft">{t("play.settings.close")}</button>
+        </div>
+
+        <div className="px-5 py-4 space-y-4">
+          <div className="text-sm text-etheria-text-muted">
+            {t("play.battle.targetCity")}: <span className="text-etheria-gold-soft font-serif">{targetCityName}</span>
+          </div>
+
+          <div className="space-y-2">
+            {types.map((type) => (
+              <div key={type} className="flex items-center gap-3 bg-black/30 border border-etheria-border-dim rounded-xl px-4 py-2.5">
+                <span className="text-lg w-8 text-center">{UNIT_INFO[type].icon}</span>
+                <div className="flex-1">
+                  <div className="text-sm text-white font-serif">{t(UNIT_INFO[type].nameKey)}</div>
+                  <div className="text-[10px] text-etheria-text-dim">{t("play.battle.available")}: {owned(type)}</div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => adjust(type, -10)} disabled={counts[type] === 0} className="w-7 h-7 rounded-lg border border-etheria-border-dim text-white/60 text-sm hover:bg-white/5 disabled:opacity-20">-10</button>
+                  <button onClick={() => adjust(type, -1)} disabled={counts[type] === 0} className="w-7 h-7 rounded-lg border border-etheria-border-dim text-white/60 text-sm hover:bg-white/5 disabled:opacity-20">-1</button>
+                  <span className="w-10 text-center text-white font-bold text-sm">{counts[type]}</span>
+                  <button onClick={() => adjust(type, 1)} disabled={counts[type] >= owned(type)} className="w-7 h-7 rounded-lg border border-etheria-border-dim text-white/60 text-sm hover:bg-white/5 disabled:opacity-20">+1</button>
+                  <button onClick={() => adjust(type, 10)} disabled={counts[type] >= owned(type)} className="w-7 h-7 rounded-lg border border-etheria-border-dim text-white/60 text-sm hover:bg-white/5 disabled:opacity-20">+10</button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={handleSend}
+            disabled={totalSelected === 0 || attackCity.isPending}
+            className="w-full rounded-xl bg-red-600/80 hover:bg-red-600 text-white font-serif py-3 text-sm tracking-wider disabled:opacity-30 transition-colors"
+          >
+            {attackCity.isPending ? t("play.battle.sending") : `⚔️ ${t("play.battle.sendAttack")} (${totalSelected})`}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -646,13 +833,17 @@ function resolveNonOverlappingBuildings<T extends { id: string; type: BuildingTy
 
 /* ─── Mail Modal ─── */
 function MailModal({ onClose, t }: { onClose: () => void; t: (key: string) => string }) {
+  const cityId = useGameStore((s) => s.cityId);
   const { data: mailData, isLoading } = useMailMessages();
   const { data: reportsData, isLoading: reportsLoading } = useGameReports();
+  const { data: battleReportsData } = useBattleReports(cityId);
   const markRead = useMarkReadMail();
   const markReportRead = useMarkGameReportRead();
   const sendMail = useSendMailMessage();
   const addToast = useToastStore((s) => s.addToast);
   const { data: allCities } = useAllCities();
+
+  const battleReports = battleReportsData ?? [];
   
   const [tab, setTab] = useState<"inbox" | "sent" | "reports" | "compose">("inbox");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -698,15 +889,28 @@ function MailModal({ onClose, t }: { onClose: () => void; t: (key: string) => st
             ))}
           </div>
           <div className="space-y-1.5">
-            {tab === "reports" && (reportsData?.reports ?? []).map((report: any) => (
-              <button key={report.id} onClick={() => !report.readAt && markReportRead.mutate(report.id)} className="w-full rounded-xl border border-transparent p-3 text-left transition-all hover:bg-white/5">
-                <div className="mb-1 flex items-center justify-between gap-2">
-                  <span className="truncate font-serif text-xs text-white">{report.title}</span>
-                  {!report.readAt && <span className="h-2 w-2 rounded-full bg-etheria-gold" />}
-                </div>
-                <div className="text-[10px] uppercase tracking-widest text-etheria-gold-soft/50">{report.type}</div>
-              </button>
-            ))}
+            {tab === "reports" && <>
+              {(reportsData?.reports ?? []).map((report: any) => (
+                <button key={`gr-${report.id}`} onClick={() => !report.readAt && markReportRead.mutate(report.id)} className="w-full rounded-xl border border-transparent p-3 text-left transition-all hover:bg-white/5">
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <span className="truncate font-serif text-xs text-white">{report.title}</span>
+                    {!report.readAt && <span className="h-2 w-2 rounded-full bg-etheria-gold" />}
+                  </div>
+                  <div className="text-[10px] uppercase tracking-widest text-etheria-gold-soft/50">{report.type}</div>
+                </button>
+              ))}
+              {battleReports.map((report: any) => (
+                <button key={`br-${report.id}`} className={`w-full rounded-xl border p-3 text-left transition-all ${report.read ? "border-transparent hover:bg-white/5" : "border-etheria-gold/20 bg-etheria-gold/5 hover:bg-etheria-gold/10"}`}>
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <span className="truncate font-serif text-xs text-white">
+                      {report.status === "VICTORY" ? t("play.battle.victory") : t("play.battle.defeat")} vs {report.defenderName ?? report.attackerName}
+                    </span>
+                    {!report.read && <span className="h-2 w-2 rounded-full bg-etheria-gold" />}
+                  </div>
+                  <div className="text-[10px] uppercase tracking-widest text-etheria-gold-soft/50">{t("play.battle.title")}</div>
+                </button>
+              ))}
+            </>}
             {tab !== "compose" && messages.map((m: any) => (
               <button key={m.id} onClick={() => setSelectedId(m.id)} className={`w-full text-left p-3 rounded-xl border transition-all ${selectedId === m.id ? "border-etheria-gold/40 bg-etheria-gold/5" : "border-transparent hover:bg-white/5"}`}>
                 <div className="flex items-center justify-between mb-1">
@@ -738,6 +942,37 @@ function MailModal({ onClose, t }: { onClose: () => void; t: (key: string) => st
                         )}
                       </div>
                       {!report.readAt && <button onClick={() => markReportRead.mutate(report.id)} className="rounded-lg border border-etheria-gold/40 px-3 py-2 text-xs text-etheria-gold-soft">{t("play.reports.markRead")}</button>}
+                    </div>
+                  </article>
+                ))}
+                {battleReports.map((report: any) => (
+                  <article key={`brd-${report.id}`} className="rounded-xl border border-etheria-gold/15 bg-etheria-gold/[0.02] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-widest text-etheria-gold-soft/60">{t("play.battle.title")}</div>
+                        <h3 className={`mt-1 font-serif text-lg ${report.status === "VICTORY" ? "text-etheria-success" : "text-red-400"}`}>
+                          {report.status === "VICTORY" ? t("play.battle.victory") : t("play.battle.defeat")}
+                        </h3>
+                        <p className="mt-1 text-sm text-white/60">
+                          vs {report.defenderName ?? report.attackerName}
+                        </p>
+                        {report.attackerLosses && Object.keys(report.attackerLosses).length > 0 && (
+                          <p className="mt-1 text-[11px] text-white/40">
+                            {t("play.battle.attackerLosses")}: {Object.entries(report.attackerLosses).filter(([, c]: any) => Number(c) > 0).map(([t, c]) => `${c} ${t}`).join(", ")}
+                          </p>
+                        )}
+                        {report.defenderLosses && Object.keys(report.defenderLosses).length > 0 && (
+                          <p className="mt-1 text-[11px] text-white/40">
+                            {t("play.battle.defenderLosses")}: {Object.entries(report.defenderLosses).filter(([, c]: any) => Number(c) > 0).map(([t, c]) => `${c} ${t}`).join(", ")}
+                          </p>
+                        )}
+                        {report.loot && Object.values(report.loot).some((v: any) => Number(v) > 0) && (
+                          <p className="mt-1 text-[11px] text-etheria-gold-soft/70">
+                            {t("play.battle.loot")} 🪙{report.loot.gold} 🪵{report.loot.wood} 🪨{report.loot.stone} 🍖{report.loot.food}
+                          </p>
+                        )}
+                        <div className="mt-2 text-[11px] text-white/35">{new Date(report.createdAt).toLocaleString()}</div>
+                      </div>
                     </div>
                   </article>
                 ))}
@@ -812,9 +1047,16 @@ function BuildingModal({ building, resources, onUpgrade, onTrain, onResearch, is
   const isMaxLevel = building.level >= MAX_BUILDING_LEVEL;
 
   const showTraining = building.type === "BARRACKS" || building.type === "STABLE";
-  const showResearch = building.type === "ACADEMY";
+  const showResearch = building.type === "LIBRARY";
   const showMarket = building.type === "MARKET";
   const cityId = useGameStore((s) => s.cityId);
+
+  if (showTraining) {
+    return <BarracksModal building={building} resources={resources} onUpgrade={onUpgrade} onTrain={onTrain} isUpgrading={isUpgrading} pendingUpgradeBuildingIds={pendingUpgradeBuildingIds} units={units} onClose={onClose} t={t} />;
+  }
+  if (showResearch) {
+    return <LibraryModal building={building} resources={resources} onUpgrade={onUpgrade} onResearch={onResearch} isUpgrading={isUpgrading} pendingUpgradeBuildingIds={pendingUpgradeBuildingIds} cityTechs={cityTechs} activeResearch={activeResearch} techOptions={techOptions} techBonuses={techBonuses} onClose={onClose} t={t} />;
+  }
 
   return (
     <div className="fixed inset-0 z-[80] grid place-items-center bg-black/75 backdrop-blur-md p-4" onClick={onClose}>
@@ -859,14 +1101,6 @@ function BuildingModal({ building, resources, onUpgrade, onTrain, onResearch, is
               </button>
             </section>
 
-            {showTraining && (
-               <TrainingSection buildingType={building.type} units={units} techBonuses={techBonuses} resources={resources} onTrain={onTrain} t={t} />
-            )}
-            
-            {showResearch && (
-               <ResearchSection cityTechs={cityTechs} activeResearch={activeResearch} techOptions={techOptions} resources={resources} onResearch={onResearch} t={t} />
-            )}
-
             {showMarket && (
               <section className="rounded-3xl border border-white/5 bg-white/5">
                 <MarketPanel cityId={cityId} t={t} />
@@ -879,46 +1113,548 @@ function BuildingModal({ building, resources, onUpgrade, onTrain, onResearch, is
   );
 }
 
+function BarracksModal({ building, resources, onUpgrade, onTrain, isUpgrading, pendingUpgradeBuildingIds, units, onClose, t }: any) {
+  const info = BUILDING_INFO[building.type as BuildingType];
+  const name = info ? t(info.nameKey) : building.type;
+  const cost = getUpgradeCost(building.type, building.level);
+  const timeSeconds = getUpgradeTimeSeconds(building.type, building.level);
+  const isMaxLevel = building.level >= MAX_BUILDING_LEVEL;
+
+  const unitTypes: UnitType[] = building.type === "STABLE" ? ["CAVALRY"] : ["WARRIOR", "ARCHER"];
+  const [activeUnit, setActiveUnit] = useState<UnitType>(unitTypes[0]);
+  const [count, setCount] = useState(1);
+
+  function ownedCount(type: UnitType): number {
+    if (!units || !Array.isArray(units)) return 0;
+    return units.filter((u: any) => u.type === type).reduce((s: number, u: any) => s + u.count, 0);
+  }
+
+  const unitCost = getTrainingCost(activeUnit, count);
+  const unitTime = getTrainingTimeSeconds(activeUnit, count);
+
+  return (
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-black/75 backdrop-blur-md p-4" onClick={onClose}>
+      <div className="relative w-full max-w-[640px] overflow-hidden rounded-[40px] border border-etheria-border bg-[#0b1111] shadow-[0_0_100px_rgba(0,0,0,0.5)]" onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute right-6 top-6 z-10 text-white/40 hover:text-white">✕</button>
+
+        {/* Header */}
+        <div className="px-8 pt-8 pb-4">
+          <div className="flex items-center gap-4 mb-2">
+            <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center">
+              <BuildingSprite type={building.type as BuildingType} level={building.level} size={60} />
+            </div>
+            <div>
+              <div className="font-serif text-2xl text-etheria-gold-soft">{name}</div>
+              <div className="text-xs text-white/40">{t("play.building.level")} {building.level}</div>
+            </div>
+          </div>
+          <p className="text-sm text-white/50 mt-2">{t(getBuildingDescriptionKey(building.type))}</p>
+        </div>
+
+        {/* Unit Tabs */}
+        <div className="px-8">
+          <div className="flex gap-2">
+            {unitTypes.map((type) => (
+              <button
+                key={type}
+                onClick={() => { setActiveUnit(type); setCount(1); }}
+                className={`flex-1 py-3 rounded-xl font-serif text-sm transition-all ${
+                  activeUnit === type
+                    ? "bg-etheria-gold/15 border border-etheria-gold/40 text-etheria-gold-soft"
+                    : "bg-white/5 border border-white/5 text-white/40 hover:text-white/70"
+                }`}
+              >
+                {UNIT_INFO[type].icon} {t(UNIT_INFO[type].nameKey)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Unit Stats + Training */}
+        <div className="px-8 py-5">
+          <div className="flex gap-5">
+            {/* Unit Visual */}
+            <div className="shrink-0 w-28 h-28 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center">
+              {UNIT_IMAGE_PATHS[activeUnit] ? (
+                <img src={UNIT_IMAGE_PATHS[activeUnit]} alt="" className="h-20 w-20 object-contain" />
+              ) : (
+                <span className="text-4xl">{UNIT_INFO[activeUnit].icon}</span>
+              )}
+            </div>
+
+            {/* Stats */}
+            <div className="flex-1 space-y-2.5">
+              <div className="grid grid-cols-3 gap-1.5">
+                <div className="bg-black/40 rounded-lg p-2 text-center">
+                  <div className="text-lg font-bold text-red-400">{UNIT_STATS[activeUnit].attack}</div>
+                  <div className="text-[9px] uppercase tracking-wider text-white/30">{t("play.army.atk")}</div>
+                </div>
+                <div className="bg-black/40 rounded-lg p-2 text-center">
+                  <div className="text-lg font-bold text-blue-400">{UNIT_STATS[activeUnit].defense}</div>
+                  <div className="text-[9px] uppercase tracking-wider text-white/30">{t("play.army.def")}</div>
+                </div>
+                <div className="bg-black/40 rounded-lg p-2 text-center">
+                  <div className="text-lg font-bold text-green-400">{UNIT_STATS[activeUnit].hp}</div>
+                  <div className="text-[9px] uppercase tracking-wider text-white/30">{t("play.army.hp")}</div>
+                </div>
+                <div className="bg-black/40 rounded-lg p-2 text-center">
+                  <div className="text-lg font-bold text-amber-400">{UNIT_STATS[activeUnit].speed}</div>
+                  <div className="text-[9px] uppercase tracking-wider text-white/30">{t("play.army.speed")}</div>
+                </div>
+                <div className="bg-black/40 rounded-lg p-2 text-center">
+                  <div className="text-lg font-bold text-purple-400">{UNIT_STATS[activeUnit].carry}</div>
+                  <div className="text-[9px] uppercase tracking-wider text-white/30">{t("play.army.carry")}</div>
+                </div>
+                <div className="bg-black/40 rounded-lg p-2 text-center">
+                  <div className="text-lg font-bold text-orange-400">{UNIT_STATS[activeUnit].armorPenetration}</div>
+                  <div className="text-[9px] uppercase tracking-wider text-white/30">{t("play.army.ap")}</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-black/40 rounded-lg p-2 text-center">
+                  <div className="text-lg font-bold text-etheria-gold-soft">{ownedCount(activeUnit)}</div>
+                  <div className="text-[9px] uppercase tracking-wider text-white/30">{t("play.training.owned")}</div>
+                </div>
+                <div className="bg-black/40 rounded-lg p-2 text-center">
+                  <div className="text-lg font-bold text-white/50">{getTrainingTimeSeconds(activeUnit, 1)}s</div>
+                  <div className="text-[9px] uppercase tracking-wider text-white/30">{t("play.training.timePerUnit")}</div>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 text-[11px]">
+                {Object.entries(UNIT_TRAINING_COST[activeUnit]).filter(([, v]) => Number(v) > 0).map(([res, val]) => (
+                  <span key={res} className="bg-black/40 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5">
+                    <ResourceIconSVG type={res as any} size={12} />
+                    <span className="text-white/70">{formatNumber(val)}</span>
+                  </span>
+                ))}
+                <span className="text-white/30 self-center text-[10px]">each</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Training Controls */}
+        <div className="px-8 pb-2">
+          <div className="flex items-center gap-2 mb-2">
+            {[1, 5, 10].map((n) => (
+              <button
+                key={n}
+                onClick={() => setCount(n)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  count === n ? "bg-etheria-gold/20 border border-etheria-gold/40 text-etheria-gold-soft" : "bg-white/5 border border-white/5 text-white/40 hover:text-white"
+                }`}
+              >
+                x{n}
+              </button>
+            ))}
+            <input
+              type="number"
+              min="1"
+              max="100"
+              value={count}
+              onChange={(e) => setCount(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+              className="w-16 bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white text-center"
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-white/50 mb-4">
+            <span className="text-white/30">{t("play.training.total")}:</span>
+            {Object.entries(unitCost).filter(([, v]) => Number(v) > 0).map(([res, val]) => (
+              <span key={res} className="flex items-center gap-1">
+                <ResourceIconSVG type={res as any} size={11} />
+                <span className={Number(resources[res] ?? 0) >= Number(val) ? "" : "text-red-400"}>{formatNumber(val)}</span>
+              </span>
+            ))}
+            <span>· {formatTime(unitTime)}</span>
+          </div>
+
+          <button
+            onClick={() => onTrain(activeUnit, count)}
+            className="w-full bg-etheria-gold text-black font-bold py-3.5 rounded-2xl hover:bg-white transition-all text-sm tracking-wider"
+          >
+            {t("play.training.train")} {count} {t(UNIT_INFO[activeUnit].nameKey)}
+          </button>
+        </div>
+
+        {/* Upgrade Section */}
+        <div className="px-8 py-5 mt-2 border-t border-white/5">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs text-white/40 uppercase tracking-wider mb-1">{t("play.building.upgrade")} → {t("play.building.level")} {building.level + 1}</div>
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-white/50">
+                {Object.entries(cost).map(([res, val]) => (
+                  <span key={res} className="flex items-center gap-1">
+                    <ResourceIconSVG type={res as any} size={11} />
+                    {formatNumber(val)}
+                  </span>
+                ))}
+                <span>· {formatTime(timeSeconds)}</span>
+              </div>
+            </div>
+            <button
+              onClick={() => onUpgrade(building.id, building.type, building.level)}
+              disabled={isMaxLevel || isUpgrading || pendingUpgradeBuildingIds.includes(building.id)}
+              className="shrink-0 bg-etheria-gold/20 border border-etheria-gold/40 text-etheria-gold-soft font-bold px-5 py-2.5 rounded-xl text-xs hover:bg-etheria-gold/30 transition-all disabled:opacity-25 disabled:cursor-not-allowed"
+            >
+              {isMaxLevel ? t("play.building.maxLevel") : pendingUpgradeBuildingIds.includes(building.id) ? t("play.building.inQueue") : t("play.building.upgrade")}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LibraryModal({ building, resources, onUpgrade, onResearch, isUpgrading, pendingUpgradeBuildingIds, cityTechs, activeResearch, techOptions, techBonuses, onClose, t }: any) {
+  const info = BUILDING_INFO[building.type as BuildingType];
+  const name = info ? t(info.nameKey) : building.type;
+  const cost = getUpgradeCost(building.type, building.level);
+  const timeSeconds = getUpgradeTimeSeconds(building.type, building.level);
+  const isMaxLevel = building.level >= MAX_BUILDING_LEVEL;
+  const [tab, setTab] = useState<"ECONOMY" | "MILITARY" | "DEFENSE">("ECONOMY");
+  const [filterResearched, setFilterResearched] = useState(false);
+
+  const researchedIds = new Set((cityTechs ?? []).map((t: any) => t.techId));
+  const allTechs = (techOptions ?? []).filter((t: any) => {
+    const cat = TECH_INFO[t.techId]?.category;
+    if (cat !== tab) return false;
+    if (filterResearched && !researchedIds.has(t.techId)) return false;
+    return true;
+  });
+
+  const bonusSummary = techBonuses ?? {};
+
+  return (
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-black/75 backdrop-blur-md p-4" onClick={onClose}>
+      <div className="relative w-full max-w-[720px] overflow-hidden rounded-[40px] border border-etheria-border bg-[#0b1111] shadow-[0_0_100px_rgba(0,0,0,0.5)]" style={{ maxHeight: "calc(100vh - 40px)" }} onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute right-6 top-6 z-10 text-white/40 hover:text-white">✕</button>
+
+        {/* Header */}
+        <div className="px-8 pt-8 pb-4">
+          <div className="flex items-center gap-4 mb-2">
+            <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center">
+              <BuildingSprite type={building.type as BuildingType} level={building.level} size={60} />
+            </div>
+            <div>
+              <div className="font-serif text-2xl text-etheria-gold-soft">{name}</div>
+              <div className="text-xs text-white/40">{t("play.building.level")} {building.level}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex" style={{ minHeight: 0 }}>
+          {/* Right side - Tech list */}
+          <div className="flex-1 px-8 pb-4 overflow-y-auto" style={{ maxHeight: "calc(100vh - 340px)" }}>
+            {/* Category tabs */}
+            <div className="flex items-center gap-2 mb-3">
+              {(["ECONOMY", "MILITARY", "DEFENSE"] as const).map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setTab(cat)}
+                  className={`text-[11px] px-3 py-1.5 rounded-full border transition-colors ${
+                    tab === cat ? "border-etheria-gold bg-etheria-gold/10 text-etheria-gold" : "border-white/10 text-white/40 hover:text-white"
+                  }`}
+                >
+                  {t(`play.research.categories.${cat.toLowerCase()}`)}
+                </button>
+              ))}
+              <button
+                onClick={() => setFilterResearched(!filterResearched)}
+                className={`ml-auto text-[10px] px-3 py-1.5 rounded-full border transition-colors ${
+                  filterResearched ? "border-etheria-teal/40 bg-etheria-teal/10 text-etheria-teal" : "border-white/10 text-white/30 hover:text-white"
+                }`}
+              >
+                {t("play.research.researchedOnly")}
+              </button>
+            </div>
+
+            {/* Tech cards */}
+            <div className="space-y-2">
+              {allTechs.map((tech: any) => {
+                const tinfo = TECH_INFO[tech.techId];
+                const iconPath = getTechIconPath(tech.techId);
+                const researched = researchedIds.has(tech.techId);
+                const active = activeResearch?.techId === tech.techId || activeResearch?.id === tech.techId;
+                const isMax = (tech.currentLevel ?? 0) >= (tech.maxLevel ?? 1);
+                const ncost = tech.nextLevelCost ?? {};
+                const ntime = tech.nextLevelTime ?? 0;
+                const hasCost = Object.values(ncost).some((v: any) => Number(v) > 0);
+
+                return (
+                  <div key={tech.techId} className={`rounded-2xl border p-4 transition-colors ${
+                    active ? "border-etheria-gold/50 bg-etheria-gold/5" :
+                    researched ? "border-etheria-teal/20 bg-etheria-teal/[0.03]" :
+                    "border-white/5 bg-black/30"
+                  }`}>
+                    <div className="flex items-start gap-3">
+                      <div className="shrink-0 w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden">
+                        {iconPath ? (
+                          <img src={iconPath} alt="" className="h-8 w-8 object-contain" />
+                        ) : (
+                          <span className="text-xs text-white/50">{tinfo?.icon ?? "?"}</span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="font-serif text-white text-sm">{t(tinfo?.nameKey ?? tech.techId)}</span>
+                          <span className="text-[10px] text-white/30">Lv {tech.currentLevel}/{tech.maxLevel}</span>
+                          {active && <span className="text-[9px] text-etheria-success bg-etheria-success/10 px-1.5 py-0.5 rounded-full">{t("play.research.researching")}</span>}
+                          {isMax && <span className="text-[9px] text-white/30 bg-white/5 px-1.5 py-0.5 rounded-full">{t("play.research.max")}</span>}
+                          {researched && !isMax && !active && <span className="text-[9px] text-etheria-teal/70 bg-etheria-teal/10 px-1.5 py-0.5 rounded-full">Lv {tech.currentLevel}</span>}
+                        </div>
+                        <p className="text-[11px] text-white/50 leading-relaxed">{t(tinfo?.descriptionKey ?? "")}</p>
+
+                        {hasCost && !isMax && !active && (
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+                            <span className="text-[10px] text-white/30">{t("play.research.cost")}:</span>
+                            {Object.entries(ncost).filter(([, v]) => Number(v) > 0).map(([res, val]) => (
+                              <span key={res} className={`text-[10px] flex items-center gap-1 ${Number(resources[res] ?? 0) >= Number(val) ? "text-white/60" : "text-red-400"}`}>
+                                <ResourceIconSVG type={res as any} size={10} />
+                                {formatNumber(Number(val))}
+                              </span>
+                            ))}
+                            <span className="text-[10px] text-white/30">· {formatTime(ntime)}</span>
+                          </div>
+                        )}
+                      </div>
+                      {!isMax && !active && (
+                        <button
+                          onClick={() => onResearch(tech.techId)}
+                          disabled={!tech.canResearch}
+                          className={`shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold tracking-wider transition-colors ${
+                            tech.canResearch
+                              ? "bg-etheria-teal/70 hover:bg-etheria-teal text-white"
+                              : "bg-white/5 text-white/20 cursor-not-allowed"
+                          }`}
+                        >
+                          {tech.canResearch ? t("play.research.researchBtn") : t("play.research.locked")}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Tech Bonuses Summary */}
+        <div className="px-8 py-4 border-t border-white/5 bg-white/[0.02]">
+          <h3 className="text-[10px] uppercase tracking-widest text-white/30 mb-3">{t("play.research.activeBonuses")}</h3>
+          <div className="flex flex-wrap gap-3 text-[10px]">
+            {Object.entries(bonusSummary.resourceProdBonus ?? {}).map(([res, val]: any) => (
+              <span key={`res-${res}`} className="flex items-center gap-1 bg-white/5 rounded-lg px-2.5 py-1.5">
+                <ResourceIconSVG type={res as any} size={11} />
+                <span className="text-etheria-success font-bold">+{Math.round(Number(val) * 100 - 100)}%</span>
+              </span>
+            ))}
+            {Number(bonusSummary.trainingCostReduction) > 0 && (
+              <span className="bg-white/5 rounded-lg px-2.5 py-1.5 text-etheria-success">🎯 -{Math.round(Number(bonusSummary.trainingCostReduction) * 100)}% train cost</span>
+            )}
+            {Number(bonusSummary.wallBonusMultiplier) > 1 && (
+              <span className="bg-white/5 rounded-lg px-2.5 py-1.5 text-etheria-success">🛡️ Wall x{Number(bonusSummary.wallBonusMultiplier).toFixed(2)}</span>
+            )}
+            {Number(bonusSummary.towerDamageBonus) > 0 && (
+              <span className="bg-white/5 rounded-lg px-2.5 py-1.5 text-etheria-success">🗼 Tower +{bonusSummary.towerDamageBonus}</span>
+            )}
+            {Object.entries(bonusSummary.unitAttackBonus ?? {}).filter(([, v]: any) => Number(v) > 1).map(([unit, val]: any) => (
+              <span key={`atk-${unit}`} className="bg-white/5 rounded-lg px-2.5 py-1.5 text-amber-400">{UNIT_INFO[unit as UnitType]?.icon ?? unit} Atk x{Number(val).toFixed(1)}</span>
+            ))}
+            {Object.entries(bonusSummary.unitDefenseBonus ?? {}).filter(([, v]: any) => Number(v) > 1).map(([unit, val]: any) => (
+              <span key={`def-${unit}`} className="bg-white/5 rounded-lg px-2.5 py-1.5 text-blue-400">{UNIT_INFO[unit as UnitType]?.icon ?? unit} Def x{Number(val).toFixed(1)}</span>
+            ))}
+            {Object.entries(bonusSummary.unitHpBonus ?? {}).filter(([, v]: any) => Number(v) > 1).map(([unit, val]: any) => (
+              <span key={`hp-${unit}`} className="bg-white/5 rounded-lg px-2.5 py-1.5 text-green-400">{UNIT_INFO[unit as UnitType]?.icon ?? unit} HP x{Number(val).toFixed(1)}</span>
+            ))}
+            {Object.entries(bonusSummary.unitSpeedBonus ?? {}).filter(([, v]: any) => Number(v) > 1).map(([unit, val]: any) => (
+              <span key={`spd-${unit}`} className="bg-white/5 rounded-lg px-2.5 py-1.5 text-amber-300">{UNIT_INFO[unit as UnitType]?.icon ?? unit} Spd x{Number(val).toFixed(1)}</span>
+            ))}
+          </div>
+        </div>
+
+        {/* Upgrade */}
+        <div className="px-8 py-4 border-t border-white/5">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs text-white/40 uppercase tracking-wider mb-1">{t("play.building.upgrade")} → {t("play.building.level")} {isMaxLevel ? "MAX" : building.level + 1}</div>
+              {!isMaxLevel && (
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-white/50">
+                  {Object.entries(cost).map(([res, val]) => (
+                    <span key={res} className="flex items-center gap-1">
+                      <ResourceIconSVG type={res as any} size={11} />
+                      {formatNumber(Number(val))}
+                    </span>
+                  ))}
+                  <span>· {formatTime(timeSeconds)}</span>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => onUpgrade(building.id, building.type, building.level)}
+              disabled={isMaxLevel || isUpgrading || pendingUpgradeBuildingIds.includes(building.id)}
+              className="shrink-0 bg-etheria-gold/20 border border-etheria-gold/40 text-etheria-gold-soft font-bold px-5 py-2.5 rounded-xl text-xs hover:bg-etheria-gold/30 transition-all disabled:opacity-25 disabled:cursor-not-allowed"
+            >
+              {isMaxLevel ? t("play.building.maxLevel") : pendingUpgradeBuildingIds.includes(building.id) ? t("play.building.inQueue") : t("play.building.upgrade")}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TrainingSection({ buildingType, units, techBonuses, resources, onTrain, t }: any) {
   const [count, setCount] = useState(1);
   const unitTypes: UnitType[] = buildingType === "STABLE" ? ["CAVALRY"] : ["WARRIOR", "ARCHER"];
+
+  function ownedCount(type: UnitType): number {
+    if (!units || !Array.isArray(units)) return 0;
+    return units.filter((u: any) => u.type === type).reduce((sum: number, u: any) => sum + u.count, 0);
+  }
+
   return (
     <section className="bg-white/5 rounded-3xl p-6 border border-white/5">
       <h3 className="font-serif text-lg text-white uppercase tracking-widest mb-4">{t("play.training.title")}</h3>
-      <div className="grid grid-cols-3 gap-2 mb-4">
-        {unitTypes.map(type => (
-          <button key={type} onClick={() => onTrain(type, count)} className="bg-black/40 border border-white/5 rounded-xl p-3 flex flex-col items-center hover:bg-etheria-gold/10 transition-colors">
-            {UNIT_IMAGE_PATHS[type] ? (
-              <img src={UNIT_IMAGE_PATHS[type]} alt="" className="mb-1 h-16 w-16 object-contain" draggable={false} />
-            ) : (
-              <span className="text-2xl mb-1">{UNIT_INFO[type].icon}</span>
-            )}
-            <span className="text-[10px] text-white/60 text-center">{t(UNIT_INFO[type].nameKey)}</span>
-          </button>
-        ))}
+
+      <div className="space-y-4">
+        {unitTypes.map((type) => {
+          const owned = ownedCount(type);
+          const cost = getTrainingCost(type, count);
+          const time = getTrainingTimeSeconds(type, count);
+          return (
+            <div key={type} className="bg-black/40 border border-white/5 rounded-2xl p-4">
+              <div className="flex items-center gap-4">
+                <div className="shrink-0 w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center">
+                  {UNIT_IMAGE_PATHS[type] ? (
+                    <img src={UNIT_IMAGE_PATHS[type]} alt="" className="h-12 w-12 object-contain" />
+                  ) : (
+                    <span className="text-2xl">{UNIT_INFO[type].icon}</span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-serif text-white text-sm">{t(UNIT_INFO[type].nameKey)}</span>
+                    <span className="text-[11px] text-white/40">({t("play.training.owned")}: {ownedCount(type)})</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-white/50">
+                    {Object.entries(cost).filter(([, v]) => Number(v) > 0).map(([res, val]) => (
+                      <span key={res} className="flex items-center gap-1">
+                        <ResourceIconSVG type={res as any} size={12} />
+                        {formatNumber(val)}
+                      </span>
+                    ))}
+                    <span className="text-white/30">· {formatTime(time)}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => onTrain(type, count)}
+                  className="shrink-0 bg-etheria-gold/80 hover:bg-etheria-gold text-black font-bold px-5 py-2.5 rounded-xl text-xs tracking-wider transition-colors"
+                >
+                  {t("play.training.train")} x{count}
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
-      <div className="flex items-center gap-4">
-        <input type="number" min="1" max="100" value={count} onChange={(e) => setCount(Number(e.target.value))} className="flex-1 bg-black/40 border border-white/5 rounded-xl p-3 text-white text-center" />
-        <span className="text-white/40 text-xs">Cant.</span>
+
+      <div className="mt-4 flex items-center gap-3">
+        <span className="text-[11px] text-white/40">{t("play.training.quantity")}</span>
+        <input type="range" min="1" max="50" value={count} onChange={(e) => setCount(Number(e.target.value))} className="flex-1 h-1 accent-etheria-gold/80 cursor-pointer" />
+        <span className="text-sm font-mono text-white w-8 text-center">{count}</span>
       </div>
     </section>
   );
 }
 
 function ResearchSection({ cityTechs, activeResearch, techOptions, resources, onResearch, t }: any) {
+  const [tab, setTab] = useState<"ECONOMY" | "MILITARY" | "DEFENSE">("ECONOMY");
+  const techs = (techOptions ?? []).filter((t: any) => {
+    const info = TECH_INFO[t.techId];
+    return info && info.category === tab;
+  });
+
   return (
     <section className="bg-white/5 rounded-3xl p-6 border border-white/5">
       <h3 className="font-serif text-lg text-white uppercase tracking-widest mb-4">{t("play.research.title")}</h3>
-      <div className="space-y-2">
-        {techOptions?.map((tech: any) => (
-          <div key={tech.techId} className="bg-black/40 border border-white/5 rounded-xl p-4 flex items-center justify-between">
-            <div>
-              <div className="text-white text-sm font-serif">{tech.name}</div>
-              <div className="text-[10px] text-white/40">Nivel {tech.currentLevel}</div>
-            </div>
-            <button onClick={() => onResearch(tech.techId)} disabled={!tech.canResearch} className="bg-etheria-teal text-white text-[10px] px-4 py-2 rounded-lg disabled:opacity-20">Investigar</button>
-          </div>
+
+      <div className="flex gap-1 mb-5">
+        {(["ECONOMY", "MILITARY", "DEFENSE"] as const).map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setTab(cat)}
+            className={`flex-1 text-[10px] py-1.5 rounded-full border transition-colors ${
+              tab === cat ? "border-etheria-gold bg-etheria-gold/10 text-etheria-gold" : "border-white/10 text-white/40 hover:text-white"
+            }`}
+          >
+            {t(`play.research.categories.${cat.toLowerCase()}`)}
+          </button>
         ))}
+      </div>
+
+      <div className="space-y-3 max-h-[400px] overflow-y-auto">
+        {techs.length === 0 && (
+          <div className="text-[11px] text-white/30 text-center py-4">{t("play.research.empty")}</div>
+        )}
+        {techs.map((tech: any) => {
+          const info = TECH_INFO[tech.techId];
+          const iconPath = getTechIconPath(tech.techId);
+          const active = activeResearch?.techId === tech.techId || activeResearch?.id === tech.techId;
+          const isMax = (tech.currentLevel ?? 0) >= (tech.maxLevel ?? 1);
+          const cost = tech.nextLevelCost ?? {};
+          const time = tech.nextLevelTime ?? 0;
+          const hasCost = Object.values(cost).some((v: any) => Number(v) > 0);
+
+          return (
+            <div key={tech.techId} className={`bg-black/40 border rounded-2xl p-4 transition-colors ${active ? "border-etheria-gold/50 bg-etheria-gold/5" : "border-white/5"}`}>
+              <div className="flex items-start gap-3">
+                <div className="shrink-0 w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden">
+                  {iconPath ? (
+                    <img src={iconPath} alt="" className="h-9 w-9 object-contain" />
+                  ) : (
+                    <span className="text-xs text-white/50">{info?.icon ?? "?"}</span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="font-serif text-white text-sm">{t(info?.nameKey ?? tech.techId)}</span>
+                    <span className="text-[10px] text-white/30">Lv {tech.currentLevel}/{tech.maxLevel}</span>
+                    {active && <span className="text-[9px] text-etheria-success bg-etheria-success/10 px-1.5 py-0.5 rounded-full">{t("play.research.researching")}</span>}
+                    {isMax && <span className="text-[9px] text-white/30 bg-white/5 px-1.5 py-0.5 rounded-full">{t("play.research.max")}</span>}
+                  </div>
+                  <p className="text-[11px] text-white/50 leading-relaxed mb-2">{t(info?.descriptionKey ?? "")}</p>
+
+                  {hasCost && !isMax && !active && (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2">
+                      <span className="text-[10px] text-white/30">{t("play.research.cost")}:</span>
+                      {Object.entries(cost).filter(([, v]) => Number(v) > 0).map(([res, val]) => (
+                        <span key={res} className={`text-[10px] flex items-center gap-1 ${Number(resources[res] ?? 0) >= Number(val) ? "text-white/60" : "text-red-400"}`}>
+                          <ResourceIconSVG type={res as any} size={10} />
+                          {formatNumber(Number(val))}
+                        </span>
+                      ))}
+                      <span className="text-[10px] text-white/30">· {formatTime(time)}</span>
+                    </div>
+                  )}
+
+                  {!isMax && !active && (
+                    <button
+                      onClick={() => onResearch(tech.techId)}
+                      disabled={!tech.canResearch}
+                      className={`mt-1 px-4 py-1.5 rounded-lg text-[10px] font-bold tracking-wider transition-colors ${
+                        tech.canResearch
+                          ? "bg-etheria-teal/70 hover:bg-etheria-teal text-white"
+                          : "bg-white/5 text-white/20 cursor-not-allowed"
+                      }`}
+                    >
+                      {tech.canResearch ? t("play.research.researchBtn") : tech.researchBlockedReason || t("play.research.locked")}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

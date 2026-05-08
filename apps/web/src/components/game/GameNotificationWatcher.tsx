@@ -22,6 +22,8 @@ const reportIconByType: Record<GameReportType, ToastIcon> = {
   MARKET: "market",
   QUEST: "quest",
   SPY_INTEL: "spy",
+  INCOMING_ATTACK: "battle",
+  SPY_DETECTED: "spy",
 };
 
 const reportToastTypeByType: Record<GameReportType, ToastType> = {
@@ -33,6 +35,8 @@ const reportToastTypeByType: Record<GameReportType, ToastType> = {
   MARKET: "success",
   QUEST: "success",
   SPY_INTEL: "info",
+  INCOMING_ATTACK: "error",
+  SPY_DETECTED: "warning",
 };
 
 function rememberInitial(ids: string[], seen: MutableRefObject<Set<string>>, ready: MutableRefObject<boolean>) {

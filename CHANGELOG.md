@@ -15,6 +15,71 @@ Each release is named after a legendary era in the world of Etheria.
 
 ---
 
+## [0.2.3] - El Eco de las Batallas - 2026-05-08
+
+> *"El clamor del acero resuena en los valles. Cada ataque deja su marca, cada espia su sombra, cada estacion su huella. Los reinos que escuchan sobreviven."*
+
+### Added
+- **[AUDIO] Sistema de musica ambiente con Web Audio API**
+  - Motor de audio con `AudioContext` nativo: cache de buffers decodificados, `GainNode` para volumen sin reiniciar tracks, manejo de politica de autoplay via unlock en primer gesture.
+  - Reproduccion aleatoria de los 10 tracks .ogg; al terminar uno, pausa de 30-90s y elige otro del pool.
+  - Al cambiar de ruta o de vista (pueblo ↔ mapa), corta el track actual y arranca uno nuevo desde 0.
+  - `audioStore` con `isUnlocked` + `unlock()`, persistencia en localStorage; controles en `SettingsModal`.
+  - `MusicController` integrado en layout raiz; `data/audioTracks.ts` para agregar/quitar archivos sin tocar logica.
+- **[NOTIFICATIONS] Reportes de ataque entrante y deteccion de espionaje**
+  - Al lanzar un ataque PvP, el defensor recibe un `GameReport` tipo `INCOMING_ATTACK` con ETA y composicion de tropas. Toast inmediato via `GameNotificationWatcher`.
+  - Al espiar una ciudad, chance de deteccion: 15% base + TOWER×5% + SPY_NETWORK +10% (max 85%). Si detectado, el objetivo recibe `SPY_DETECTED`.
+  - Al resolverse la batalla, el reporte de incoming attack se marca como leido automaticamente.
+- **[UI] SeasonHUD redisenado**
+  - Muestra temporada actual con emoji, fase, modificadores de recursos (+/-X% coloreados), barra de intensidad y tiempo restante.
+  - Efecto de winter pressure visible ("Las tropas consumen comida").
+  - Integrado en la barra superior de recursos, visible en /play y /mapa.
+- **[UI] Modales de cuartel y biblioteca redisenados**
+  - Cuartel/Establo: modal dedicado sin scroll con tabs por tipo de unidad, grid de stats (Atk/Def/HP/Speed/Carry/AP), selector de cantidad x1/x5/x10, costo total + tiempo, upgrade compacto.
+  - Biblioteca: modal dedicado con tabs por categoria, toggle "Investigadas", stats de cada tech (nivel, costo, tiempo), panel de Bonos Activos mostrando todos los efectos acumulados.
+- **[UI] Reportes de batalla integrados en el modal de mensajes**
+  - La pestana "Reports" ahora muestra tanto game reports como battle reports (resultado, losses, loot), que antes eran invisibles.
+
+### Fixed
+- **[UI] i18n faltante**
+  - Agregados keys `play.mail.compose`, `play.mail.selectRecipient`, `play.battle.selectTroops`, `play.battle.available`, `play.army.speed/carry/ap`, `play.research.*`, `play.training.*`, `play.seasons.*`.
+  - Todos los textos del SeasonHUD ahora usan i18n (EN/ES completo).
+- **[UI] Modal de biblioteca roto**
+  - Corregido `showResearch` que chequeaba `"ACADEMY"` (building inexistente) en vez de `"LIBRARY"`.
+- **[UI] Modal de cuartel sin conteo de tropas**
+  - `TrainingSection` ahora muestra las unidades entrenadas por tipo antes de los botones de entrenar.
+
+### Changed
+- **[WORLD] Velocidades de viaje rebalanceadas**
+  - Warrior: 60→160, Archer: 50→130, Cavalry: 120→280, Siege: 20→70, Spy: 200→400, Trade: 100→200.
+  - Animacion de viaje ahora dura lo mismo que el viaje real (quitado cap de 8 min).
+  - Aplicado retroactivamente a movimientos activos preservando progreso proporcional.
+- **[WORLD] Terrain overlay desactivado** (los rectangulos semi-transparentes ya no se renderizan).
+
+### Bots — Overhaul completo
+- **[BOTS] No atacan otros bots** (excluidos de la lista de targets).
+- **[BOTS] ERROR recovery con backoff exponencial**: bots en ERROR se resetean a ACTIVE con cooldown creciente (15min→30min→60min→120min).
+- **[BOTS] Logica de defensa**: al detectar ataques entrantes, priorizan TOWER/BARRACKS/STABLE y cancelan ofensivas.
+- **[BOTS] Spy intelligence**: si target fue espiado y tiene poder >1.5x, lo evitan.
+- **[BOTS] Tropas en marcha no cuentan como disponibles** para nuevos ataques.
+- **[BOTS] Memorias de decision**: `actionLog` de 20 entradas en state; `consecutiveLosses >= 2` cancela ataques (resetea tras 30min).
+- **[BOTS] Market accept incluye fee** en el calculo de recursos.
+- **[BOTS] Trade solo a aliados**: `chooseTrade` envia recursos solo a miembros de la misma alianza.
+- **[BOTS] Chat pool**: 20+ frases variadas por perfil y canal.
+- **[BOTS] Research usa categoria** (`ECONOMY/MILITARY/DEFENSE`) en vez de regex en ingles.
+- **[BOTS] ECONOMIST puede unirse a alianzas**.
+- **[BOTS] Tropas de ataque reducidas**: 50%→30% (MILITARIST 40%).
+- **[BOTS] `favoredTargets` usado**: prioriza targets exitosos, anti-bullying cooldown x2 tras 3+.
+- **[BOTS] Post-raid rebuild**: prioriza STORAGE/TOWER/FARM tras saqueo.
+- **[BOTS] Adaptacion estacional completa**: SUMMER→GOLD_MINE/BARRACKS, AUTUMN→FARM/STORAGE, SPRING→TOWN_HALL/LUMBER_MILL, WINTER→FARM/STORAGE.
+- **[BOTS] Reconstruccion de edificios destruidos**.
+- **[BOTS] TECH_RUSHER prioriza unlocks** (`HORSE_BREEDING`, `SIEGE_ENGINEERING`, `SPY_NETWORK`).
+- **[BOTS] Composicion de tropas variada**: entrena tipo con menos unidades.
+- **[BOTS] Build order aleatorio** por bot + TOWER proactivo cada 6 upgrades.
+- **[BOTS] Mail templates** variados por perfil.
+- **[BOTS] Barbarian hunt por nivel** apropiado.
+- **[BOTS] Query optimization**: limit en battles + config `BOT_ERROR_RECOVERY_MINUTES` / `BOT_METRICS_WINDOW_MINUTES`.
+
 ## [0.2.2] - El Mercado de los Reinos - 2026-05-08
 
 > *"El oro corre mas rapido que la sangre, y las noticias mas rapido que el oro. Los reinos que dominan el comercio y la informacion gobiernan Etheria."*
@@ -556,11 +621,13 @@ Each release is named after a legendary era in the world of Etheria.
 | 0.0.1 | **La Fundación de Etheria** | The First Cities |
 | 0.0.2 | **Las Primeras Guerras** | Military & Warfare |
 | 0.0.3 | *La Forja de Armas* | Advanced Units & Gear |
+| 0.0.4 | **La Diplomacia de los Reinos** | Alliances & Chat |
 | 0.1.0 | **La Resistencia del Invierno** | Seasons & Barbarians |
 | 0.1.1 | **La Puerta de Etheria** | Public Web & Landing |
 | 0.2.0 | **El Mapa Viviente** | Live World & Smart Bots |
 | 0.2.1 | **El Taller de Colas** | Queue Workshop |
 | 0.2.2 | **El Mercado de los Reinos** | Market, Reports & Espionage |
+| 0.2.3 | **El Eco de las Batallas** | Audio, Notifications & Bot AI |
 | 0.3.0 | *Las Ruinas Olvidadas* | Exploration & PvE |
 | 0.4.0 | *El Pacto de Sangre* | Diplomacy & Alliances |
 | 0.5.0 | *La Edad de los Héroes* | Heroes & Quests |

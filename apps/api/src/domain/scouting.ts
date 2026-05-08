@@ -2,6 +2,27 @@ import { db, COLLECTIONS } from "../infrastructure/matecito.js";
 import { mergeRecordBySelector } from "../infrastructure/matecitoRecord.js";
 import { createGameReport } from "./reports.js";
 
+async function checkSpyDetection(targetCityId: string): Promise<boolean> {
+  const buildingsRes = await db.from(COLLECTIONS.BUILDINGS).eq("cityId", targetCityId).get() as any;
+  const tower = (buildingsRes.data ?? []).find((b: any) => b.type === "TOWER");
+  const towerLevel = tower?.level ?? 0;
+
+  const techsRes = await db.from(COLLECTIONS.CITY_TECHS).eq("cityId", targetCityId).get() as any;
+  const hasSpyNetwork = (techsRes.data ?? []).some((t: any) => t.techId === "SPY_NETWORK" && (t.level ?? 0) > 0);
+
+  const baseChance = 0.15;
+  const towerBonus = towerLevel * 0.05;
+  const techBonus = hasSpyNetwork ? 0.10 : 0;
+  const detectionChance = Math.min(0.85, baseChance + towerBonus + techBonus);
+
+  return Math.random() < detectionChance;
+}
+
+async function getCityUserId(cityId: string): Promise<string | null> {
+  const cityRes = await db.from(COLLECTIONS.CITIES).eq("id", cityId).getFirst() as any;
+  return cityRes.data?.userId ?? null;
+}
+
 export async function scoutTarget(userId: string, input: { cityId: string; targetType: "CITY" | "BARBARIAN_CAMP"; targetId: string }) {
   const cityRes = await db.from(COLLECTIONS.CITIES).eq("id", input.cityId).getFirst() as any;
   const city = cityRes.data;
@@ -58,6 +79,26 @@ export async function scoutTarget(userId: string, input: { cityId: string; targe
   }
 
   await mergeRecordBySelector(COLLECTIONS.UNITS, spy, { count: Number(spy.count ?? 0) - 1 });
+
+  if (input.targetType === "CITY") {
+    const detected = await checkSpyDetection(input.targetId);
+    if (detected) {
+      const targetUserId = await getCityUserId(input.targetId);
+      if (targetUserId) {
+        const targetCityRes = await db.from(COLLECTIONS.CITIES).eq("id", input.targetId).getFirst() as any;
+        const targetName = targetCityRes.data?.name ?? "Unknown";
+        await createGameReport({
+          type: "SPY_DETECTED",
+          userId: targetUserId,
+          cityId: input.targetId,
+          title: "Spy detected!",
+          summary: `An enemy spy was spotted near ${targetName}. They may have gathered intelligence about your city.`,
+          payload: { scoutCityId: input.cityId, targetCityId: input.targetId, detectedAt: new Date().toISOString() },
+        });
+      }
+    }
+  }
+
   const report = await createGameReport({
     type: "SPY_INTEL",
     userId,

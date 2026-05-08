@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useI18n } from "@/i18n";
 import { useMatecitoAuth } from "@/hooks/useMatecitoAuth";
 import { useRouter } from "next/navigation";
+import { useAudioStore } from "@/stores/audioStore";
 
 interface Props {
   onClose: () => void;
@@ -14,6 +15,7 @@ export function SettingsModal({ onClose }: Props) {
   const auth = useMatecitoAuth();
   const router = useRouter();
   const modalRef = useRef<HTMLDivElement>(null);
+  const { musicVolume, isMuted, setMusicVolume, toggleMute } = useAudioStore();
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -77,6 +79,39 @@ export function SettingsModal({ onClose }: Props) {
                   {opt.label}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Audio */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <label className="block text-[11px] font-serif uppercase tracking-[0.1em] text-etheria-text-muted">
+                {t("play.settings.audio")}
+              </label>
+              <button
+                onClick={toggleMute}
+                className={`rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  isMuted
+                    ? "border-red-500/30 bg-red-500/10 text-red-400"
+                    : "border-etheria-teal/40 bg-etheria-teal/10 text-etheria-gold-soft"
+                }`}
+              >
+                {isMuted ? t("play.settings.unmute") : t("play.settings.mute")}
+              </button>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] text-etheria-text-muted">🔈</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={musicVolume}
+                onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
+                className="h-1 flex-1 appearance-none rounded-full bg-etheria-border-dim accent-etheria-teal/80 cursor-pointer"
+                disabled={isMuted}
+              />
+              <span className="text-[11px] text-etheria-text-muted">🔊</span>
             </div>
           </div>
 

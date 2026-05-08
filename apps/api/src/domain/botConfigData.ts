@@ -44,6 +44,8 @@ export type BotSimulationConfig = {
   chatRateLimitWindowMs: number;
   allianceCenterRequiredLevel: number;
   attackCooldownRangeMinutes: [number, number];
+  errorRecoveryMinutes: number;
+  metricsWindowMinutes: number;
   profiles: BotProfile[];
   profileWeights: Record<BotProfile, BotProfileWeights>;
 };
@@ -76,6 +78,8 @@ export function getBotSimulationConfig(): BotSimulationConfig {
     allianceContributionChance: readNumber("BOT_ALLIANCE_CONTRIBUTION_CHANCE", 0.16),
     chatRateLimitWindowMs: readNumber("BOT_CHAT_RATE_LIMIT_WINDOW_MS", 120_000),
     allianceCenterRequiredLevel: readNumber("BOT_ALLIANCE_CENTER_REQUIRED_LEVEL", 5),
+    errorRecoveryMinutes: readNumber("BOT_ERROR_RECOVERY_MINUTES", 15),
+    metricsWindowMinutes: readNumber("BOT_METRICS_WINDOW_MINUTES", 15),
     attackCooldownRangeMinutes: [
       readNumber("BOT_ATTACK_COOLDOWN_RANGE_MIN", 20),
       readNumber("BOT_ATTACK_COOLDOWN_RANGE_MAX", 60),

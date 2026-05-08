@@ -38,12 +38,18 @@ export const changelogReleases: ChangelogRelease[] = [
           "changelog.items.0.2.2.added.11",
           "changelog.items.0.2.2.added.12",
           "changelog.items.0.2.2.added.13",
+          "changelog.items.0.2.2.added.14",
+          "changelog.items.0.2.2.added.15",
+          "changelog.items.0.2.2.added.16",
+          "changelog.items.0.2.2.added.17",
+          "changelog.items.0.2.2.added.18"
         ],
         internalItemKeys: [
           "changelog.items.0.2.2.added.0",
-          "changelog.items.0.2.2.added.1",
-          "changelog.items.0.2.2.added.10",
-          "changelog.items.0.2.2.added.12",
+          "changelog.items.0.2.2.added.4",
+          "changelog.items.0.2.2.added.9",
+          "changelog.items.0.2.2.added.16",
+          "changelog.items.0.2.2.added.18"
         ],
       },
       {
@@ -51,8 +57,9 @@ export const changelogReleases: ChangelogRelease[] = [
         itemKeys: [
           "changelog.items.0.2.2.fixed.0",
           "changelog.items.0.2.2.fixed.1",
+          "changelog.items.0.2.2.fixed.2"
         ],
-      },
+      }
     ],
   },
   {

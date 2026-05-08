@@ -378,6 +378,8 @@ export const GameReportTypeSchema = z.enum([
   "MARKET",
   "QUEST",
   "SPY_INTEL",
+  "INCOMING_ATTACK",
+  "SPY_DETECTED",
 ]);
 
 export type GameReportType = z.infer<typeof GameReportTypeSchema>;

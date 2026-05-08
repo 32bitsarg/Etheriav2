@@ -4,7 +4,7 @@ import { db, COLLECTIONS } from "../infrastructure/matecito.js";
 import { mergeRecordByLogicalId } from "../infrastructure/matecitoRecord.js";
 import { createStarterCityForUser } from "./cityCreation.js";
 import { getBotSimulationConfig, type BotSimulationConfig } from "./botConfigData.js";
-import { botActionType, decideBotAction, type BotActionType, type BotDecision } from "./botDecisionEngine.js";
+import { botActionType, decideBotAction, type BotActionType, type BotDecision, updateBotMemory } from "./botDecisionEngine.js";
 import { createBotRecord, listBots, listDueBots, listRecentBotLogs, logBotAction, updateBotRecord, writeBotMetrics } from "./botRepository.js";
 import {
   attackCityAction,
@@ -119,7 +119,7 @@ async function loadBotSnapshot(bot: { cityId: string; userId: string; state: any
   const protectionCutoff = new Date(now.getTime() - config.newPlayerProtectionHours * 60 * 60 * 1000);
   const globalCooldownCutoff = new Date(now.getTime() - config.globalTargetCooldownMinutes * 60 * 1000);
 
-  const [cityRes, buildingsRes, unitsRes, cityTechsRes, buildQueuesRes, trainingQueuesRes, researchQueuesRes, battlesRes, targetsRes, barbarianCampsRes, recentGlobalBattlesRes, seasonRes, membershipRes, alliancesRes, marketOffersRes] = await Promise.all([
+  const [cityRes, buildingsRes, unitsRes, cityTechsRes, buildQueuesRes, trainingQueuesRes, researchQueuesRes, battlesRes, targetsRes, barbarianCampsRes, recentGlobalBattlesRes, seasonRes, membershipRes, alliancesRes, marketOffersRes, allBotsRes] = await Promise.all([
     db.from(COLLECTIONS.CITIES).eq("id", bot.cityId).getFirst() as any,
     db.from(COLLECTIONS.BUILDINGS).eq("cityId", bot.cityId).get() as any,
     db.from(COLLECTIONS.UNITS).eq("cityId", bot.cityId).get() as any,
@@ -130,11 +130,12 @@ async function loadBotSnapshot(bot: { cityId: string; userId: string; state: any
     db.from(COLLECTIONS.BATTLES).eq("attackerCityId", bot.cityId).get() as any,
     db.from(COLLECTIONS.CITIES).limit(200).get() as any,
     db.from(COLLECTIONS.BARBARIAN_CAMPS).eq("status", "ACTIVE").get() as any,
-    db.from(COLLECTIONS.BATTLES).get() as any, 
+    db.from(COLLECTIONS.BATTLES).limit(200).get() as any, 
     db.from(COLLECTIONS.WORLD_SEASON_STATE).getFirst() as any,
     db.from(COLLECTIONS.ALLIANCE_MEMBERS).eq("userId", bot.userId).getFirst() as any,
     db.from(COLLECTIONS.ALLIANCES).limit(100).get() as any,
     db.from(COLLECTIONS.MARKET_OFFERS).eq("status", "OPEN").limit(100).get() as any,
+    db.from(COLLECTIONS.BOT_PLAYERS).get() as any,
   ]);
 
   if (!cityRes.data) throw new Error(`Bot city not found: ${bot.cityId}`);
@@ -147,9 +148,12 @@ async function loadBotSnapshot(bot: { cityId: string; userId: string; state: any
       .map((b: any) => b.defenderCityId)
   );
 
+  const botCityIds = new Set((allBotsRes.data ?? []).map((b: any) => b.cityId));
+
   const filteredTargets = (targetsRes.data ?? []).filter((city: any) => {
     if (city.id === bot.cityId) return false;
     if (city.userId === bot.userId) return false;
+    if (botCityIds.has(city.id)) return false;
 
     // Protection for new players
     if (new Date(city.createdAt) > protectionCutoff) return false;
@@ -166,6 +170,9 @@ async function loadBotSnapshot(bot: { cityId: string; userId: string; state: any
 
   const incomingAttacks = (recentGlobalBattlesRes.data ?? [])
     .filter((b: any) => b.defenderCityId === bot.cityId && new Date(b.startedAt) > globalCooldownCutoff);
+
+  const resolvedRaids = (recentGlobalBattlesRes.data ?? [])
+    .filter((b: any) => b.defenderCityId === bot.cityId && b.status === "RESOLVED" && b.resolvedAt && new Date(b.resolvedAt).getTime() > now.getTime() - 60 * 60_000);
 
   const allianceObjective = membershipRes.data?.allianceId ? await ensureAllianceObjective(membershipRes.data.allianceId) : null;
 
@@ -201,6 +208,7 @@ async function loadBotSnapshot(bot: { cityId: string; userId: string; state: any
     state: {
       ...(bot.state ?? {}),
       incomingAttacks,
+      postRaidRecovery: resolvedRaids.length > 0 || (bot.state?.postRaidRecovery && resolvedRaids.length > 0),
     },
   };
 }
@@ -213,13 +221,44 @@ function botAllianceIdentity(bot: { userId: string }) {
   };
 }
 
-function botChatMessage(decision: BotDecision) {
+const CHAT_POOL: Record<string, string[]> = {
+  ECONOMIST_GLOBAL: ["Buscando rutas comerciales.", "El mercado esta estable.", "Ofrezco buenos precios.", "Invertir en economia es el camino.", "Recursos abundan en estas tierras."],
+  MILITARIST_GLOBAL: ["La fuerza decide el destino.", "Preparen sus defensas.", "Solo los fuertes sobreviven.", "El acero no perdona.", "Que tiemblen los debiles."],
+  TECH_RUSHER_GLOBAL: ["El conocimiento es poder.", "Nuevos descubrimientos cambian el mundo.", "La ciencia avanza sin pausa.", "He visto el futuro.", "Investigar es la clave."],
+  BALANCED_GLOBAL: ["Mantengamos la paz.", "Comercio y defensa en equilibrio.", "Buenos dias, vecinos.", "Que la fortuna nos sonria.", "Todos tienen un lugar en Etheria."],
+  ALLIANCE: ["Reporte de avance listo.", "Necesitamos mas recursos.", "Coordinemos la defensa.", "Buen trabajo, aliados.", "Propongo expandir nuestro territorio."],
+};
+
+function botChatMessage(decision: BotDecision, profile: string) {
   if (decision.type !== "SEND_CHAT") return "";
   const channel = decision.payload.channel === "ALLIANCE" ? "ALLIANCE" : "GLOBAL";
-  return channel === "ALLIANCE" ? "Reporte de avance listo." : "Explorando nuevas rutas comerciales.";
+  if (channel === "ALLIANCE") {
+    const pool = CHAT_POOL.ALLIANCE;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  const key = `${profile}_GLOBAL`;
+  const pool = CHAT_POOL[key] ?? CHAT_POOL.BALANCED_GLOBAL;
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
-async function executeDecision(bot: { id: string; userId: string; cityId: string; state: any }, decision: BotDecision, config: BotSimulationConfig) {
+const MAIL_TEMPLATES: Record<string, Array<{ subject: string; body: string }>> = {
+  BALANCED: [
+    { subject: "Propuesta diplomatica", body: "Propongo mantener rutas seguras y observar el equilibrio regional." },
+    { subject: "Saludos del reino", body: "Espero que nuestras ciudades prosperen juntas. Consideremos un pacto comercial." },
+    { subject: "Vecinos en paz", body: "La guerra no beneficia a nadie. Mantengamos relaciones cordiales." },
+  ],
+  ECONOMIST: [
+    { subject: "Oportunidad comercial", body: "Nuestro mercado crece rapidamente. Seria beneficioso establecer una ruta comercial." },
+    { subject: "Propuesta economica", body: "He notado que compartimos intereses comerciales. Propongo colaborar." },
+  ],
+};
+
+function botMailContent(profile: string): { subject: string; body: string } {
+  const templates = MAIL_TEMPLATES[profile] ?? MAIL_TEMPLATES.BALANCED;
+  return templates[Math.floor(Math.random() * templates.length)];
+}
+
+async function executeDecision(bot: { id: string; userId: string; cityId: string; state: any; profile: string }, decision: BotDecision, config: BotSimulationConfig) {
   const actor = { type: "bot" as const, botId: bot.id, userId: bot.userId };
   if (decision.type === "UPGRADE_BUILDING") {
     return upgradeBuildingAction({ cityId: bot.cityId, buildingId: decision.payload.buildingId, actor });
@@ -299,18 +338,19 @@ async function executeDecision(bot: { id: string; userId: string; cityId: string
     const result = await createChatMessage({
       userId: bot.userId,
       channel,
-      message: botChatMessage(decision),
+      message: botChatMessage(decision, bot.profile),
       rateLimitWindowMs: config.chatRateLimitWindowMs,
     });
     if (result.error) throw new CityActionError(result.error, 400, { blockedBy: "social" });
     return result;
   }
   if (decision.type === "SEND_MAIL") {
+    const mail = botMailContent(bot.profile);
     const result = await sendMailMessage({
       senderUserId: bot.userId,
       recipientCityId: String(decision.payload.recipientCityId),
-      subject: "Contacto diplomatico",
-      body: "Propongo mantener rutas seguras y observar el equilibrio regional.",
+      subject: mail.subject,
+      body: mail.body,
     });
     if ("error" in result && result.error) throw new CityActionError(result.error, 400, { blockedBy: "social" });
     return result;
@@ -370,6 +410,24 @@ export async function processDueBots(config = getBotSimulationConfig()) {
 
   await ensureBotPopulation(config);
   const now = new Date();
+
+  // Recover ERROR bots after cooldown (with backoff)
+  const allBots = await listBots();
+  const baseCooldownMs = config.errorRecoveryMinutes * 60 * 1000;
+  for (const bot of allBots) {
+    if (bot.status !== "ERROR") continue;
+    const lastTick = bot.lastTickAt ? new Date(String(bot.lastTickAt)).getTime() : 0;
+    const errorCount = (bot.state?.errorCount ?? 0);
+    const backoff = Math.min(4, Math.pow(2, errorCount));
+    const cooldownMs = baseCooldownMs * backoff;
+    if (now.getTime() - lastTick < cooldownMs) continue;
+    await updateBotRecord(bot.id, {
+      status: "ACTIVE",
+      state: { ...(bot.state ?? {}), recoveredFromErrorAt: now.toISOString() },
+      nextTickAt: nextTickDate(config),
+    });
+  }
+
   const bots = await listDueBots(now, config.maxBotsPerTick);
 
   let errors = 0;
@@ -380,7 +438,7 @@ export async function processDueBots(config = getBotSimulationConfig()) {
 
     try {
       const result = await executeDecision(bot, decision, config);
-      const nextState = updateStateAfterDecision(bot.state, decision, now);
+      const nextState = updateStateAfterDecision(updateBotMemory(bot.state, decision, "success", now), decision, now);
       await logAction({
         botId: bot.id,
         cityId: bot.cityId,
@@ -426,8 +484,12 @@ export async function processDueBots(config = getBotSimulationConfig()) {
         status: classified.status === "UNEXPECTED_ERROR" ? "ERROR" : "ACTIVE",
         lastTickAt: now,
         nextTickAt: nextTickDate(config),
-        state: bot.state ?? {},
+        state: updateBotMemory(bot.state, decision, classified.status === "EXPECTED_BLOCKED" ? "blocked" : "error", now),
       });
+      if (classified.status === "UNEXPECTED_ERROR") {
+        const errorCount = (bot.state?.errorCount ?? 0) + 1;
+        bot.state = { ...(bot.state ?? {}), errorCount };
+      }
     }
   }
 

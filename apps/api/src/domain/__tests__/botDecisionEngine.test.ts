@@ -29,6 +29,8 @@ const config: BotSimulationConfig = {
   chatRateLimitWindowMs: 120_000,
   allianceCenterRequiredLevel: 5,
   attackCooldownRangeMinutes: [20, 60],
+  errorRecoveryMinutes: 15,
+  metricsWindowMinutes: 15,
   profiles: ["ECONOMIST", "MILITARIST", "TECH_RUSHER", "BALANCED"],
   profileWeights: {
     ECONOMIST: { economy: 5, military: 1, research: 1, aggression: 0 },

@@ -484,6 +484,9 @@
       "title": "Settings",
       "close": "Close",
       "language": "Language",
+      "audio": "Audio",
+      "mute": "Mute",
+      "unmute": "Unmute",
       "logout": "Log Out"
     },
     "sidebar": {
@@ -502,7 +505,17 @@
       "knowledge": "Knowledge",
       "noConstruction": "No construction.",
       "noTraining": "No training.",
-      "noResearch": "No research."
+      "noResearch": "No research.",
+      "marches": "Marches",
+      "noMarches": "No active marches.",
+      "marchingTo": "Marching to target",
+      "returningFrom": "Returning",
+      "enemyMarching": "Enemy approaching!",
+      "enemyReturning": "Enemy returning",
+      "trade": "Trade",
+      "noTrade": "No active trade.",
+      "tradeMarching": "On the way",
+      "tradeReturning": "Returning"
     },
     "resources": {
       "gold": "Gold",
@@ -646,6 +659,8 @@
       "start": "Start",
       "mid": "Mid",
       "transition": "Transition",
+      "intensity": "Intensity",
+      "winterPressure": "Troops consume food",
       "impact": {
         "spring": "Balanced growth",
         "summer": "Stronger production",
@@ -735,12 +750,14 @@
       "inbox": "Inbox",
       "sent": "Sent",
       "reports": "Reports",
+      "compose": "Compose",
       "new": "New",
       "loading": "Loading...",
       "empty": "No messages.",
       "to": "To",
       "from": "From",
       "recipient": "Recipient",
+      "selectRecipient": "Select recipient...",
       "selectCity": "Select city...",
       "subjectPlaceholder": "Subject",
       "bodyPlaceholder": "Write your message...",
@@ -799,6 +816,7 @@
       "targetCity": "Target City",
       "selectTarget": "Select a target...",
       "troops": "Troops",
+      "available": "Available",
       "noTroops": "No troops available. Train units in Barracks.",
       "sending": "Sending...",
       "sendAttack": "Send Attack",
@@ -818,7 +836,8 @@
       "enemyReturning": "Enemy returning",
       "attackSent": "Attack sent",
       "attackSentMsg": "Your troops are marching to the target.",
-      "attackFailed": "Attack failed"
+      "attackFailed": "Attack failed",
+      "selectTroops": "Open Battle Command in the sidebar to select troops and send an attack."
     },
     "buildConfirm": {
       "started": "Construction started",
@@ -900,6 +919,14 @@
       "blocked": "Blocked",
       "no": "No",
       "go": "Go",
+      "empty": "No technologies in this category.",
+      "researching": "Researching",
+      "max": "MAX",
+      "cost": "Cost",
+      "researchBtn": "Research",
+      "locked": "Locked",
+      "researchedOnly": "Researched",
+      "activeBonuses": "Active Bonuses",
       "categories": {
         "economy": "Economy",
         "military": "Military",
@@ -918,12 +945,19 @@
       "amount": "Amount",
       "atk": "Atk",
       "def": "Def",
-      "hp": "HP"
+      "hp": "HP",
+      "speed": "Speed",
+      "carry": "Carry",
+      "ap": "AP"
     },
     "training": {
       "title": "Train",
       "ready": "Ready",
-      "train": "Train"
+      "train": "Train",
+      "owned": "Owned",
+      "quantity": "Qty",
+      "timePerUnit": "Per unit",
+      "total": "Total"
     },
     "notifications": {
       "mailTitle": "New message",
