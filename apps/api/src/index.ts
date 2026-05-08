@@ -11,6 +11,9 @@ import { chatRouter } from './routes/chat.js';
 import { allianceRouter } from './routes/alliance.js';
 import { mailRouter } from './routes/mail.js';
 import { worldRouter } from './routes/world.js';
+import { reportsRouter } from './routes/reports.js';
+import { questsRouter } from './routes/quests.js';
+import { marketRouter } from './routes/market.js';
 import { loadBuildingConfigs } from './domain/buildings.js';
 import { loadUnitConfigs } from './domain/units.js';
 import { loadTechConfigs } from './domain/techs.js';
@@ -37,6 +40,9 @@ async function bootstrap() {
   app.route('/alliances', allianceRouter);
   app.route('/mail', mailRouter);
   app.route('/world', worldRouter);
+  app.route('/reports', reportsRouter);
+  app.route('/quests', questsRouter);
+  app.route('/market', marketRouter);
 
   const port = process.env.PORT ? parseInt(process.env.PORT) : 4000;
   serve({ fetch: app.fetch, port });

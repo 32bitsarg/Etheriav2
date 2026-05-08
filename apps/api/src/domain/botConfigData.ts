@@ -38,6 +38,9 @@ export type BotSimulationConfig = {
   criticalResourceRatio: number;
   socialActionChance: number;
   chatActionChance: number;
+  marketActionChance: number;
+  scoutActionChance: number;
+  allianceContributionChance: number;
   chatRateLimitWindowMs: number;
   allianceCenterRequiredLevel: number;
   attackCooldownRangeMinutes: [number, number];
@@ -68,6 +71,9 @@ export function getBotSimulationConfig(): BotSimulationConfig {
     criticalResourceRatio: readNumber("BOT_CRITICAL_RESOURCE_RATIO", 0.08),
     socialActionChance: readNumber("BOT_SOCIAL_ACTION_CHANCE", 0.18),
     chatActionChance: readNumber("BOT_CHAT_ACTION_CHANCE", 0.08),
+    marketActionChance: readNumber("BOT_MARKET_ACTION_CHANCE", 0.18),
+    scoutActionChance: readNumber("BOT_SCOUT_ACTION_CHANCE", 0.16),
+    allianceContributionChance: readNumber("BOT_ALLIANCE_CONTRIBUTION_CHANCE", 0.16),
     chatRateLimitWindowMs: readNumber("BOT_CHAT_RATE_LIMIT_WINDOW_MS", 120_000),
     allianceCenterRequiredLevel: readNumber("BOT_ALLIANCE_CENTER_REQUIRED_LEVEL", 5),
     attackCooldownRangeMinutes: [

@@ -1,10 +1,11 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { CreateAllianceRequestSchema, ProposePeaceRequestSchema, UpdateAllianceRequestSchema } from '@etheria/shared';
+import { ContributeAllianceObjectiveRequestSchema, CreateAllianceRequestSchema, ProposePeaceRequestSchema, UpdateAllianceRequestSchema } from '@etheria/shared';
 import { requireMatecitoAuth } from '../infrastructure/authMiddleware.js';
 import { canEditAllianceForum, canManageAlliance, canUseAllianceCenter, createAllianceForUser, getAllianceMembershipForUser, joinAlliance } from '../domain/alliances.js';
 import { db, COLLECTIONS } from '../infrastructure/matecito.js';
 import { mergeRecordByLogicalId } from '../infrastructure/matecitoRecord.js';
+import { contributeAllianceObjective, ensureAllianceObjective } from '../domain/allianceObjectives.js';
 
 const allianceRouter = new Hono();
 const genId = () => crypto.randomUUID();
@@ -14,7 +15,8 @@ async function getAllianceDashboard(userId: string) {
   const membership = await getAllianceMembershipForUser(userId);
   const alliancesRes = await db.from(COLLECTIONS.ALLIANCES).limit(100).get() as any;
   const alliances = (alliancesRes.data ?? []).filter((alliance: any) => !alliance.disbandedAt);
-  if (!membership?.allianceId) return { gate, membership, alliances, members: [], diplomacy: [], events: [], effects: [] };
+  if (!membership?.allianceId) return { gate, membership, alliances, members: [], diplomacy: [], events: [], effects: [], objectives: [], objectiveContributions: [] };
+  const objective = await ensureAllianceObjective(membership.allianceId);
   const [membersRes, diplomacyA, diplomacyB, eventsRes, effectsRes] = await Promise.all([
     db.from(COLLECTIONS.ALLIANCE_MEMBERS).eq('allianceId', membership.allianceId).get() as any,
     db.from(COLLECTIONS.ALLIANCE_DIPLOMACY).eq('allianceAId', membership.allianceId).get() as any,
@@ -30,6 +32,8 @@ async function getAllianceDashboard(userId: string) {
     diplomacy: [...(diplomacyA.data ?? []), ...(diplomacyB.data ?? [])],
     events: (eventsRes.data ?? []).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     effects: (effectsRes.data ?? []).filter((effect: any) => new Date(effect.expiresAt).getTime() > Date.now()),
+    objectives: objective ? [objective] : [],
+    objectiveContributions: [],
   };
 }
 
@@ -198,6 +202,21 @@ allianceRouter.post('/diplomacy/:id/break', requireMatecitoAuth(), async (c) => 
   const alliance = await db.from(COLLECTIONS.ALLIANCES).eq('id', membership.allianceId).getFirst() as any;
   await mergeRecordByLogicalId(COLLECTIONS.ALLIANCES, membership.allianceId, { treatiesBroken: Number(alliance.data?.treatiesBroken ?? 0) + 1, honorScore: Math.max(0, Number(alliance.data?.honorScore ?? 100) - 20), updatedAt: now.toISOString() });
   return c.json({ success: true });
+});
+
+allianceRouter.post('/objectives/:id/contribute', requireMatecitoAuth(), zValidator('json', ContributeAllianceObjectiveRequestSchema), async (c) => {
+  const userId = c.get('userId');
+  const membership = await getAllianceMembershipForUser(userId);
+  if (!membership?.allianceId) return c.json({ error: 'No alliance' }, 404);
+  const result = await contributeAllianceObjective({
+    userId,
+    allianceId: membership.allianceId,
+    objectiveId: c.req.param('id'),
+    cityId: c.req.valid('json').cityId,
+    resources: c.req.valid('json').resources,
+  });
+  if ('error' in result) return c.json({ error: result.error }, result.status as any);
+  return c.json(result);
 });
 
 export { allianceRouter };

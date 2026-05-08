@@ -622,7 +622,13 @@
       "winter": "Winter",
       "start": "Start",
       "mid": "Mid",
-      "transition": "Transition"
+      "transition": "Transition",
+      "impact": {
+        "spring": "Balanced growth",
+        "summer": "Stronger production",
+        "autumn": "Stockpile window",
+        "winter": "Food pressure"
+      }
     },
     "inspection": {
       "title": "Inspection Panel",
@@ -705,6 +711,7 @@
       "unread": "unread",
       "inbox": "Inbox",
       "sent": "Sent",
+      "reports": "Reports",
       "new": "New",
       "loading": "Loading...",
       "empty": "No messages.",
@@ -745,6 +752,8 @@
       "noDate": "no date",
       "publicHistory": "Public History",
       "activeEffects": "Active Effects",
+      "objectives": "Objectives",
+      "contribute": "Contribute 50 each",
       "empty": "No active records.",
       "leave": "Leave",
       "disband": "Disband",
@@ -813,9 +822,35 @@
       "cancel": "Cancel",
       "cancelWithRefund": "Cancel · refund"
     },
+    "reports": {
+      "title": "Reports",
+      "loading": "Loading reports...",
+      "empty": "No reports.",
+      "markRead": "Mark read"
+    },
+    "quests": {
+      "title": "Quests",
+      "claim": "Claim",
+      "claimed": "Claimed",
+      "upgrade": { "title": "First upgrades", "summary": "Build or upgrade a building." },
+      "train": { "title": "First guard", "summary": "Train your first units." },
+      "research": { "title": "Basic knowledge", "summary": "Start a research." },
+      "map": { "title": "See the world", "summary": "Open the world map." },
+      "trade": { "title": "Exchange", "summary": "Send trade or accept an offer." },
+      "alliance": { "title": "Alliance life", "summary": "Use an alliance action." },
+      "barbarian": { "title": "First camp", "summary": "Attack a barbarian camp." }
+    },
+    "market": {
+      "title": "Market",
+      "create": "Create offer",
+      "publish": "Publish",
+      "accept": "Accept",
+      "for": "for"
+    },
     "espionage": {
       "title": "Espionage",
-      "pending": "Espionage pending implementation."
+      "pending": "Espionage pending implementation.",
+      "reportCreated": "Intel report created without revealing fog."
     },
     "building": {
       "close": "Close",
@@ -866,6 +901,14 @@
       "title": "Train",
       "ready": "Ready",
       "train": "Train"
+    },
+    "notifications": {
+      "mailTitle": "New message",
+      "incomingAttackTitle": "Incoming attack",
+      "barbarianAttackTitle": "Camp on the march",
+      "allianceTitle": "Alliance",
+      "allianceUpdate": "There is an alliance update.",
+      "arrivesIn": "Arrives in"
     },
     "toasts": {
       "upgradeStarted": "Upgrade started",

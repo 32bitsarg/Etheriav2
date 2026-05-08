@@ -22,6 +22,11 @@ const RECORD_SELECTORS: Partial<Record<CollectionName, SelectorField[]>> = {
   [COLLECTIONS.BOT_PLAYERS]: ["id", "createdAt", "userId", "cityId"],
   [COLLECTIONS.BOT_ACTION_LOGS]: ["id", "createdAt", "botId", "cityId", "actionType"],
   [COLLECTIONS.BOT_METRICS_SNAPSHOTS]: ["id", "createdAt", "windowEndedAt"],
+  [COLLECTIONS.GAME_REPORTS]: ["id", "createdAt", "userId", "cityId"],
+  [COLLECTIONS.PLAYER_QUESTS]: ["id", "createdAt", "userId", "cityId", "questId"],
+  [COLLECTIONS.MARKET_OFFERS]: ["id", "createdAt", "creatorCityId"],
+  [COLLECTIONS.ALLIANCE_OBJECTIVES]: ["id", "createdAt", "allianceId"],
+  [COLLECTIONS.ALLIANCE_OBJECTIVE_CONTRIBUTIONS]: ["id", "createdAt", "objectiveId", "userId"],
 };
 
 const USE_POSTGRES = process.env.DB_PROVIDER === "postgres";

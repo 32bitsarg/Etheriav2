@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Panel } from "@/components/ui/Panel";
 import { useGameStore } from "@/stores/gameStore";
-import { useBarbarianCampDetail, useAttackBarbarianCamp } from "@/hooks/useCity";
+import { useBarbarianCampDetail, useAttackBarbarianCamp, useScoutTarget } from "@/hooks/useCity";
+import { useToastStore } from "@/stores/toastStore";
 
 type UnitType = "WARRIOR" | "ARCHER" | "CAVALRY" | "SIEGE" | "SPY";
 
@@ -40,6 +41,8 @@ export function BarbarianCampModal() {
 
   const { data, isLoading } = useBarbarianCampDetail(selectedCamp?.id ?? null);
   const attackCamp = useAttackBarbarianCamp();
+  const scoutTarget = useScoutTarget();
+  const addToast = useToastStore((s) => s.addToast);
 
   const cityId = useGameStore.getState().cityId;
 
@@ -68,6 +71,17 @@ export function BarbarianCampModal() {
       setSelectedCamp(null);
       setSelectedUnits({ WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 });
     }, 5000);
+  };
+
+  const handleScout = () => {
+    if (!selectedCamp || !cityId || scoutTarget.isPending) return;
+    scoutTarget.mutate(
+      { cityId, targetType: "BARBARIAN_CAMP", targetId: selectedCamp.id },
+      {
+        onSuccess: () => addToast({ type: "success", title: "Espionaje", message: "Reporte de campamento creado sin revelar niebla." }),
+        onError: (error) => addToast({ type: "error", title: "Espionaje", message: error.message }),
+      }
+    );
   };
 
   const adjustUnit = (type: UnitType, delta: number) => {
@@ -281,6 +295,14 @@ export function BarbarianCampModal() {
 
         {/* Footer */}
         <div className="border-t border-etheria-border/40 px-4 py-3">
+          <button
+            type="button"
+            onClick={handleScout}
+            disabled={!cityId || scoutTarget.isPending}
+            className="mb-2 w-full rounded-md border border-etheria-gold/40 px-4 py-2 text-sm font-medium text-etheria-gold-soft hover:bg-etheria-gold/10 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {scoutTarget.isPending ? "Espiando..." : "Espiar campamento"}
+          </button>
           <button
             type="button"
             onClick={handleAttack}

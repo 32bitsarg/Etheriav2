@@ -33,6 +33,7 @@ const DEFAULT_VILLAGE_BG = "/assets/backgrounds/village-fullscreen.png";
 const DEFAULT_BG_KEY = "village-bg:default";
 const VILLAGE_BASE_SCALE = 1.34;
 const VILLAGE_GAMEPLAY_ZOOM = 0.98;
+const SHOW_VILLAGE_DEBUG = false;
 
 export function createVillageScene(Phaser: typeof import("phaser")) {
   return class VillageScene extends Phaser.Scene {
@@ -103,16 +104,18 @@ export function createVillageScene(Phaser: typeof import("phaser")) {
       this.backgroundLayer.add(this.add.rectangle(0, 0, 3200, 2200, 0x244234, 0.35));
       this.selectionIndicator = this.add.graphics();
       this.uiLayer.add(this.selectionIndicator);
-      this.debugText = this.add
-        .text(12, 92, "VillageScene boot", {
-          fontFamily: "monospace",
-          fontSize: "12px",
-          color: "#e8f7d0",
-          backgroundColor: "rgba(0,0,0,0.45)",
-          padding: { x: 8, y: 6 },
-        })
-        .setScrollFactor(0)
-        .setDepth(1000);
+      if (SHOW_VILLAGE_DEBUG) {
+        this.debugText = this.add
+          .text(12, 92, "VillageScene boot", {
+            fontFamily: "monospace",
+            fontSize: "12px",
+            color: "#e8f7d0",
+            backgroundColor: "rgba(0,0,0,0.45)",
+            padding: { x: 8, y: 6 },
+          })
+          .setScrollFactor(0)
+          .setDepth(1000);
+      }
       
       this.setupInput();
       this.isReady = true;
@@ -179,7 +182,7 @@ export function createVillageScene(Phaser: typeof import("phaser")) {
           this.emitEditorViewport();
           return;
         }
-        this.clampCamera();
+        this.applyGameplayCamera();
       });
     }
 
@@ -254,7 +257,7 @@ export function createVillageScene(Phaser: typeof import("phaser")) {
         if (isFirstLoad) this.cameras.main.centerOn(0, 0).setZoom(VILLAGE_GAMEPLAY_ZOOM);
         this.emitEditorViewport();
       } else if (isFirstLoad) {
-        this.cameras.main.centerOn(0, 0).setZoom(VILLAGE_GAMEPLAY_ZOOM);
+        this.applyGameplayCamera();
       }
       this.hasWorldBounds = true;
       this.refreshAmbientEffects(textureKey, data);
@@ -264,9 +267,19 @@ export function createVillageScene(Phaser: typeof import("phaser")) {
       this.renderEditorGuides(data);
     }
 
+    private getGameplayZoom() {
+      const fitZoom = Math.min(this.scale.width / this.worldWidth, this.scale.height / this.worldHeight);
+      return Phaser.Math.Clamp(Math.max(fitZoom, VILLAGE_GAMEPLAY_ZOOM), 0.72, 1.16);
+    }
+
+    private applyGameplayCamera() {
+      this.cameras.main.centerOn(0, 0).setZoom(this.getGameplayZoom());
+      this.clampCamera();
+    }
+
     private clampCamera() {
       const camera = this.cameras.main;
-      const minZoom = 0.86;
+      const minZoom = 0.72;
       camera.setZoom(Math.max(camera.zoom, minZoom));
       const visibleW = camera.width / camera.zoom;
       const visibleH = camera.height / camera.zoom;

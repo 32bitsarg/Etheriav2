@@ -5,6 +5,8 @@ import { getWorldConfig } from "./worldConfig.js";
 import { calculatePathSpeedMultiplier } from "./worldTerrainConfigData.js";
 import { canAfford, subtractResources } from "./resources.js";
 import type { Resources } from "@etheria/shared";
+import { createGameReport } from "./reports.js";
+import { advanceQuest } from "./quests.js";
 
 function readNumber(name: string, fallback: number) {
   const value = Number(process.env[name] ?? fallback);
@@ -100,6 +102,23 @@ export async function sendResourcesAction(input: {
     startedAt: now.toISOString(),
     arrivesAt: arrivesAt.toISOString(),
   });
+  await createGameReport({
+    type: "TRADE",
+    userId: sender.userId,
+    cityId: senderCityId,
+    title: "Caravan dispatched",
+    summary: `A caravan is travelling to ${recipient.name}.`,
+    payload: { caravanId, recipientCityId, resources },
+  });
+  await createGameReport({
+    type: "TRADE",
+    userId: recipient.userId,
+    cityId: recipientCityId,
+    title: "Incoming caravan",
+    summary: `${sender.name} sent resources to your city.`,
+    payload: { caravanId, senderCityId, resources },
+  });
+  await advanceQuest(senderCityId, "SEND_TRADE", 1);
 
   console.log(`🚚 Trade caravan ${caravanId} dispatched from ${sender.name} to ${recipient.name}`);
 

@@ -369,6 +369,126 @@ export const SendResourcesRequestSchema = z.object({
 
 export type SendResourcesRequest = z.infer<typeof SendResourcesRequestSchema>;
 
+export const GameReportTypeSchema = z.enum([
+  "BATTLE",
+  "TRADE",
+  "BARBARIAN",
+  "SYSTEM",
+  "ALLIANCE",
+  "MARKET",
+  "QUEST",
+  "SPY_INTEL",
+]);
+
+export type GameReportType = z.infer<typeof GameReportTypeSchema>;
+
+export const GameReportSchema = z.object({
+  id: z.string().uuid(),
+  type: GameReportTypeSchema,
+  userId: z.string().uuid(),
+  cityId: z.string().uuid().nullable().optional(),
+  title: z.string().min(1).max(120),
+  summary: z.string().min(1).max(600),
+  payload: z.record(z.any()).default({}),
+  readAt: z.string().datetime().nullable().optional(),
+  createdAt: z.string().datetime(),
+});
+
+export type GameReport = z.infer<typeof GameReportSchema>;
+
+export const QuestStatusSchema = z.enum(["ACTIVE", "CLAIMABLE", "CLAIMED"]);
+
+export const PlayerQuestSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  cityId: z.string().uuid(),
+  questId: z.string(),
+  type: z.enum(["BUILD_OR_UPGRADE", "TRAIN_UNITS", "RESEARCH", "OPEN_MAP", "SEND_TRADE", "USE_ALLIANCE", "ATTACK_BARBARIAN"]),
+  titleKey: z.string(),
+  summaryKey: z.string(),
+  target: z.number().int().positive(),
+  progress: z.number().int().min(0),
+  reward: ResourcesSchema,
+  status: QuestStatusSchema,
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  claimedAt: z.string().datetime().nullable().optional(),
+});
+
+export type PlayerQuest = z.infer<typeof PlayerQuestSchema>;
+
+export const MarketOfferStatusSchema = z.enum(["OPEN", "ACCEPTED", "EXPIRED", "CANCELLED"]);
+
+export const MarketOfferSchema = z.object({
+  id: z.string().uuid(),
+  creatorUserId: z.string().uuid(),
+  creatorCityId: z.string().uuid(),
+  giveResource: z.enum(["gold", "wood", "stone", "food"]),
+  giveAmount: z.number().int().positive(),
+  wantResource: z.enum(["gold", "wood", "stone", "food"]),
+  wantAmount: z.number().int().positive(),
+  feeRate: z.number().min(0).max(1),
+  status: MarketOfferStatusSchema,
+  acceptedByUserId: z.string().uuid().nullable().optional(),
+  acceptedByCityId: z.string().uuid().nullable().optional(),
+  expiresAt: z.string().datetime(),
+  createdAt: z.string().datetime(),
+  acceptedAt: z.string().datetime().nullable().optional(),
+});
+
+export type MarketOffer = z.infer<typeof MarketOfferSchema>;
+
+export const CreateMarketOfferRequestSchema = z.object({
+  cityId: z.string().uuid(),
+  giveResource: z.enum(["gold", "wood", "stone", "food"]),
+  giveAmount: z.number().int().positive(),
+  wantResource: z.enum(["gold", "wood", "stone", "food"]),
+  wantAmount: z.number().int().positive(),
+});
+
+export type CreateMarketOfferRequest = z.infer<typeof CreateMarketOfferRequestSchema>;
+
+export const AcceptMarketOfferRequestSchema = z.object({
+  cityId: z.string().uuid(),
+});
+
+export type AcceptMarketOfferRequest = z.infer<typeof AcceptMarketOfferRequestSchema>;
+
+export const ScoutTargetRequestSchema = z.object({
+  cityId: z.string().uuid(),
+  targetType: z.enum(["CITY", "BARBARIAN_CAMP"]),
+  targetId: z.string().uuid(),
+});
+
+export type ScoutTargetRequest = z.infer<typeof ScoutTargetRequestSchema>;
+
+export const AllianceObjectiveSchema = z.object({
+  id: z.string().uuid(),
+  allianceId: z.string().uuid(),
+  title: z.string(),
+  summary: z.string(),
+  target: ResourcesSchema,
+  progress: ResourcesSchema,
+  rewardEffect: z.object({
+    type: z.string(),
+    value: z.number(),
+    durationHours: z.number().int().positive(),
+  }),
+  status: z.enum(["ACTIVE", "COMPLETED", "EXPIRED"]),
+  createdAt: z.string().datetime(),
+  expiresAt: z.string().datetime(),
+  completedAt: z.string().datetime().nullable().optional(),
+});
+
+export type AllianceObjective = z.infer<typeof AllianceObjectiveSchema>;
+
+export const ContributeAllianceObjectiveRequestSchema = z.object({
+  cityId: z.string().uuid(),
+  resources: ResourcesSchema,
+});
+
+export type ContributeAllianceObjectiveRequest = z.infer<typeof ContributeAllianceObjectiveRequestSchema>;
+
 export const WorldMovementSchema = z.object({
   id: z.string(),
   type: z.enum(["ATTACK", "BARBARIAN_ATTACK", "BARBARIAN_RAID", "TRADE"]),
