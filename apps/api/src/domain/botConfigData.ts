@@ -64,10 +64,14 @@ export function getBotSimulationConfig(): BotSimulationConfig {
     minAttackTroops: readNumber("BOT_MIN_ATTACK_TROOPS", 8),
     maxActiveOutgoingBattles: readNumber("BOT_MAX_ACTIVE_ATTACKS", 2),
     attackCooldownMinutes: readNumber("BOT_ATTACK_COOLDOWN_MINUTES", 30),
-    targetCooldownMinutes: readNumber("BOT_TARGET_COOLDOWN_MINUTES", 45),
-    maxAttackDistance: readNumber("BOT_MAX_ATTACK_DISTANCE", 80),
+    targetCooldownMinutes: readNumber("BOT_TARGET_COOLDOWN_MINUTES", 25),
+    maxAttackDistance: readNumber("BOT_MAX_ATTACK_DISTANCE", 140),
     newPlayerProtectionHours: readNumber("BOT_NEW_PLAYER_PROTECTION_HOURS", 24),
-    globalTargetCooldownMinutes: readNumber("BOT_GLOBAL_TARGET_COOLDOWN_MINUTES", 120),
+    globalTargetCooldownMinutes: readNumber("BOT_GLOBAL_TARGET_COOLDOWN_MINUTES", 45),
+    attackCooldownRangeMinutes: [
+      readNumber("BOT_ATTACK_COOLDOWN_RANGE_MIN", 10),
+      readNumber("BOT_ATTACK_COOLDOWN_RANGE_MAX", 30),
+    ],
     tradeMinMarketLevel: readNumber("BOT_TRADE_MIN_MARKET_LEVEL", 1),
     resourceReserveRatio: readNumber("BOT_RESOURCE_RESERVE_RATIO", 0.18),
     criticalResourceRatio: readNumber("BOT_CRITICAL_RESOURCE_RATIO", 0.08),
@@ -80,10 +84,6 @@ export function getBotSimulationConfig(): BotSimulationConfig {
     allianceCenterRequiredLevel: readNumber("BOT_ALLIANCE_CENTER_REQUIRED_LEVEL", 5),
     errorRecoveryMinutes: readNumber("BOT_ERROR_RECOVERY_MINUTES", 15),
     metricsWindowMinutes: readNumber("BOT_METRICS_WINDOW_MINUTES", 15),
-    attackCooldownRangeMinutes: [
-      readNumber("BOT_ATTACK_COOLDOWN_RANGE_MIN", 20),
-      readNumber("BOT_ATTACK_COOLDOWN_RANGE_MAX", 60),
-    ],
     profiles: DEFAULT_PROFILES,
     profileWeights: DEFAULT_PROFILE_WEIGHTS,
   };

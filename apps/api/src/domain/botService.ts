@@ -148,12 +148,9 @@ async function loadBotSnapshot(bot: { cityId: string; userId: string; state: any
       .map((b: any) => b.defenderCityId)
   );
 
-  const botCityIds = new Set((allBotsRes.data ?? []).map((b: any) => b.cityId));
-
   const filteredTargets = (targetsRes.data ?? []).filter((city: any) => {
     if (city.id === bot.cityId) return false;
     if (city.userId === bot.userId) return false;
-    if (botCityIds.has(city.id)) return false;
 
     // Protection for new players
     if (new Date(city.createdAt) > protectionCutoff) return false;

@@ -600,7 +600,7 @@
       },
       "barracks": {
         "name": "Cuartel",
-        "description": "Entrena unidades de infantería. Niveles más altos desbloquean guerreros más fuertes."
+        "description": "Entrena infanteria, arqueros, unidades de asedio y espias."
       },
       "stable": {
         "name": "Establo",
@@ -647,6 +647,21 @@
       "spy": {
         "name": "Espía",
         "short": "Esp"
+      },
+      "pikeman": {
+        "name": "Piquero",
+        "description": "Infanteria con lanza",
+        "short": "Pq"
+      },
+      "crossbowman": {
+        "name": "Ballestero",
+        "description": "Rango pesado con penetracion",
+        "short": "Ba"
+      },
+      "catapult": {
+        "name": "Catapulta",
+        "description": "Artilleria de asedio pesada",
+        "short": "Ct"
       }
     },
     "categories": {
@@ -782,6 +797,7 @@
       "subtitle": "Ordenado por Fuerza total: edificios, ejército e investigación.",
       "close": "Cerrar",
       "village": "Aldea",
+      "alliance": "Alianza",
       "power": "Fuerza",
       "buildings": "Edificios",
       "army": "Ejército",
@@ -1077,6 +1093,44 @@
       "cancelFailed": "No se pudo cancelar",
       "trainingCancelled": "Entrenamiento cancelado",
       "researchCancelled": "Investigación cancelada"
+    },
+    "buffs": {
+      "peaceTreaty": "Tratado de Paz",
+      "peaceTreatyDesc": "+{pct}% produccion de todos los recursos por tratado de paz activo.",
+      "dishonor": "Deshonor",
+      "dishonorDesc": "Daño de ataque -{pct}% por romper un tratado de paz.",
+      "techProduction": "Produccion",
+      "techTrainingCost": "Costo Entren.",
+      "techTrainingCostDesc": "Costo de entrenamiento reducido en {pct}%.",
+      "techWall": "Defensa Muro",
+      "techWallDesc": "Bonus de defensa de muralla x{mul}.",
+      "techTower": "Daño Torre",
+      "techTowerDesc": "Daño de torre +{dmg} por ronda.",
+      "techUnitBonuses": "Bonus Unidades",
+      "techUnitBonusesDesc": "Bonus de stats de unidades por tecnologias investigadas.",
+      "intensity": "intensidad",
+      "winterFoodDrain": "Consumo Comida",
+      "winterFoodDrainDesc": "Las tropas consumen comida",
+      "starving": "Hambruna",
+      "starvingDesc": "Reservas de comida bajo el minimo. Penalidad de combate activa.",
+      "combatPenalty": "Combate",
+      "combatPenaltyDesc": "Efectividad de combate reducida en {pct}% por hambruna.",
+      "desertion": "Desercion",
+      "desertionDesc": "Las tropas estan desertando por hambruna prolongada.",
+      "sourceAlliance": "Alianza",
+      "sourceTech": "Tecnologia",
+      "sourceSeason": "Temporada",
+      "sourceWinter": "Invierno",
+      "sourceZone": "Zona",
+      "zone": {
+        "north": "Norte",
+        "center": "Centro",
+        "south": "Sur",
+        "coast": "Costa",
+        "mountain": "Montaña",
+        "forest": "Bosque",
+        "plains": "Llanura"
+      }
     }
   }
 }

@@ -74,11 +74,14 @@ export function getMaxUnitLevel(type: UnitType): number {
 }
 
 export const UNIT_DEFS: Record<UnitType, { speed: number }> = {
-  WARRIOR: { speed: 60 },
-  ARCHER: { speed: 50 },
-  CAVALRY: { speed: 120 },
-  SIEGE: { speed: 20 },
-  SPY: { speed: 200 },
+  WARRIOR: { speed: 160 },
+  ARCHER: { speed: 130 },
+  CAVALRY: { speed: 280 },
+  SIEGE: { speed: 70 },
+  SPY: { speed: 400 },
+  PIKEMAN: { speed: 110 },
+  CROSSBOWMAN: { speed: 100 },
+  CATAPULT: { speed: 50 },
 };
 
 export function isUnitUnlocked(type: UnitType, cityTechs: any[]): boolean {
@@ -87,7 +90,8 @@ export function isUnitUnlocked(type: UnitType, cityTechs: any[]): boolean {
   const unlockRequirements: Record<string, string> = {
     CAVALRY: 'HORSE_BREEDING',
     SIEGE: 'SIEGE_ENGINEERING',
-    SPY: 'SPY_NETWORK',
+    CROSSBOWMAN: 'REINFORCED_BOWS',
+    CATAPULT: 'SIEGE_ENGINEERING',
   };
   
   const required = unlockRequirements[type];
@@ -97,6 +101,6 @@ export function isUnitUnlocked(type: UnitType, cityTechs: any[]): boolean {
 }
 
 export function getUnlockedUnits(cityTechs: any[]): UnitType[] {
-  const allTypes: UnitType[] = ['WARRIOR', 'ARCHER', 'CAVALRY', 'SIEGE', 'SPY'];
+  const allTypes: UnitType[] = ['WARRIOR', 'ARCHER', 'PIKEMAN', 'CAVALRY', 'SIEGE', 'CROSSBOWMAN', 'CATAPULT', 'SPY'];
   return allTypes.filter(type => isUnitUnlocked(type, cityTechs));
 }

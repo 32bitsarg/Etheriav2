@@ -39,6 +39,8 @@ export interface CityState {
   allianceMembership: AllianceMembership | null;
   techBonuses: TechBonuses;
   lastResourceUpdate: string | null;
+  posX: number;
+  posY: number;
 }
 
 interface GameState extends CityState {
@@ -122,6 +124,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     towerDamageBonus: 0,
   },
   lastResourceUpdate: null,
+  posX: 0,
+  posY: 0,
 
   isLoading: true,
   error: null,

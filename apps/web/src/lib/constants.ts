@@ -102,12 +102,18 @@ export const UNIT_INFO: Record<UnitType, { nameKey: string; icon: string; shortN
   CAVALRY: { nameKey: "play.units.cavalry.name", icon: "🐎", shortNameKey: "play.units.cavalry.short" },
   SIEGE: { nameKey: "play.units.siege.name", icon: "🔨", shortNameKey: "play.units.siege.short" },
   SPY: { nameKey: "play.units.spy.name", icon: "🕵️", shortNameKey: "play.units.spy.short" },
+  PIKEMAN: { nameKey: "play.units.pikeman.name", icon: "🗡️", shortNameKey: "play.units.pikeman.short" },
+  CROSSBOWMAN: { nameKey: "play.units.crossbowman.name", icon: "🎯", shortNameKey: "play.units.crossbowman.short" },
+  CATAPULT: { nameKey: "play.units.catapult.name", icon: "🏰", shortNameKey: "play.units.catapult.short" },
 };
 
 export const UNIT_IMAGE_PATHS: Partial<Record<UnitType, string>> = {
   WARRIOR: "/assets/units/warrior.png",
   ARCHER: "/assets/units/archer.png",
   CAVALRY: "/assets/units/cavalry.png",
+  SPY: "/assets/units/spy.png",
+  PIKEMAN: "/assets/units/warrior.png",
+  CROSSBOWMAN: "/assets/units/archer.png",
 };
 
 // ─── Resource Display Info ───
@@ -309,22 +315,31 @@ export const UNIT_TRAINING_COST: Record<UnitType, { gold: number; food: number; 
   CAVALRY: { gold: 80, wood: 60, stone: 20, food: 40 },
   SIEGE: { gold: 200, wood: 300, stone: 150, food: 50 },
   SPY: { gold: 100, wood: 20, food: 10 },
+  PIKEMAN: { gold: 40, wood: 50, stone: 10, food: 20 },
+  CROSSBOWMAN: { gold: 60, wood: 70, stone: 15, food: 25 },
+  CATAPULT: { gold: 250, wood: 350, stone: 200, food: 60 },
 };
 
 export const UNIT_TRAINING_TIME: Record<UnitType, number> = {
   WARRIOR: 30,
-  ARCHER: 45,
+  ARCHER: 40,
   CAVALRY: 120,
   SIEGE: 300,
   SPY: 60,
+  PIKEMAN: 50,
+  CROSSBOWMAN: 70,
+  CATAPULT: 360,
 };
 
 export const UNIT_STATS: Record<UnitType, { attack: number; defense: number; hp: number; speed: number; carry: number; armorPenetration: number }> = {
-  WARRIOR: { attack: 10, defense: 15, hp: 100, speed: 160, carry: 20, armorPenetration: 0 },
-  ARCHER: { attack: 20, defense: 8,  hp: 60,  speed: 130, carry: 15, armorPenetration: 5 },
-  CAVALRY: { attack: 40, defense: 25, hp: 120, speed: 280, carry: 50, armorPenetration: 10 },
-  SIEGE:   { attack: 80, defense: 10, hp: 80,  speed: 70,  carry: 100, armorPenetration: 30 },
+  WARRIOR: { attack: 18, defense: 15, hp: 120, speed: 160, carry: 20, armorPenetration: 0 },
+  ARCHER:  { attack: 28, defense: 10, hp: 60,  speed: 130, carry: 15, armorPenetration: 5 },
+  CAVALRY: { attack: 35, defense: 20, hp: 110, speed: 280, carry: 40, armorPenetration: 8 },
+  SIEGE:   { attack: 60, defense: 10, hp: 80,  speed: 70,  carry: 100, armorPenetration: 25 },
   SPY:     { attack: 0,  defense: 2,  hp: 30,  speed: 400, carry: 0,  armorPenetration: 0 },
+  PIKEMAN: { attack: 25, defense: 20, hp: 90,  speed: 110, carry: 15, armorPenetration: 8 },
+  CROSSBOWMAN: { attack: 35, defense: 6, hp: 50, speed: 100, carry: 12, armorPenetration: 15 },
+  CATAPULT: { attack: 65, defense: 5, hp: 60, speed: 50, carry: 120, armorPenetration: 35 },
 };
 
 // ─── Tech Display Info ───

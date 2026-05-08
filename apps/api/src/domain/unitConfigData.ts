@@ -33,8 +33,8 @@ const BASE_UNIT_CONFIGS: {
     base: {
       costGold: 20, costWood: 30, costStone: 0, costFood: 10, costGems: 0,
       trainingTimeSeconds: 30,
-      attack: 10, defense: 15, speed: 160, carry: 20,
-      hp: 100, armorPenetration: 0,
+      attack: 18, defense: 15, speed: 160, carry: 20,
+      hp: 120, armorPenetration: 0,
       costMultiplier: 1.3, statMultiplier: 1.15, apMultiplier: 1.02,
     },
   },
@@ -42,8 +42,8 @@ const BASE_UNIT_CONFIGS: {
     type: 'ARCHER', maxLevel: 20,
     base: {
       costGold: 30, costWood: 40, costStone: 0, costFood: 15, costGems: 0,
-      trainingTimeSeconds: 45,
-      attack: 20, defense: 8, speed: 130, carry: 15,
+      trainingTimeSeconds: 40,
+      attack: 28, defense: 10, speed: 130, carry: 15,
       hp: 60, armorPenetration: 5,
       costMultiplier: 1.35, statMultiplier: 1.18, apMultiplier: 1.04,
     },
@@ -53,8 +53,8 @@ const BASE_UNIT_CONFIGS: {
     base: {
       costGold: 80, costWood: 60, costStone: 20, costFood: 40, costGems: 0,
       trainingTimeSeconds: 120,
-      attack: 40, defense: 25, speed: 280, carry: 50,
-      hp: 120, armorPenetration: 10,
+      attack: 35, defense: 20, speed: 280, carry: 40,
+      hp: 110, armorPenetration: 8,
       costMultiplier: 1.4, statMultiplier: 1.2, apMultiplier: 1.05,
     },
   },
@@ -63,8 +63,8 @@ const BASE_UNIT_CONFIGS: {
     base: {
       costGold: 200, costWood: 300, costStone: 150, costFood: 50, costGems: 0,
       trainingTimeSeconds: 300,
-      attack: 80, defense: 10, speed: 70, carry: 100,
-      hp: 80, armorPenetration: 30,
+      attack: 60, defense: 10, speed: 70, carry: 100,
+      hp: 80, armorPenetration: 25,
       costMultiplier: 1.5, statMultiplier: 1.25, apMultiplier: 1.08,
     },
   },
@@ -76,6 +76,36 @@ const BASE_UNIT_CONFIGS: {
       attack: 0, defense: 2, speed: 400, carry: 0,
       hp: 30, armorPenetration: 0,
       costMultiplier: 1.45, statMultiplier: 1.1, apMultiplier: 1.0,
+    },
+  },
+  {
+    type: 'PIKEMAN', maxLevel: 20,
+    base: {
+      costGold: 40, costWood: 50, costStone: 10, costFood: 20, costGems: 0,
+      trainingTimeSeconds: 50,
+      attack: 25, defense: 20, speed: 110, carry: 15,
+      hp: 90, armorPenetration: 8,
+      costMultiplier: 1.32, statMultiplier: 1.16, apMultiplier: 1.03,
+    },
+  },
+  {
+    type: 'CROSSBOWMAN', maxLevel: 20,
+    base: {
+      costGold: 60, costWood: 70, costStone: 15, costFood: 25, costGems: 0,
+      trainingTimeSeconds: 70,
+      attack: 35, defense: 6, speed: 100, carry: 12,
+      hp: 50, armorPenetration: 15,
+      costMultiplier: 1.38, statMultiplier: 1.19, apMultiplier: 1.06,
+    },
+  },
+  {
+    type: 'CATAPULT', maxLevel: 15,
+    base: {
+      costGold: 250, costWood: 350, costStone: 200, costFood: 60, costGems: 0,
+      trainingTimeSeconds: 360,
+      attack: 65, defense: 5, speed: 50, carry: 120,
+      hp: 60, armorPenetration: 35,
+      costMultiplier: 1.52, statMultiplier: 1.26, apMultiplier: 1.09,
     },
   },
 ];

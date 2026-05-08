@@ -39,7 +39,7 @@ export function ResourceBar() {
   }, []);
 
   return (
-    <div className="pointer-events-auto w-full">
+    <div className="pointer-events-auto">
       <div className="mx-auto w-[min(980px,calc(100vw-132px))] rounded-xl border border-white/10 bg-black/35 px-2 py-1.5 backdrop-blur-md shadow-[0_10px_28px_rgba(0,0,0,.35)]">
         <div className="flex items-center gap-2">
           {RESOURCES.map(({ key, prodKey }) => {

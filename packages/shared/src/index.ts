@@ -65,6 +65,9 @@ export const UnitTypeSchema = z.enum([
   "CAVALRY",
   "SIEGE",
   "SPY",
+  "PIKEMAN",
+  "CROSSBOWMAN",
+  "CATAPULT",
 ]);
 
 export type UnitType = z.infer<typeof UnitTypeSchema>;

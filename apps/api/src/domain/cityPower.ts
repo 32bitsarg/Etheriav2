@@ -1,5 +1,7 @@
 import { db, COLLECTIONS } from "../infrastructure/matecito.js";
 import { getUnitStats } from "./units.js";
+import { calculateTechBonuses } from "./techs.js";
+import type { TechBonuses } from "@etheria/shared";
 
 const BUILDING_POWER: Record<string, number> = {
   TOWN_HALL: 140,
@@ -16,6 +18,13 @@ const BUILDING_POWER: Record<string, number> = {
   MARKET: 75,
 };
 
+function emptyTechBonuses(): TechBonuses {
+  return {
+    unitAttackBonus: {}, unitHpBonus: {}, unitDefenseBonus: {}, unitSpeedBonus: {}, unitApBonus: {},
+    resourceProdBonus: {}, trainingCostReduction: 0, wallBonusMultiplier: 1, towerDamageBonus: 0,
+  };
+}
+
 export type CityPowerBreakdown = {
   buildings: number;
   army: number;
@@ -25,9 +34,13 @@ export type CityPowerBreakdown = {
 
 export function calculateCityPowerFromParts(input: {
   buildings: Array<{ type: string; level: number }>;
-  units: Array<{ type: string; count: number }>;
+  units: Array<{ type: string; count: number; level?: number }>;
   cityTechs: Array<{ techId: string; level: number }>;
 }): CityPowerBreakdown {
+  const techBonuses = input.cityTechs.length > 0
+    ? calculateTechBonuses(input.cityTechs as any)
+    : emptyTechBonuses();
+
   const buildings = input.buildings.reduce((sum, building) => {
     const level = Math.max(1, Number(building.level ?? 1));
     const base = BUILDING_POWER[building.type] ?? 50;
@@ -37,8 +50,10 @@ export function calculateCityPowerFromParts(input: {
   const army = input.units.reduce((sum, unit) => {
     const count = Math.max(0, Number(unit.count ?? 0));
     if (count <= 0) return sum;
-    const stats = getUnitStats(unit.type as any, 1);
-    const unitPower = stats.attack * 1.7 + stats.defense * 1.3 + stats.speed * 0.08 + stats.carry * 0.08;
+    const unitLevel = Math.max(1, Number(unit.level ?? 1));
+    const stats = getUnitStats(unit.type as any, unitLevel, techBonuses);
+    const unitPower = stats.attack * 1.7 + stats.defense * 1.3 + stats.hp * 0.5
+      + stats.armorPenetration * 0.5 + stats.speed * 0.08 + stats.carry * 0.08;
     return sum + Math.round(unitPower * count);
   }, 0);
 

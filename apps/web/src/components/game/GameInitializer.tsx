@@ -67,6 +67,8 @@ function mapCityToStore(cityData: any) {
     allianceMembership: cityData.allianceMembership ?? null,
     techBonuses: cityData.techBonuses ?? getDefaultTechBonuses(),
     lastResourceUpdate: cityData.lastResourceUpdate ?? new Date().toISOString(),
+    posX: cityData.posX ?? 0,
+    posY: cityData.posY ?? 0,
   };
 }
 

@@ -469,15 +469,23 @@ cityRouter.get("/ranking/all", async (c) => {
   const cities = (citiesRes.data ?? []) as any[];
   const powerByCity = await getCityPowerMap(cities.map((city) => city.id));
 
+  const membersRes = await db.from(COLLECTIONS.ALLIANCE_MEMBERS).get() as any;
+  const memberByUserId = new Map<string, string>((membersRes.data ?? []).map((m: any) => [m.userId, m.allianceId]));
+  const alliancesRes = await db.from(COLLECTIONS.ALLIANCES).get() as any;
+  const allianceByAllianceId = new Map<string, string>((alliancesRes.data ?? []).map((a: any) => [a.id, a.name]));
+
   const ranking = cities
     .map((city) => {
       const power = powerByCity.get(city.id) ?? { buildings: 0, army: 0, research: 0, total: 0 };
+      const allianceId = memberByUserId.get(city.userId);
       return {
         cityId: city.id,
         cityName: city.name,
         userId: city.userId,
         posX: city.posX,
         posY: city.posY,
+        allianceId: allianceId ?? null,
+        allianceName: allianceId ? allianceByAllianceId.get(allianceId) ?? null : null,
         power: power.total,
         powerBreakdown: {
           buildings: power.buildings,

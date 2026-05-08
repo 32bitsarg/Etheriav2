@@ -15,6 +15,7 @@ import { WinterPressureBanner } from "@/components/barbarians/WinterPressureBann
 import { BarbarianCampModal } from "@/components/barbarians/BarbarianCampModal";
 import { ResourceBar } from "@/components/ui/ResourceBar";
 import { SeasonHUD } from "@/components/game/SeasonHUD";
+import { ActiveBuffsPanel } from "@/components/game/ActiveBuffsPanel";
 import { SettingsModal } from "@/components/village/SettingsModal";
 import { SidebarNavIcon } from "@/components/ui/SidebarNavIcon";
 import { useState, useMemo, useCallback, useEffect, useRef, type ReactNode } from "react";
@@ -179,9 +180,16 @@ export function VillageView() {
     <div className="village-shell relative z-10 grid h-screen w-screen overflow-hidden">
       <BarbarianAttackAlertBanner />
       <WinterPressureBanner />
-      <header className="village-resource-header pointer-events-none absolute left-[calc(var(--sidebar-width)+12px)] right-3 top-2 z-50 flex items-center gap-3">
-        <SeasonHUD />
-        <ResourceBar />
+      <header className="village-resource-header pointer-events-none absolute left-[calc(var(--sidebar-width)+12px)] right-3 top-2 z-50">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <SeasonHUD />
+            <ResourceBar />
+          </div>
+          <div className="self-start">
+            <ActiveBuffsPanel />
+          </div>
+        </div>
       </header>
       <aside className="grepolis-sidebar village-sidebar">
         <div className="grepolis-sidebar__header">
@@ -676,7 +684,7 @@ function AttackCityModal({ targetCityId, targetCityName, units, cityId, attackCi
   onClose: () => void;
 }) {
   const [counts, setCounts] = useState<Record<UnitType, number>>({
-    WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0,
+    WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0,
   });
 
   const totalSelected = Object.values(counts).reduce((s, v) => s + v, 0);
@@ -709,7 +717,7 @@ function AttackCityModal({ targetCityId, targetCityName, units, cityId, attackCi
     );
   }
 
-  const types: UnitType[] = ["WARRIOR", "ARCHER", "CAVALRY", "SIEGE", "SPY"];
+  const types: UnitType[] = ["WARRIOR", "ARCHER", "PIKEMAN", "CAVALRY", "SIEGE", "CROSSBOWMAN", "CATAPULT", "SPY"];
 
   return (
     <div className="fixed inset-0 z-[90] grid place-items-center bg-black/75 backdrop-blur-md p-4" onClick={onClose}>
@@ -1019,7 +1027,10 @@ function RankingModal({ myCityId, onClose, t }: { myCityId: string | null; onClo
               <tr>
                 <th className="p-4">Rank</th>
                 <th className="p-4">{t("play.ranking.village")}</th>
-                <th className="p-4 text-right">Poder</th>
+                <th className="p-4">{t("play.ranking.alliance")}</th>
+                <th className="p-4 text-right" title={`${t("play.ranking.buildings")} / ${t("play.ranking.army")} / ${t("play.ranking.research")}`}>
+                  {t("play.ranking.power")} ⓘ
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -1027,7 +1038,10 @@ function RankingModal({ myCityId, onClose, t }: { myCityId: string | null; onClo
                 <tr key={entry.cityId} className={entry.cityId === myCityId ? "bg-etheria-gold/10" : ""}>
                   <td className="p-4 font-mono text-white/40">#{entry.rank}</td>
                   <td className="p-4 font-serif text-white">{entry.cityName}</td>
-                  <td className="p-4 text-right font-mono text-etheria-gold">{formatNumber(entry.power)}</td>
+                  <td className="p-4 text-xs text-white/40">{entry.allianceName ?? "—"}</td>
+                  <td className="p-4 text-right font-mono text-etheria-gold" title={`${t("play.ranking.buildings")}: ${formatNumber(entry.powerBreakdown?.buildings ?? 0)} · ${t("play.ranking.army")}: ${formatNumber(entry.powerBreakdown?.army ?? 0)} · ${t("play.ranking.research")}: ${formatNumber(entry.powerBreakdown?.research ?? 0)}`}>
+                    {formatNumber(entry.power)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1120,7 +1134,7 @@ function BarracksModal({ building, resources, onUpgrade, onTrain, isUpgrading, p
   const timeSeconds = getUpgradeTimeSeconds(building.type, building.level);
   const isMaxLevel = building.level >= MAX_BUILDING_LEVEL;
 
-  const unitTypes: UnitType[] = building.type === "STABLE" ? ["CAVALRY"] : ["WARRIOR", "ARCHER"];
+  const unitTypes: UnitType[] = building.type === "STABLE" ? ["CAVALRY"] : ["WARRIOR", "PIKEMAN", "ARCHER", "CROSSBOWMAN", "SIEGE", "CATAPULT", "SPY"];
   const [activeUnit, setActiveUnit] = useState<UnitType>(unitTypes[0]);
   const [count, setCount] = useState(1);
 

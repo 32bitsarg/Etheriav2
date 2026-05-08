@@ -290,7 +290,7 @@ async function processResourceTicks() {
 
     // Winter pressure: troop food consumption
     const unitsRes = await db.from(COLLECTIONS.UNITS).eq('cityId', city.id).get() as any;
-    const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 };
+    const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 };
     for (const u of unitsRes.data ?? []) {
       units[u.type as UnitType] = (units[u.type as UnitType] ?? 0) + u.count;
     }

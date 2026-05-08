@@ -268,8 +268,8 @@ function chooseTraining(snapshot: BotSnapshot, profile: BotProfile, config: BotS
   const critical = criticalResources(snapshot, config);
   const unlocked = getUnlockedUnits(snapshot.cityTechs);
   const preferred: UnitType[] = profile === "MILITARIST"
-    ? ["CAVALRY", "SIEGE", "ARCHER", "WARRIOR", "SPY"]
-    : ["WARRIOR", "ARCHER", "CAVALRY", "SPY", "SIEGE"];
+    ? ["CAVALRY", "SIEGE", "CATAPULT", "CROSSBOWMAN", "ARCHER", "PIKEMAN", "WARRIOR", "SPY"]
+    : ["WARRIOR", "PIKEMAN", "ARCHER", "CROSSBOWMAN", "CAVALRY", "SPY", "SIEGE", "CATAPULT"];
 
   const season = snapshot.seasonState?.currentSeason;
   if (season === "WINTER") {

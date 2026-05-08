@@ -29,12 +29,12 @@ function makeCity(overrides: Partial<City> = {}): City {
 
 describe('calculateHourlyFoodConsumption', () => {
   it('returns 0 for empty army', () => {
-    const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 };
+    const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 };
     expect(calculateHourlyFoodConsumption(units)).toBe(0);
   });
 
   it('calculates correctly for mixed army', () => {
-    const units: Record<UnitType, number> = { WARRIOR: 10, ARCHER: 5, CAVALRY: 2, SIEGE: 0, SPY: 0 };
+    const units: Record<UnitType, number> = { WARRIOR: 10, ARCHER: 5, CAVALRY: 2, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 };
     // 10*0.5 + 5*0.4 + 2*1.0 = 5 + 2 + 2 = 9
     expect(calculateHourlyFoodConsumption(units)).toBe(9);
   });
@@ -44,7 +44,7 @@ describe('evaluateWinterPressure', () => {
   it('no change when hoursElapsed is 0', () => {
     const city = makeCity();
     const now = new Date(city.createdAt);
-    const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 };
+    const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 };
 
     const state = evaluateWinterPressure(city, 100, units, null, now);
     expect(state.foodBalance).toBe(500);
@@ -54,7 +54,7 @@ describe('evaluateWinterPressure', () => {
 
   it('increases food balance when production exceeds consumption', () => {
     const city = makeCity({ resources: { ...makeCity().resources, food: 500 } });
-    const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 };
+    const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 };
     const now = new Date(new Date(city.createdAt).getTime() + 60 * 60 * 1000); // +1h
 
     const state = evaluateWinterPressure(city, 100, units, null, now);
@@ -64,7 +64,7 @@ describe('evaluateWinterPressure', () => {
 
   it('decreases food balance when consumption exceeds production', () => {
     const city = makeCity({ resources: { ...makeCity().resources, food: 500 } });
-    const units: Record<UnitType, number> = { WARRIOR: 200, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 };
+    const units: Record<UnitType, number> = { WARRIOR: 200, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 };
     // consumption = 200 * 0.5 = 100/h, production = 50/h → net = -50/h
     const now = new Date(new Date(city.createdAt).getTime() + 60 * 60 * 1000); // +1h
 
@@ -74,7 +74,7 @@ describe('evaluateWinterPressure', () => {
 
   it('scales starvationHours by elapsed time', () => {
     const city = makeCity({ resources: { ...makeCity().resources, food: 50 } }); // below minimumReserve=100
-    const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 };
+    const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 };
     const now = new Date(new Date(city.createdAt).getTime() + 30 * 60 * 1000); // +0.5h
 
     const state = evaluateWinterPressure(city, 0, units, null, now);
@@ -84,14 +84,14 @@ describe('evaluateWinterPressure', () => {
 
   it('applies combat penalty after grace period', () => {
     const city = makeCity();
-    const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 };
+    const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 };
     const prevState: CityWinterState = {
       cityId: 'city-1',
       foodBalance: 50,
       starvationHours: 6, // > grace=4
       isStarving: true,
       combatPenalty: 1.0,
-      desertionLosses: { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 },
+      desertionLosses: { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 },
     };
     const now = new Date(new Date(city.createdAt).getTime() + 60 * 60 * 1000);
 
@@ -101,14 +101,14 @@ describe('evaluateWinterPressure', () => {
 
   it('applies desertion scaled by elapsed time', () => {
     const city = makeCity();
-    const units: Record<UnitType, number> = { WARRIOR: 100, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 };
+    const units: Record<UnitType, number> = { WARRIOR: 100, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 };
     const prevState: CityWinterState = {
       cityId: 'city-1',
       foodBalance: 50,
       starvationHours: 14, // > desertionAfter=12
       isStarving: true,
       combatPenalty: 0.8,
-      desertionLosses: { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 },
+      desertionLosses: { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 },
     };
     const now = new Date(new Date(city.createdAt).getTime() + 2 * 60 * 60 * 1000); // +2h
 
@@ -119,14 +119,14 @@ describe('evaluateWinterPressure', () => {
 
   it('recovers when food is above reserve', () => {
     const city = makeCity({ resources: { ...makeCity().resources, food: 200 } });
-    const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 };
+    const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 };
     const prevState: CityWinterState = {
       cityId: 'city-1',
       foodBalance: 200,
       starvationHours: 6,
       isStarving: true,
       combatPenalty: 0.8,
-      desertionLosses: { WARRIOR: 5, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 },
+      desertionLosses: { WARRIOR: 5, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 },
     };
     const now = new Date(new Date(city.createdAt).getTime() + 2 * 60 * 60 * 1000); // +2h
 
@@ -139,14 +139,14 @@ describe('evaluateWinterPressure', () => {
 
   it('fully resets when starvationHours reaches 0', () => {
     const city = makeCity({ resources: { ...makeCity().resources, food: 200 } });
-    const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 };
+    const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 };
     const prevState: CityWinterState = {
       cityId: 'city-1',
       foodBalance: 200,
       starvationHours: 0.5,
       isStarving: true,
       combatPenalty: 0.8,
-      desertionLosses: { WARRIOR: 5, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 },
+      desertionLosses: { WARRIOR: 5, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 },
     };
     const now = new Date(new Date(city.createdAt).getTime() + 60 * 60 * 1000); // +1h
 
@@ -172,7 +172,7 @@ describe('resetWinterState', () => {
 describe('getWinterPressureSummary', () => {
   it('returns Infinity hours until starvation when netFood is positive', () => {
     const city = makeCity({ resources: { ...makeCity().resources, food: 500 } });
-    const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 };
+    const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 };
     const summary = getWinterPressureSummary(city, 100, units);
     expect(summary.netFoodPerHour).toBe(100);
     expect(summary.hoursUntilStarvation).toBe(Infinity);
@@ -180,7 +180,7 @@ describe('getWinterPressureSummary', () => {
 
   it('calculates hours until starvation correctly', () => {
     const city = makeCity({ resources: { ...makeCity().resources, food: 500 } });
-    const units: Record<UnitType, number> = { WARRIOR: 200, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 };
+    const units: Record<UnitType, number> = { WARRIOR: 200, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 };
     // consumption = 100, production = 50 → net = -50
     const summary = getWinterPressureSummary(city, 50, units);
     expect(summary.netFoodPerHour).toBe(-50);

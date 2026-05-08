@@ -26,6 +26,9 @@ export const DEFAULT_WINTER_PRESSURE_CONFIG: WinterPressureConfig = {
     CAVALRY: 1.0,
     SIEGE: 0.3,
     SPY: 0.2,
+    PIKEMAN: 0.45,
+    CROSSBOWMAN: 0.35,
+    CATAPULT: 0.4,
   },
   starvationGraceHours: 4,
   starvationCombatPenalty: 0.8,
@@ -87,7 +90,7 @@ export function evaluateWinterPressure(
     starvationHours: 0,
     isStarving: false,
     combatPenalty: 1.0,
-    desertionLosses: { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 },
+    desertionLosses: { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 },
   };
 
   // Update food balance by net food over elapsed time
@@ -111,6 +114,9 @@ export function evaluateWinterPressure(
         CAVALRY: state.desertionLosses.CAVALRY ?? 0,
         SIEGE: state.desertionLosses.SIEGE ?? 0,
         SPY: state.desertionLosses.SPY ?? 0,
+        PIKEMAN: state.desertionLosses.PIKEMAN ?? 0,
+        CROSSBOWMAN: state.desertionLosses.CROSSBOWMAN ?? 0,
+        CATAPULT: state.desertionLosses.CATAPULT ?? 0,
       };
       for (const [unitType, count] of Object.entries(units)) {
         const loss = Math.floor(count * config.desertionRatePerHour * hoursElapsed);
@@ -144,7 +150,7 @@ export function resetWinterState(cityId: string, currentFood: number): CityWinte
     starvationHours: 0,
     isStarving: false,
     combatPenalty: 1.0,
-    desertionLosses: { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 },
+    desertionLosses: { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 },
   };
 }
 

@@ -600,7 +600,7 @@
       },
       "barracks": {
         "name": "Barracks",
-        "description": "Train infantry units. Higher levels unlock stronger warriors."
+        "description": "Train infantry, ranged, siege units and spies."
       },
       "stable": {
         "name": "Stable",
@@ -647,6 +647,21 @@
       "spy": {
         "name": "Spy",
         "short": "Spy"
+      },
+      "pikeman": {
+        "name": "Pikeman",
+        "description": "Spear infantry",
+        "short": "Pikeman"
+      },
+      "crossbowman": {
+        "name": "Crossbowman",
+        "description": "Heavy ranged armor piercing",
+        "short": "Crossbow"
+      },
+      "catapult": {
+        "name": "Catapult",
+        "description": "Heavy siege artillery",
+        "short": "Catapult"
       }
     },
     "categories": {
@@ -782,6 +797,7 @@
       "subtitle": "Ordered by total Power: buildings, army and research.",
       "close": "Close",
       "village": "Village",
+      "alliance": "Alliance",
       "power": "Power",
       "buildings": "Buildings",
       "army": "Army",
@@ -1077,6 +1093,44 @@
       "cancelFailed": "Could not cancel",
       "trainingCancelled": "Training cancelled",
       "researchCancelled": "Research cancelled"
+    },
+    "buffs": {
+      "peaceTreaty": "Peace Treaty",
+      "peaceTreatyDesc": "+{pct}% all resource production from active peace treaty.",
+      "dishonor": "Dishonor",
+      "dishonorDesc": "Attack damage -{pct}% for breaking a peace treaty.",
+      "techProduction": "Production",
+      "techTrainingCost": "Training Cost",
+      "techTrainingCostDesc": "Unit training cost reduced by {pct}%.",
+      "techWall": "Wall Defense",
+      "techWallDesc": "Wall defense bonus x{mul}.",
+      "techTower": "Tower Damage",
+      "techTowerDesc": "Tower damage +{dmg} per round.",
+      "techUnitBonuses": "Unit Bonuses",
+      "techUnitBonusesDesc": "Active unit stat bonuses from researched technologies.",
+      "intensity": "intensity",
+      "winterFoodDrain": "Food Drain",
+      "winterFoodDrainDesc": "Troops consume food",
+      "starving": "Starving",
+      "starvingDesc": "Food reserves below minimum. Combat penalty active.",
+      "combatPenalty": "Combat",
+      "combatPenaltyDesc": "Unit combat effectiveness reduced by {pct}% due to starvation.",
+      "desertion": "Desertion",
+      "desertionDesc": "Troops are deserting due to extended starvation.",
+      "sourceAlliance": "Alliance",
+      "sourceTech": "Technology",
+      "sourceSeason": "Season",
+      "sourceWinter": "Winter",
+      "sourceZone": "Zone",
+      "zone": {
+        "north": "North",
+        "center": "Center",
+        "south": "South",
+        "coast": "Coast",
+        "mountain": "Mountain",
+        "forest": "Forest",
+        "plains": "Plains"
+      }
     }
   }
 }
