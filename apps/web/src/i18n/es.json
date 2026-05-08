@@ -106,9 +106,18 @@
     "title": "Comunidad activa",
     "subtitle": "Miles de estrategas ya están jugando",
     "stats": [
-      { "value": "50,000+", "label": "Jugadores" },
-      { "value": "12,000+", "label": "Batallas" },
-      { "value": "98%", "label": "Satisfacción" }
+      {
+        "value": "50,000+",
+        "label": "Jugadores"
+      },
+      {
+        "value": "12,000+",
+        "label": "Batallas"
+      },
+      {
+        "value": "98%",
+        "label": "Satisfacción"
+      }
     ]
   },
   "cta": {
@@ -120,10 +129,18 @@
     "title": "Capturas del Juego",
     "subtitle": "Elige tu bando en la guerra eterna",
     "items": [
-      { "caption": "Vista del Mapa Mundial" },
-      { "caption": "Interfaz de Batalla" },
-      { "caption": "Gestión de Recursos" },
-      { "caption": "Sistema de Diplomacia" }
+      {
+        "caption": "Vista del Mapa Mundial"
+      },
+      {
+        "caption": "Interfaz de Batalla"
+      },
+      {
+        "caption": "Gestión de Recursos"
+      },
+      {
+        "caption": "Sistema de Diplomacia"
+      }
     ]
   },
   "lore": {
@@ -138,9 +155,18 @@
     "brand": "Etheria",
     "tagline": "Conquista. Construye. Domina.",
     "links": [
-      { "label": "Changelog", "href": "/changelog" },
-      { "label": "Términos", "href": "/terminos" },
-      { "label": "Privacidad", "href": "/privacidad" }
+      {
+        "label": "Changelog",
+        "href": "/changelog"
+      },
+      {
+        "label": "Términos",
+        "href": "/terminos"
+      },
+      {
+        "label": "Privacidad",
+        "href": "/privacidad"
+      }
     ],
     "copyright": "© 2026 Etheria. Todos los derechos reservados.",
     "developer": "Desarrollado con 💛 por el Equipo Etheria"
@@ -236,8 +262,9 @@
       "Technical": "Técnico"
     },
     "releases": {
-      "0.2.2": "El Mercado de los Reinos",
-      "0.2.1": "El Taller de Colas",
+      "v0_2_3": "El Eco de las Batallas",
+      "v0_2_2": "El Mercado de los Reinos",
+      "v0_2_1": "El Taller de Colas",
       "v0_2_0": "El Mapa Viviente",
       "v0_1_1": "La Puerta de Etheria",
       "v0_1_0": "La Resistencia del Invierno",
@@ -247,57 +274,6 @@
       "v0_0_1": "La Fundación de Etheria"
     },
     "items": {
-      "0.2.1": {
-        "added": [
-          "[CORE] Colas secuenciales configurables",
-          "Construccion, entrenamiento e investigacion ahora soportan hasta 3 slots pendientes por ciudad.",
-          "Solo 1 slot se ejecuta activamente por defecto; los siguientes quedan encadenados y avanzan cuando termina el anterior.",
-          "Los limites de slots y concurrencia salen de configuracion para respetar el guideline de no hardcodear valores de gameplay.",
-          "[UI] Panel derecho de colas persistente",
-          "/play muestra construccion, entrenamiento y saber en un unico panel derecho siempre visible.",
-          "Cada item de cola incluye boton de cancelacion con reembolso del 50% de recursos.",
-          "[WORLD] Asset de aldeas en mapa",
-          "Las ciudades de jugadores y bots en /mapa ahora usan un sprite de aldea fortificada en vez del marcador generico.",
-          "[BOTS] Simulacion viva de jugadores",
-          "Los bots ahora pueden recuperarse de recursos criticos, priorizar economia antes de gastar y mantener memoria de sus decisiones.",
-          "Los bots pueden crear alianzas, unirse a alianzas, hablar por chat y enviar mensajes diplomaticos usando los mismos servicios que los jugadores."
-        ],
-        "changed": [
-          "[BOTS] IA alineada con el motor de colas",
-          "Los bots pueden llenar slots pendientes usando las mismas acciones de ciudad que los jugadores, en vez de detenerse ante una cola activa.",
-          "La simulacion de bots ahora funciona sobre la capa compatible de datos para respetar el proveedor configurado entre PostgreSQL y MatecitoDB.",
-          "[UI] Sidebar de juego simplificado",
-          "Las colas duplicadas del sidebar izquierdo y del dock inferior fueron removidas para dejar una unica fuente visual."
-        ],
-        "fixed": [
-          "[EDITOR] Mascara de terreno del mapa",
-          "Pintar plains ahora es visible en el overlay del editor de mapa.",
-          "El pincel cubre mejor los bordes de la grilla para evitar celdas dificiles de pintar.",
-          "La camara del editor permite desplazar el mapa con margen adicional para pintar bordes cubiertos por paneles."
-        ]
-      },
-      "0.2.2": {
-        "added": [
-          "[CORE] Auditoria tecnica v1: reporte completo del estado de funciones actuales y propuestas priorizadas.",
-          "Ampliada la cobertura de tests de dominio para recursos, colas configurables, terreno del mundo y decision engine de bots.",
-          "[GAMEPLAY] Centro unificado de reportes: todas las notificaciones de batalla, espionaje, temporada y misiones en una bandeja con contador de no leidos.",
-          "Misiones iniciales: completa misiones por ciudad, reclama recompensas configurables y recibi reportes al completar.",
-          "Mercado publico: crea y acepta ofertas de intercambio desde el edificio Mercado con movimiento de recursos validado por el servidor.",
-          "Espionaje: envia espias para obtener inteligencia sobre ciudades y campamentos barbaros con reportes estimados.",
-          "Objetivos de alianza: contribui recursos a metas compartidas con progreso visible y efectos temporales de alianza.",
-          "Los reportes ahora se consultan desde el modal de mensajes con badge compartido de no leidos para correo y reportes.",
-          "El mercado se abre desde el edificio Mercado en vez del sidebar.",
-          "Los campamentos barbaros pueden espiarse desde su modal y generan reportes de inteligencia sin revelar niebla.",
-          "Persistencia dual extendida para MatecitoDB/PostgreSQL con nuevas colecciones y modelos Prisma.",
-          "Los bots ahora comercian en el mercado, contribuyen a objetivos de alianza y espian enemigos usando servicios reales.",
-          "Las misiones ahora se cargan desde config de dominio para facilitar el balanceo y nuevas misiones futuras.",
-          "[WORLD] Reportes de cambio de temporada: el sistema emite notificaciones al cambiar estacion o fase visibles en el HUD."
-        ],
-        "fixed": [
-          "[CORE] La produccion pasiva ya no reduce recursos cuando lastResourceUpdate queda por delante del tiempo actual.",
-          "Los slots activos de colas ahora quedan correctamente limitados por el maximo configurado sin importar valores de entorno."
-        ]
-      },
       "v0_2_0": {
         "added": [
           "Mapa del Mundo Dinámico: Visualización en tiempo real de ejércitos y caravanas comerciales con movimiento físico.",
@@ -412,6 +388,80 @@
           "Migración de PostgreSQL/Prisma a matecito.dev document DB.",
           "Configs de edificios y unidades almacenados en DB (310 registros).",
           "Paquete shared con schemas Zod para contratos de tipos."
+        ]
+      },
+      "v0_2_1": {
+        "added": [
+          "[CORE] Colas secuenciales configurables",
+          "Construccion, entrenamiento e investigacion ahora soportan hasta 3 slots pendientes por ciudad.",
+          "Solo 1 slot se ejecuta activamente por defecto; los siguientes quedan encadenados y avanzan cuando termina el anterior.",
+          "Los limites de slots y concurrencia salen de configuracion para respetar el guideline de no hardcodear valores de gameplay.",
+          "[UI] Panel derecho de colas persistente",
+          "/play muestra construccion, entrenamiento y saber en un unico panel derecho siempre visible.",
+          "Cada item de cola incluye boton de cancelacion con reembolso del 50% de recursos.",
+          "[WORLD] Asset de aldeas en mapa",
+          "Las ciudades de jugadores y bots en /mapa ahora usan un sprite de aldea fortificada en vez del marcador generico.",
+          "[BOTS] Simulacion viva de jugadores",
+          "Los bots ahora pueden recuperarse de recursos criticos, priorizar economia antes de gastar y mantener memoria de sus decisiones.",
+          "Los bots pueden crear alianzas, unirse a alianzas, hablar por chat y enviar mensajes diplomaticos usando los mismos servicios que los jugadores."
+        ],
+        "changed": [
+          "[BOTS] IA alineada con el motor de colas",
+          "Los bots pueden llenar slots pendientes usando las mismas acciones de ciudad que los jugadores, en vez de detenerse ante una cola activa.",
+          "La simulacion de bots ahora funciona sobre la capa compatible de datos para respetar el proveedor configurado entre PostgreSQL y MatecitoDB.",
+          "[UI] Sidebar de juego simplificado",
+          "Las colas duplicadas del sidebar izquierdo y del dock inferior fueron removidas para dejar una unica fuente visual."
+        ],
+        "fixed": [
+          "[EDITOR] Mascara de terreno del mapa",
+          "Pintar plains ahora es visible en el overlay del editor de mapa.",
+          "El pincel cubre mejor los bordes de la grilla para evitar celdas dificiles de pintar.",
+          "La camara del editor permite desplazar el mapa con margen adicional para pintar bordes cubiertos por paneles."
+        ]
+      },
+      "v0_2_2": {
+        "added": [
+          "[CORE] Auditoria tecnica v1: reporte completo del estado de funciones actuales y propuestas priorizadas.",
+          "Ampliada la cobertura de tests de dominio para recursos, colas configurables, terreno del mundo y decision engine de bots.",
+          "[GAMEPLAY] Centro unificado de reportes: todas las notificaciones de batalla, espionaje, temporada y misiones en una bandeja con contador de no leidos.",
+          "Misiones iniciales: completa misiones por ciudad, reclama recompensas configurables y recibi reportes al completar.",
+          "Mercado publico: crea y acepta ofertas de intercambio desde el edificio Mercado con movimiento de recursos validado por el servidor.",
+          "Espionaje: envia espias para obtener inteligencia sobre ciudades y campamentos barbaros con reportes estimados.",
+          "Objetivos de alianza: contribui recursos a metas compartidas con progreso visible y efectos temporales de alianza.",
+          "Los reportes ahora se consultan desde el modal de mensajes con badge compartido de no leidos para correo y reportes.",
+          "El mercado se abre desde el edificio Mercado en vez del sidebar.",
+          "Los campamentos barbaros pueden espiarse desde su modal y generan reportes de inteligencia sin revelar niebla.",
+          "Persistencia dual extendida para MatecitoDB/PostgreSQL con nuevas colecciones y modelos Prisma.",
+          "Los bots ahora comercian en el mercado, contribuyen a objetivos de alianza y espian enemigos usando servicios reales.",
+          "Las misiones ahora se cargan desde config de dominio para facilitar el balanceo y nuevas misiones futuras.",
+          "[WORLD] Reportes de cambio de temporada: el sistema emite notificaciones al cambiar estacion o fase visibles en el HUD."
+        ],
+        "fixed": [
+          "[CORE] La produccion pasiva ya no reduce recursos cuando lastResourceUpdate queda por delante del tiempo actual.",
+          "Los slots activos de colas ahora quedan correctamente limitados por el maximo configurado sin importar valores de entorno."
+        ]
+      },
+      "v0_2_3": {
+        "added": [
+          "[AUDIO] Sistema de musica ambiente con Web Audio API, 10 tracks .ogg medieval-fantasy, reproduccion aleatoria con pausas de 30-90s.",
+          "[NOTIFICATIONS] Alertas de ataque entrante: el defensor recibe reporte inmediato con ETA y composicion de tropas.",
+          "[NOTIFICATIONS] Deteccion de espionaje: 15% + TOWERx5% + SPY_NETWORK de chance de detectar espias enemigos.",
+          "[UI] Modal de Cuartel/Establo redisenado con stats de unidad, presets de cantidad y costos.",
+          "[UI] Modal de Biblioteca redisenado con tabs por categoria, filtro de investigadas y panel de Bonos Activos.",
+          "[UI] Reportes de batalla visibles en el modal de Mensajes bajo la pestana Reportes.",
+          "[UI] SeasonHUD redisenado: muestra modificadores, barra de intensidad, tiempo restante y aviso de winter pressure.",
+          "[BOTS] Overhaul completo de IA: 20+ mejoras incluyendo logica de defensa, spy intelligence, trade solo aliados, adaptacion estacional, memoria, y mas."
+        ],
+        "fixed": [
+          "[UI] Panel de investigacion de biblioteca roto (typo ACADEMY en vez de LIBRARY).",
+          "[UI] Modal de cuartel no mostraba las unidades entrenadas.",
+          "[i18n] ~20 keys de traduccion faltantes agregados (mail compose, battle selectTroops, army stats, etc.).",
+          "[i18n] Corregido bug de dot-notation en keys de version del changelog que mostraba claves crudas en la landing.",
+          "[BOTS] Market accept ahora incluye fee. Trade ya no envia recursos a enemigos. Recovery de derrotas consecutivas."
+        ],
+        "changed": [
+          "[WORLD] Velocidades de unidades rebalanceadas: Warrior 60→160, Cavalry 120→280, Trade 100→200, etc. Cap visual de viaje removido.",
+          "[WORLD] Terrain overlay desactivado en el mapa mundial."
         ]
       }
     }
@@ -578,11 +628,26 @@
       }
     },
     "units": {
-      "warrior": { "name": "Guerrero", "short": "Gue" },
-      "archer": { "name": "Arquero", "short": "Arq" },
-      "cavalry": { "name": "Caballería", "short": "Cab" },
-      "siege": { "name": "Máquina de Asedio", "short": "Asi" },
-      "spy": { "name": "Espía", "short": "Esp" }
+      "warrior": {
+        "name": "Guerrero",
+        "short": "Gue"
+      },
+      "archer": {
+        "name": "Arquero",
+        "short": "Arq"
+      },
+      "cavalry": {
+        "name": "Caballería",
+        "short": "Cab"
+      },
+      "siege": {
+        "name": "Máquina de Asedio",
+        "short": "Asi"
+      },
+      "spy": {
+        "name": "Espía",
+        "short": "Esp"
+      }
     },
     "categories": {
       "all": "Todos",
@@ -874,13 +939,34 @@
       "title": "Misiones",
       "claim": "Reclamar",
       "claimed": "Reclamada",
-      "upgrade": { "title": "Primeras mejoras", "summary": "Construye o mejora un edificio." },
-      "train": { "title": "Guardia inicial", "summary": "Entrena tus primeras unidades." },
-      "research": { "title": "Saber basico", "summary": "Inicia una investigacion." },
-      "map": { "title": "Mirar el mundo", "summary": "Abre el mapa mundial." },
-      "trade": { "title": "Intercambio", "summary": "Envia comercio o acepta una oferta." },
-      "alliance": { "title": "Vida de alianza", "summary": "Usa una accion de alianza." },
-      "barbarian": { "title": "Primer campamento", "summary": "Ataca un campamento barbaro." }
+      "upgrade": {
+        "title": "Primeras mejoras",
+        "summary": "Construye o mejora un edificio."
+      },
+      "train": {
+        "title": "Guardia inicial",
+        "summary": "Entrena tus primeras unidades."
+      },
+      "research": {
+        "title": "Saber basico",
+        "summary": "Inicia una investigacion."
+      },
+      "map": {
+        "title": "Mirar el mundo",
+        "summary": "Abre el mapa mundial."
+      },
+      "trade": {
+        "title": "Intercambio",
+        "summary": "Envia comercio o acepta una oferta."
+      },
+      "alliance": {
+        "title": "Vida de alianza",
+        "summary": "Usa una accion de alianza."
+      },
+      "barbarian": {
+        "title": "Primer campamento",
+        "summary": "Ataca un campamento barbaro."
+      }
     },
     "market": {
       "title": "Mercado",

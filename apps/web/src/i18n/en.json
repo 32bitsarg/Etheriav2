@@ -106,9 +106,18 @@
     "title": "Active community",
     "subtitle": "Thousands of strategists are already playing",
     "stats": [
-      { "value": "50,000+", "label": "Players" },
-      { "value": "12,000+", "label": "Battles" },
-      { "value": "98%", "label": "Satisfaction" }
+      {
+        "value": "50,000+",
+        "label": "Players"
+      },
+      {
+        "value": "12,000+",
+        "label": "Battles"
+      },
+      {
+        "value": "98%",
+        "label": "Satisfaction"
+      }
     ]
   },
   "cta": {
@@ -120,10 +129,18 @@
     "title": "Game Screenshots",
     "subtitle": "Choose your side in the eternal war",
     "items": [
-      { "caption": "World Map View" },
-      { "caption": "Battle Interface" },
-      { "caption": "Resource Management" },
-      { "caption": "Diplomacy System" }
+      {
+        "caption": "World Map View"
+      },
+      {
+        "caption": "Battle Interface"
+      },
+      {
+        "caption": "Resource Management"
+      },
+      {
+        "caption": "Diplomacy System"
+      }
     ]
   },
   "lore": {
@@ -138,9 +155,18 @@
     "brand": "Etheria",
     "tagline": "Conquer. Build. Dominate.",
     "links": [
-      { "label": "Changelog", "href": "/changelog" },
-      { "label": "Terms", "href": "/terms" },
-      { "label": "Privacy", "href": "/privacy" }
+      {
+        "label": "Changelog",
+        "href": "/changelog"
+      },
+      {
+        "label": "Terms",
+        "href": "/terms"
+      },
+      {
+        "label": "Privacy",
+        "href": "/privacy"
+      }
     ],
     "copyright": "© 2026 Etheria. All rights reserved.",
     "developer": "Made with 💛 by the Etheria Team"
@@ -236,8 +262,9 @@
       "Technical": "Technical"
     },
     "releases": {
-      "0.2.2": "The Market of the Realms",
-      "0.2.1": "The Queue Workshop",
+      "v0_2_3": "The Echo of Battles",
+      "v0_2_2": "The Market of the Realms",
+      "v0_2_1": "The Queue Workshop",
       "v0_2_0": "The Living Map",
       "v0_1_1": "The Gateway to Etheria",
       "v0_1_0": "The Winter Resistance",
@@ -247,38 +274,9 @@
       "v0_0_1": "The Foundation of Etheria"
     },
     "items": {
-      "0.2.1": {
+      "v0_2_2": {
         "added": [
-          "[CORE] Configurable sequential queues",
-          "Construction, training, and research now support up to 3 pending slots per city.",
-          "Only 1 slot runs actively by default; the following slots are chained and advance when the previous one finishes.",
-          "Slot limits and concurrency are configuration-driven to follow the no-hardcoded-gameplay-values guideline.",
-          "[UI] Persistent right queue panel",
-          "/play shows construction, training, and knowledge in one always-visible right panel.",
-          "Each queue item includes a cancel button with a 50% resource refund.",
-          "[WORLD] Village map asset",
-          "Player and bot cities in /mapa now use a fortified village sprite instead of the generic marker.",
-          "[BOTS] Living player simulation",
-          "Bots can now recover from critical resources, prioritize economy before spending, and keep decision memory.",
-          "Bots can create alliances, join alliances, talk in chat, and send diplomatic messages through the same services used by players."
-        ],
-        "changed": [
-          "[BOTS] AI aligned with the queue engine",
-          "Bots can fill pending slots through the same city actions used by players instead of stopping on any active queue.",
-          "Bot simulation now runs on the compatible data layer so it respects the configured provider between PostgreSQL and MatecitoDB.",
-          "[UI] Simplified game sidebar",
-          "Duplicate queues were removed from the left sidebar and bottom dock to keep a single visual source."
-        ],
-        "fixed": [
-          "[EDITOR] World terrain mask",
-          "Painting plains is now visible in the map editor overlay.",
-          "The brush covers grid edges more reliably to avoid hard-to-paint cells.",
-          "The editor camera can pan with extra margin so panel-covered map edges can be painted."
-        ]
-      },
-      "0.2.2": {
-        "added": [
-          "[CORE] Technical audit v1: comprehensive report on current game functions and prioritized proposals.",
+          "[CORE] Full game v1 audit: technical report of current game functions and prioritized proposals.",
           "Expanded domain test coverage for resources, configurable queues, world terrain, and bot decision engine.",
           "[GAMEPLAY] Unified reports center: all battle, spy, season, and quest notifications in one inbox with unread counter.",
           "Initial quests: complete missions per city, claim configurable rewards, and receive reports on completion.",
@@ -412,6 +410,58 @@
           "Migration from PostgreSQL/Prisma to matecito.dev document DB.",
           "Building and unit configs stored in DB (310 records).",
           "Shared package with Zod schemas for type contracts."
+        ]
+      },
+      "v0_2_3": {
+        "added": [
+          "[AUDIO] Ambient music system with Web Audio API, 10 medieval-fantasy .ogg tracks, random playback with 30-90s pauses.",
+          "[NOTIFICATIONS] Incoming attack alerts: defender gets immediate report with ETA and troop composition when attacked.",
+          "[NOTIFICATIONS] Spy detection: 15% + TOWERx5% + SPY_NETWORK chance to detect enemy spies near your city.",
+          "[UI] Redesigned Barracks/Stable modal with unit stats (Atk/Def/HP/Speed/Carry/AP), quantity presets, and costs.",
+          "[UI] Redesigned Library modal with category tabs, researched-only filter, and Active Bonuses summary panel.",
+          "[UI] Battle reports now visible in the Messages modal under the Reports tab alongside game reports.",
+          "[UI] SeasonHUD redesign: shows season modifiers, intensity bar, time remaining, and winter pressure warning.",
+          "[BOTS] Complete AI overhaul: 20+ improvements including defense logic, spy intelligence, trade only to allies, seasonal adaptation, bot memory, and more."
+        ],
+        "fixed": [
+          "[UI] Library research panel was broken (typo ACADEMY instead of LIBRARY).",
+          "[UI] Barracks modal did not show trained unit counts.",
+          "[i18n] ~20 missing translation keys added (mail compose, battle selectTroops, army stats, etc.).",
+          "[i18n] Fixed dot-notation issue in changelog version keys causing raw key display on landing.",
+          "[BOTS] Market accept now includes fee. Trade no longer sends resources to enemies. Consecutive loss recovery."
+        ],
+        "changed": [
+          "[WORLD] Unit speeds rebalanced: Warrior 60→160, Cavalry 120→280, Trade 100→200, etc. Visual travel cap removed.",
+          "[WORLD] Terrain overlay disabled on world map."
+        ]
+      },
+      "v0_2_1": {
+        "added": [
+          "[CORE] Configurable sequential queues",
+          "Construction, training, and research now support up to 3 pending slots per city.",
+          "Only 1 slot runs actively by default; following slots advance when the previous finishes.",
+          "Slot limits and concurrency are configuration-driven (no hardcoded gameplay values).",
+          "[UI] Persistent right queue panel",
+          "/play shows construction, training, and knowledge in one always-visible right panel.",
+          "Each queue item includes a cancel button with a 50% resource refund.",
+          "[WORLD] Village map asset",
+          "Player and bot cities in /mapa now use a fortified village sprite.",
+          "[BOTS] Living player simulation",
+          "Bots can recover from critical resources, prioritize economy, and keep decision memory.",
+          "Bots can create alliances, join alliances, chat, and send diplomatic messages."
+        ],
+        "changed": [
+          "[BOTS] AI aligned with the queue engine",
+          "Bots can fill pending slots using the same city actions as players.",
+          "Bot simulation runs on the compatible data layer respecting PostgreSQL/MatecitoDB.",
+          "[UI] Simplified game sidebar",
+          "Duplicate queues removed from the left sidebar and bottom dock."
+        ],
+        "fixed": [
+          "[EDITOR] World terrain mask",
+          "Painting plains is now visible in the map editor overlay.",
+          "The brush covers grid edges more reliably.",
+          "The editor camera can pan with extra margin for panel-covered edges."
         ]
       }
     }
@@ -578,11 +628,26 @@
       }
     },
     "units": {
-      "warrior": { "name": "Warrior", "short": "War" },
-      "archer": { "name": "Archer", "short": "Arc" },
-      "cavalry": { "name": "Cavalry", "short": "Cav" },
-      "siege": { "name": "Siege Engine", "short": "Sie" },
-      "spy": { "name": "Spy", "short": "Spy" }
+      "warrior": {
+        "name": "Warrior",
+        "short": "War"
+      },
+      "archer": {
+        "name": "Archer",
+        "short": "Arc"
+      },
+      "cavalry": {
+        "name": "Cavalry",
+        "short": "Cav"
+      },
+      "siege": {
+        "name": "Siege Engine",
+        "short": "Sie"
+      },
+      "spy": {
+        "name": "Spy",
+        "short": "Spy"
+      }
     },
     "categories": {
       "all": "All",
@@ -874,13 +939,34 @@
       "title": "Quests",
       "claim": "Claim",
       "claimed": "Claimed",
-      "upgrade": { "title": "First upgrades", "summary": "Build or upgrade a building." },
-      "train": { "title": "First guard", "summary": "Train your first units." },
-      "research": { "title": "Basic knowledge", "summary": "Start a research." },
-      "map": { "title": "See the world", "summary": "Open the world map." },
-      "trade": { "title": "Exchange", "summary": "Send trade or accept an offer." },
-      "alliance": { "title": "Alliance life", "summary": "Use an alliance action." },
-      "barbarian": { "title": "First camp", "summary": "Attack a barbarian camp." }
+      "upgrade": {
+        "title": "First upgrades",
+        "summary": "Build or upgrade a building."
+      },
+      "train": {
+        "title": "First guard",
+        "summary": "Train your first units."
+      },
+      "research": {
+        "title": "Basic knowledge",
+        "summary": "Start a research."
+      },
+      "map": {
+        "title": "See the world",
+        "summary": "Open the world map."
+      },
+      "trade": {
+        "title": "Exchange",
+        "summary": "Send trade or accept an offer."
+      },
+      "alliance": {
+        "title": "Alliance life",
+        "summary": "Use an alliance action."
+      },
+      "barbarian": {
+        "title": "First camp",
+        "summary": "Attack a barbarian camp."
+      }
     },
     "market": {
       "title": "Market",

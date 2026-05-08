@@ -70,7 +70,10 @@ export function LatestVersionSection() {
                     {translateHeading(section.heading)}
                   </h3>
                   <ul className="space-y-2">
-                    {section.itemKeys.slice(0, 4).map((itemKey, i) => (
+                    {section.itemKeys
+                      .filter((itemKey) => !section.internalItemKeys?.includes(itemKey))
+                      .slice(0, 4)
+                      .map((itemKey, i) => (
                       <li key={i} className="flex gap-3 text-[14px] text-stone-600">
                         <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
                         <span>{t(itemKey)}</span>
