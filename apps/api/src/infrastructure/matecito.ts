@@ -50,4 +50,10 @@ export const COLLECTIONS = {
   BARBARIAN_BATTLES: 'barbarian_battles',
   BARBARIAN_ATTACKS: 'barbarian_attacks',
   BARBARIAN_ATTACK_ALERTS: 'barbarian_attack_alerts',
+  TRADE_CARAVANS: 'trade_caravans',
+  BOT_PLAYERS: 'bot_players',
+  BOT_ACTION_LOGS: 'bot_action_logs',
+  BOT_METRICS_SNAPSHOTS: 'bot_metrics_snapshots',
+  BOT_MEMORIES: 'bot_memories',
+  BOT_RELATIONSHIPS: 'bot_relationships',
 } as const;

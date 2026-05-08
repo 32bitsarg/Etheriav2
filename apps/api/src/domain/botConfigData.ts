@@ -12,8 +12,17 @@ export type BotProfileWeights = {
   aggression: number;
 };
 
+const DEFAULT_PROFILES: BotProfile[] = ["ECONOMIST", "MILITARIST", "TECH_RUSHER", "BALANCED"];
+const DEFAULT_PROFILE_WEIGHTS: Record<BotProfile, BotProfileWeights> = {
+  ECONOMIST: { economy: 5, military: 1, research: 3, aggression: 0.5 },
+  MILITARIST: { economy: 2, military: 5, research: 2, aggression: 3 },
+  TECH_RUSHER: { economy: 2, military: 1, research: 5, aggression: 0.75 },
+  BALANCED: { economy: 3, military: 3, research: 3, aggression: 1.5 },
+};
+
 export type BotSimulationConfig = {
   enabled: boolean;
+  provider: string;
   targetCount: number;
   tickSeconds: number;
   maxBotsPerTick: number;
@@ -21,6 +30,17 @@ export type BotSimulationConfig = {
   maxActiveOutgoingBattles: number;
   attackCooldownMinutes: number;
   targetCooldownMinutes: number;
+  maxAttackDistance: number;
+  newPlayerProtectionHours: number;
+  globalTargetCooldownMinutes: number;
+  tradeMinMarketLevel: number;
+  resourceReserveRatio: number;
+  criticalResourceRatio: number;
+  socialActionChance: number;
+  chatActionChance: number;
+  chatRateLimitWindowMs: number;
+  allianceCenterRequiredLevel: number;
+  attackCooldownRangeMinutes: [number, number];
   profiles: BotProfile[];
   profileWeights: Record<BotProfile, BotProfileWeights>;
 };
@@ -29,21 +49,32 @@ export function getBotSimulationConfig(): BotSimulationConfig {
   const explicitEnabled = process.env.BOTS_ENABLED === "true";
   const explicitDisabled = process.env.BOTS_ENABLED === "false";
   const devDefaultEnabled = process.env.NODE_ENV !== "production" && !explicitDisabled;
+  const provider = process.env.DB_PROVIDER ?? "matecito";
   return {
-    enabled: process.env.DB_PROVIDER === "postgres" && (explicitEnabled || devDefaultEnabled),
+    enabled: explicitDisabled ? false : provider === "postgres" ? (explicitEnabled || devDefaultEnabled) : explicitEnabled,
+    provider,
     targetCount: readNumber("BOT_TARGET_COUNT", 6),
     tickSeconds: readNumber("BOT_TICK_SECONDS", 45),
     maxBotsPerTick: readNumber("BOT_MAX_PER_TICK", 3),
     minAttackTroops: readNumber("BOT_MIN_ATTACK_TROOPS", 8),
-    maxActiveOutgoingBattles: readNumber("BOT_MAX_ACTIVE_ATTACKS", 1),
+    maxActiveOutgoingBattles: readNumber("BOT_MAX_ACTIVE_ATTACKS", 2),
     attackCooldownMinutes: readNumber("BOT_ATTACK_COOLDOWN_MINUTES", 30),
     targetCooldownMinutes: readNumber("BOT_TARGET_COOLDOWN_MINUTES", 45),
-    profiles: ["ECONOMIST", "MILITARIST", "TECH_RUSHER", "BALANCED"],
-    profileWeights: {
-      ECONOMIST: { economy: 5, military: 1, research: 3, aggression: 0.5 },
-      MILITARIST: { economy: 2, military: 5, research: 2, aggression: 3 },
-      TECH_RUSHER: { economy: 2, military: 1, research: 5, aggression: 0.75 },
-      BALANCED: { economy: 3, military: 3, research: 3, aggression: 1.5 },
-    },
+    maxAttackDistance: readNumber("BOT_MAX_ATTACK_DISTANCE", 80),
+    newPlayerProtectionHours: readNumber("BOT_NEW_PLAYER_PROTECTION_HOURS", 24),
+    globalTargetCooldownMinutes: readNumber("BOT_GLOBAL_TARGET_COOLDOWN_MINUTES", 120),
+    tradeMinMarketLevel: readNumber("BOT_TRADE_MIN_MARKET_LEVEL", 1),
+    resourceReserveRatio: readNumber("BOT_RESOURCE_RESERVE_RATIO", 0.18),
+    criticalResourceRatio: readNumber("BOT_CRITICAL_RESOURCE_RATIO", 0.08),
+    socialActionChance: readNumber("BOT_SOCIAL_ACTION_CHANCE", 0.18),
+    chatActionChance: readNumber("BOT_CHAT_ACTION_CHANCE", 0.08),
+    chatRateLimitWindowMs: readNumber("BOT_CHAT_RATE_LIMIT_WINDOW_MS", 120_000),
+    allianceCenterRequiredLevel: readNumber("BOT_ALLIANCE_CENTER_REQUIRED_LEVEL", 5),
+    attackCooldownRangeMinutes: [
+      readNumber("BOT_ATTACK_COOLDOWN_RANGE_MIN", 20),
+      readNumber("BOT_ATTACK_COOLDOWN_RANGE_MAX", 60),
+    ],
+    profiles: DEFAULT_PROFILES,
+    profileWeights: DEFAULT_PROFILE_WEIGHTS,
   };
 }

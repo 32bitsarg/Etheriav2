@@ -2,77 +2,77 @@ import type { BuildingType, UnitType } from "@etheria/shared";
 
 // ─── Building Display Info ───
 
-export const BUILDING_INFO: Record<BuildingType, { name: string; icon: string; description: string; category: "economic" | "military" | "civic" }> = {
+export const BUILDING_INFO: Record<BuildingType, { nameKey: string; icon: string; descriptionKey: string; category: "economic" | "military" | "civic" }> = {
   TOWN_HALL: {
-    name: "Town Hall",
+    nameKey: "play.buildings.town_hall.name",
     icon: "🏛️",
-    description: "The heart of your city. Upgrading unlocks new buildings and increases storage capacity.",
+    descriptionKey: "play.buildings.town_hall.description",
     category: "civic",
   },
   GOLD_MINE: {
-    name: "Gold Mine",
+    nameKey: "play.buildings.gold_mine.name",
     icon: "⛏️",
-    description: "Extracts gold from the earth. Higher levels produce more gold per hour.",
+    descriptionKey: "play.buildings.gold_mine.description",
     category: "economic",
   },
   LUMBER_MILL: {
-    name: "Lumber Mill",
+    nameKey: "play.buildings.lumber_mill.name",
     icon: "🌲",
-    description: "Processes wood from nearby forests. Essential for construction and training.",
+    descriptionKey: "play.buildings.lumber_mill.description",
     category: "economic",
   },
   QUARRY: {
-    name: "Quarry",
+    nameKey: "play.buildings.quarry.name",
     icon: "🪨",
-    description: "Mines stone for building fortifications and structures.",
+    descriptionKey: "play.buildings.quarry.description",
     category: "economic",
   },
   FARM: {
-    name: "Farm",
+    nameKey: "play.buildings.farm.name",
     icon: "🌾",
-    description: "Produces food to sustain your growing army.",
+    descriptionKey: "play.buildings.farm.description",
     category: "economic",
   },
   BARRACKS: {
-    name: "Barracks",
+    nameKey: "play.buildings.barracks.name",
     icon: "⚔️",
-    description: "Train infantry units. Higher levels unlock stronger warriors.",
+    descriptionKey: "play.buildings.barracks.description",
     category: "military",
   },
   STABLE: {
-    name: "Stable",
+    nameKey: "play.buildings.stable.name",
     icon: "🐴",
-    description: "Train cavalry units. Faster and stronger than infantry.",
+    descriptionKey: "play.buildings.stable.description",
     category: "military",
   },
   ALLIANCE_CENTER: {
-    name: "Alliance Center",
+    nameKey: "play.buildings.alliance_center.name",
     icon: "🛡️",
-    description: "Manage alliances and coordinate with other players.",
+    descriptionKey: "play.buildings.alliance_center.description",
     category: "civic",
   },
   LIBRARY: {
-    name: "Library",
+    nameKey: "play.buildings.library.name",
     icon: "📚",
-    description: "Research technologies to improve your city and army.",
+    descriptionKey: "play.buildings.library.description",
     category: "civic",
   },
   STORAGE: {
-    name: "Storage",
+    nameKey: "play.buildings.storage.name",
     icon: "📦",
-    description: "Increases your maximum resource capacity.",
+    descriptionKey: "play.buildings.storage.description",
     category: "economic",
   },
   TOWER: {
-    name: "Tower",
+    nameKey: "play.buildings.tower.name",
     icon: "🏰",
-    description: "Main defensive structure. Grants the city's defense bonus and attacks incoming enemies.",
+    descriptionKey: "play.buildings.tower.description",
     category: "military",
   },
   MARKET: {
-    name: "Market",
+    nameKey: "play.buildings.market.name",
     icon: "🏪",
-    description: "Trade resources with other players. Higher levels unlock better trade rates.",
+    descriptionKey: "play.buildings.market.description",
     category: "economic",
   },
 };
@@ -96,22 +96,28 @@ export const BUILDING_SIZES: Record<BuildingType, { w: number; h: number }> = {
 
 // ─── Unit Display Info ───
 
-export const UNIT_INFO: Record<UnitType, { name: string; icon: string; shortName: string }> = {
-  WARRIOR: { name: "Warrior", icon: "⚔️", shortName: "War" },
-  ARCHER: { name: "Archer", icon: "🏹", shortName: "Arc" },
-  CAVALRY: { name: "Cavalry", icon: "🐎", shortName: "Cav" },
-  SIEGE: { name: "Siege Engine", icon: "🔨", shortName: "Sie" },
-  SPY: { name: "Spy", icon: "🕵️", shortName: "Spy" },
+export const UNIT_INFO: Record<UnitType, { nameKey: string; icon: string; shortNameKey: string }> = {
+  WARRIOR: { nameKey: "play.units.warrior.name", icon: "⚔️", shortNameKey: "play.units.warrior.short" },
+  ARCHER: { nameKey: "play.units.archer.name", icon: "🏹", shortNameKey: "play.units.archer.short" },
+  CAVALRY: { nameKey: "play.units.cavalry.name", icon: "🐎", shortNameKey: "play.units.cavalry.short" },
+  SIEGE: { nameKey: "play.units.siege.name", icon: "🔨", shortNameKey: "play.units.siege.short" },
+  SPY: { nameKey: "play.units.spy.name", icon: "🕵️", shortNameKey: "play.units.spy.short" },
+};
+
+export const UNIT_IMAGE_PATHS: Partial<Record<UnitType, string>> = {
+  WARRIOR: "/assets/units/warrior.png",
+  ARCHER: "/assets/units/archer.png",
+  CAVALRY: "/assets/units/cavalry.png",
 };
 
 // ─── Resource Display Info ───
 
 export const RESOURCE_INFO = {
-  gold: { name: "Gold", icon: "🪙", color: "text-etheria-gold" },
-  wood: { name: "Wood", icon: "🪵", color: "text-etheria-wood" },
-  stone: { name: "Stone", icon: "🪨", color: "text-etheria-stone" },
-  food: { name: "Food", icon: "🍖", color: "text-etheria-food" },
-  gems: { name: "Gems", icon: "💎", color: "text-etheria-gems" },
+  gold: { nameKey: "play.resources.gold", icon: "🪙", color: "text-etheria-gold" },
+  wood: { nameKey: "play.resources.wood", icon: "🪵", color: "text-etheria-wood" },
+  stone: { nameKey: "play.resources.stone", icon: "🪨", color: "text-etheria-stone" },
+  food: { nameKey: "play.resources.food", icon: "🍖", color: "text-etheria-food" },
+  gems: { nameKey: "play.resources.gems", icon: "💎", color: "text-etheria-gems" },
 } as const;
 
 // ─── Building Atlas Mapping ───
@@ -146,12 +152,49 @@ export const BUILDING_IMAGE_PATHS: Partial<Record<BuildingType, string>> = {
   LIBRARY: "/assets/buildings/generated/library.png",
 };
 
+export const MAX_BUILDING_LEVEL = 25;
+export const BUILDING_VISUAL_TIERS = [1, 5, 10, 15, 20, 25] as const;
+
+const BUILDING_ASSET_SLUGS: Record<BuildingType, string> = {
+  TOWN_HALL: "town-hall",
+  GOLD_MINE: "gold-mine",
+  LUMBER_MILL: "lumber-mill",
+  QUARRY: "quarry",
+  FARM: "farm",
+  BARRACKS: "barracks",
+  STABLE: "stable",
+  ALLIANCE_CENTER: "alliance-center",
+  LIBRARY: "library",
+  STORAGE: "storage",
+  TOWER: "tower",
+  MARKET: "market",
+};
+
+export function getBuildingVisualTier(level: number): typeof BUILDING_VISUAL_TIERS[number] {
+  if (level >= 25) return 25;
+  if (level >= 20) return 20;
+  if (level >= 15) return 15;
+  if (level >= 10) return 10;
+  if (level >= 5) return 5;
+  return 1;
+}
+
+export function getBuildingTierImagePath(type: BuildingType, level: number): string {
+  const slug = BUILDING_ASSET_SLUGS[type];
+  const tier = getBuildingVisualTier(level);
+  return `/assets/buildings/generated/${slug}/${slug}-lvl-${tier}.png`;
+}
+
+export function getBuildingImagePath(type: BuildingType, level: number = 1): string {
+  return getBuildingTierImagePath(type, level);
+}
+
 // ─── Category Labels ───
 
 export const CATEGORY_LABELS = {
-  economic: "Economic",
-  military: "Military",
-  civic: "Civic",
+  economic: "play.categories.economic",
+  military: "play.categories.military",
+  civic: "play.categories.civic",
 } as const;
 
 export const CATEGORY_ICONS = {
@@ -160,22 +203,42 @@ export const CATEGORY_ICONS = {
   civic: "🏛️",
 } as const;
 
-// ─── Helper Functions ───
+// ─── Helper Functions (return i18n keys, resolve with t() in components) ───
 
-export function getBuildingName(type: string): string {
-  return BUILDING_INFO[type as BuildingType]?.name ?? type;
+export function getBuildingNameKey(type: string): string {
+  return BUILDING_INFO[type as BuildingType]?.nameKey ?? type;
+}
+
+export function getBuildingDescriptionKey(type: string): string {
+  return BUILDING_INFO[type as BuildingType]?.descriptionKey ?? "";
 }
 
 export function getBuildingIcon(type: string): string {
   return BUILDING_INFO[type as BuildingType]?.icon ?? "🏗️";
 }
 
-export function getUnitName(type: string): string {
-  return UNIT_INFO[type as UnitType]?.name ?? type;
+export function getUnitNameKey(type: string): string {
+  return UNIT_INFO[type as UnitType]?.nameKey ?? type;
+}
+
+export function getUnitShortNameKey(type: string): string {
+  return UNIT_INFO[type as UnitType]?.shortNameKey ?? type;
 }
 
 export function getUnitIcon(type: string): string {
   return UNIT_INFO[type as UnitType]?.icon ?? "🎖️";
+}
+
+export function getResourceNameKey(resource: string): string {
+  return RESOURCE_INFO[resource as keyof typeof RESOURCE_INFO]?.nameKey ?? resource;
+}
+
+export function getResourceIcon(resource: string): string {
+  return RESOURCE_INFO[resource as keyof typeof RESOURCE_INFO]?.icon ?? "💰";
+}
+
+export function getCategoryLabelKey(category: string): string {
+  return CATEGORY_LABELS[category as keyof typeof CATEGORY_LABELS] ?? category;
 }
 
 export function formatTime(seconds: number): string {
@@ -213,10 +276,10 @@ export function formatNumber(n: number): string {
   return n.toLocaleString();
 }
 
-// ─── Aliases for backwards compatibility ───
+// ─── Aliases for backwards compatibility (return i18n keys) ───
 
 export const BUILDING_NAMES = Object.fromEntries(
-  Object.entries(BUILDING_INFO).map(([k, v]) => [k, v.name])
+  Object.entries(BUILDING_INFO).map(([k, v]) => [k, v.nameKey])
 ) as Record<BuildingType, string>;
 
 export const BUILDING_ICONS = Object.fromEntries(
@@ -258,29 +321,29 @@ export const UNIT_TRAINING_TIME: Record<UnitType, number> = {
 
 // ─── Tech Display Info ───
 
-export const TECH_INFO: Record<string, { name: string; icon: string; description: string; category: "ECONOMY" | "MILITARY" | "DEFENSE"; baseCost: { gold: number; wood?: number; stone?: number; food?: number }; timeSeconds: number }> = {
-  COLLECTION_EFFICIENT_I: { name: "Efficient Collection I", icon: "⛏️", description: "Increases all resource production by 5%", category: "ECONOMY", baseCost: { gold: 200, wood: 100, stone: 50, food: 50 }, timeSeconds: 300 },
-  COLLECTION_EFFICIENT_II: { name: "Efficient Collection II", icon: "⛏️", description: "Increases all resource production by 10%", category: "ECONOMY", baseCost: { gold: 500, wood: 300, stone: 150, food: 150 }, timeSeconds: 600 },
-  COLLECTION_EFFICIENT_III: { name: "Efficient Collection III", icon: "⛏️", description: "Increases all resource production by 15%", category: "ECONOMY", baseCost: { gold: 1200, wood: 800, stone: 400, food: 400 }, timeSeconds: 1200 },
-  ADVANCED_STORAGE: { name: "Advanced Storage", icon: "📦", description: "Increases storage capacity by 20%", category: "ECONOMY", baseCost: { gold: 400, wood: 300, stone: 200, food: 100 }, timeSeconds: 480 },
-  WARTIME_ECONOMY: { name: "Wartime Economy", icon: "💰", description: "Reduces unit training costs by 15%", category: "ECONOMY", baseCost: { gold: 800, wood: 600, stone: 300, food: 300 }, timeSeconds: 900 },
-  TRADE: { name: "Trade Routes", icon: "🚢", description: "Unlocks market trading and increases gold production by 10%", category: "ECONOMY", baseCost: { gold: 600, wood: 400, stone: 200, food: 200 }, timeSeconds: 720 },
-  WEAPON_FORGE_I: { name: "Weapon Forge I", icon: "⚔️", description: "Increases all unit attack by 10%", category: "MILITARY", baseCost: { gold: 300, wood: 200, stone: 100, food: 50 }, timeSeconds: 360 },
-  WEAPON_FORGE_II: { name: "Weapon Forge II", icon: "⚔️", description: "Increases all unit attack by 15% and armor penetration by 5", category: "MILITARY", baseCost: { gold: 700, wood: 500, stone: 300, food: 150 }, timeSeconds: 720 },
-  REINFORCED_BOWS: { name: "Reinforced Bows", icon: "🏹", description: "Archer attack +20% and range bonus", category: "MILITARY", baseCost: { gold: 500, wood: 400, stone: 100, food: 100 }, timeSeconds: 540 },
-  HORSE_BREEDING: { name: "Horse Breeding", icon: "🐴", description: "Unlocks Cavalry units. Cavalry HP +15%", category: "MILITARY", baseCost: { gold: 600, wood: 400, stone: 200, food: 300 }, timeSeconds: 600 },
-  HEAVY_CAVALRY: { name: "Heavy Cavalry", icon: "🐎", description: "Cavalry defense +20% and attack +10%", category: "MILITARY", baseCost: { gold: 1000, wood: 700, stone: 400, food: 500 }, timeSeconds: 1080 },
-  SIEGE_ENGINEERING: { name: "Siege Engineering", icon: "🔨", description: "Unlocks Siege units. Siege attack +15%", category: "MILITARY", baseCost: { gold: 1200, wood: 900, stone: 600, food: 200 }, timeSeconds: 1200 },
-  BALLISTICS: { name: "Ballistics", icon: "🏹", description: "Siege armor penetration +15 and attack +10%", category: "MILITARY", baseCost: { gold: 1800, wood: 1200, stone: 800, food: 300 }, timeSeconds: 1500 },
-  GUERRILLA_TACTICS: { name: "Guerrilla Tactics", icon: "🗡️", description: "All unit speed +10%", category: "MILITARY", baseCost: { gold: 800, wood: 600, stone: 300, food: 200 }, timeSeconds: 840 },
-  MASONRY: { name: "Masonry", icon: "🧱", description: "Tower defense effectiveness +25%", category: "DEFENSE", baseCost: { gold: 250, wood: 200, stone: 300, food: 50 }, timeSeconds: 360 },
-  STONE_WALLS: { name: "Stone Walls", icon: "🏰", description: "Tower fortification effectiveness +40%", category: "DEFENSE", baseCost: { gold: 600, wood: 400, stone: 600, food: 100 }, timeSeconds: 720 },
-  WATCHTOWER: { name: "Watchtower Network", icon: "🗼", description: "Tower damage +10 per round", category: "DEFENSE", baseCost: { gold: 400, wood: 300, stone: 200, food: 50 }, timeSeconds: 480 },
-  POISONED_ARROWS: { name: "Poisoned Arrows", icon: "☠️", description: "Tower damage +20 per round and Archer attack +10%", category: "DEFENSE", baseCost: { gold: 800, wood: 600, stone: 400, food: 100 }, timeSeconds: 900 },
-  FORTIFICATIONS: { name: "Fortifications", icon: "🛡️", description: "Tower fortifications +50%", category: "DEFENSE", baseCost: { gold: 1500, wood: 1000, stone: 1000, food: 200 }, timeSeconds: 1500 },
-  SPY_NETWORK: { name: "Spy Network", icon: "👁️", description: "Unlocks Spy units", category: "DEFENSE", baseCost: { gold: 500, wood: 300, stone: 100, food: 100 }, timeSeconds: 600 },
-  SPEC_SIEGE: { name: "Siege Mastery", icon: "🔨", description: "Siege units: attack +30%, armor penetration +20, HP +20%", category: "MILITARY", baseCost: { gold: 2500, wood: 1800, stone: 1200, food: 500 }, timeSeconds: 2400 },
-  SPEC_CAVALRY: { name: "Cavalry Mastery", icon: "🐎", description: "Cavalry units: attack +25%, speed +20%, HP +25%", category: "MILITARY", baseCost: { gold: 2500, wood: 1500, stone: 800, food: 1000 }, timeSeconds: 2400 },
+export const TECH_INFO: Record<string, { nameKey: string; icon: string; descriptionKey: string; category: "ECONOMY" | "MILITARY" | "DEFENSE"; baseCost: { gold: number; wood?: number; stone?: number; food?: number }; timeSeconds: number }> = {
+  COLLECTION_EFFICIENT_I: { nameKey: "play.tech.names.efficient_collection_1", icon: "⛏️", descriptionKey: "play.tech.desc.efficient_collection_1", category: "ECONOMY", baseCost: { gold: 200, wood: 100, stone: 50, food: 50 }, timeSeconds: 300 },
+  COLLECTION_EFFICIENT_II: { nameKey: "play.tech.names.efficient_collection_2", icon: "⛏️", descriptionKey: "play.tech.desc.efficient_collection_2", category: "ECONOMY", baseCost: { gold: 500, wood: 300, stone: 150, food: 150 }, timeSeconds: 600 },
+  COLLECTION_EFFICIENT_III: { nameKey: "play.tech.names.efficient_collection_3", icon: "⛏️", descriptionKey: "play.tech.desc.efficient_collection_3", category: "ECONOMY", baseCost: { gold: 1200, wood: 800, stone: 400, food: 400 }, timeSeconds: 1200 },
+  ADVANCED_STORAGE: { nameKey: "play.tech.names.advanced_storage", icon: "📦", descriptionKey: "play.tech.desc.advanced_storage", category: "ECONOMY", baseCost: { gold: 400, wood: 300, stone: 200, food: 100 }, timeSeconds: 480 },
+  WARTIME_ECONOMY: { nameKey: "play.tech.names.wartime_economy", icon: "💰", descriptionKey: "play.tech.desc.wartime_economy", category: "ECONOMY", baseCost: { gold: 800, wood: 600, stone: 300, food: 300 }, timeSeconds: 900 },
+  TRADE: { nameKey: "play.tech.names.trade_routes", icon: "🚢", descriptionKey: "play.tech.desc.trade_routes", category: "ECONOMY", baseCost: { gold: 600, wood: 400, stone: 200, food: 200 }, timeSeconds: 720 },
+  WEAPON_FORGE_I: { nameKey: "play.tech.names.weapon_forge_1", icon: "⚔️", descriptionKey: "play.tech.desc.weapon_forge_1", category: "MILITARY", baseCost: { gold: 300, wood: 200, stone: 100, food: 50 }, timeSeconds: 360 },
+  WEAPON_FORGE_II: { nameKey: "play.tech.names.weapon_forge_2", icon: "⚔️", descriptionKey: "play.tech.desc.weapon_forge_2", category: "MILITARY", baseCost: { gold: 700, wood: 500, stone: 300, food: 150 }, timeSeconds: 720 },
+  REINFORCED_BOWS: { nameKey: "play.tech.names.reinforced_bows", icon: "🏹", descriptionKey: "play.tech.desc.reinforced_bows", category: "MILITARY", baseCost: { gold: 500, wood: 400, stone: 100, food: 100 }, timeSeconds: 540 },
+  HORSE_BREEDING: { nameKey: "play.tech.names.horse_breeding", icon: "🐴", descriptionKey: "play.tech.desc.horse_breeding", category: "MILITARY", baseCost: { gold: 600, wood: 400, stone: 200, food: 300 }, timeSeconds: 600 },
+  HEAVY_CAVALRY: { nameKey: "play.tech.names.heavy_cavalry", icon: "🐎", descriptionKey: "play.tech.desc.heavy_cavalry", category: "MILITARY", baseCost: { gold: 1000, wood: 700, stone: 400, food: 500 }, timeSeconds: 1080 },
+  SIEGE_ENGINEERING: { nameKey: "play.tech.names.siege_engineering", icon: "🔨", descriptionKey: "play.tech.desc.siege_engineering", category: "MILITARY", baseCost: { gold: 1200, wood: 900, stone: 600, food: 200 }, timeSeconds: 1200 },
+  BALLISTICS: { nameKey: "play.tech.names.ballistics", icon: "🏹", descriptionKey: "play.tech.desc.ballistics", category: "MILITARY", baseCost: { gold: 1800, wood: 1200, stone: 800, food: 300 }, timeSeconds: 1500 },
+  GUERRILLA_TACTICS: { nameKey: "play.tech.names.guerrilla_tactics", icon: "🗡️", descriptionKey: "play.tech.desc.guerrilla_tactics", category: "MILITARY", baseCost: { gold: 800, wood: 600, stone: 300, food: 200 }, timeSeconds: 840 },
+  MASONRY: { nameKey: "play.tech.names.masonry", icon: "🧱", descriptionKey: "play.tech.desc.masonry", category: "DEFENSE", baseCost: { gold: 250, wood: 200, stone: 300, food: 50 }, timeSeconds: 360 },
+  STONE_WALLS: { nameKey: "play.tech.names.stone_walls", icon: "🏰", descriptionKey: "play.tech.desc.stone_walls", category: "DEFENSE", baseCost: { gold: 600, wood: 400, stone: 600, food: 100 }, timeSeconds: 720 },
+  WATCHTOWER: { nameKey: "play.tech.names.watchtower_network", icon: "🗼", descriptionKey: "play.tech.desc.watchtower_network", category: "DEFENSE", baseCost: { gold: 400, wood: 300, stone: 200, food: 50 }, timeSeconds: 480 },
+  POISONED_ARROWS: { nameKey: "play.tech.names.poisoned_arrows", icon: "☠️", descriptionKey: "play.tech.desc.poisoned_arrows", category: "DEFENSE", baseCost: { gold: 800, wood: 600, stone: 400, food: 100 }, timeSeconds: 900 },
+  FORTIFICATIONS: { nameKey: "play.tech.names.fortifications", icon: "🛡️", descriptionKey: "play.tech.desc.fortifications", category: "DEFENSE", baseCost: { gold: 1500, wood: 1000, stone: 1000, food: 200 }, timeSeconds: 1500 },
+  SPY_NETWORK: { nameKey: "play.tech.names.spy_network", icon: "👁️", descriptionKey: "play.tech.desc.spy_network", category: "DEFENSE", baseCost: { gold: 500, wood: 300, stone: 100, food: 100 }, timeSeconds: 600 },
+  SPEC_SIEGE: { nameKey: "play.tech.names.siege_mastery", icon: "🔨", descriptionKey: "play.tech.desc.siege_mastery", category: "MILITARY", baseCost: { gold: 2500, wood: 1800, stone: 1200, food: 500 }, timeSeconds: 2400 },
+  SPEC_CAVALRY: { nameKey: "play.tech.names.cavalry_mastery", icon: "🐎", descriptionKey: "play.tech.desc.cavalry_mastery", category: "MILITARY", baseCost: { gold: 2500, wood: 1500, stone: 800, food: 1000 }, timeSeconds: 2400 },
 };
 
 export function getTrainingCost(unitType: UnitType, count: number): Record<string, number> {

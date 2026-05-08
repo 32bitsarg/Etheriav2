@@ -1,5 +1,6 @@
 import { LandingNavbar } from "@/components/landing/LandingNavbar";
 import { LandingFooter } from "@/components/landing/LandingFooter";
+import { I18nClientProvider } from "@/components/I18nClientProvider";
 
 export default function PublicLayout({
   children,
@@ -7,12 +8,14 @@ export default function PublicLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col bg-[#0c0a09]">
-      <LandingNavbar />
-      <div className="flex-1 pt-16">
-        {children}
+    <I18nClientProvider>
+      <div className="flex min-h-screen flex-col bg-white">
+        <LandingNavbar />
+        <main className="flex-1 overflow-x-hidden">
+          {children}
+        </main>
+        <LandingFooter />
       </div>
-      <LandingFooter />
-    </div>
+    </I18nClientProvider>
   );
 }

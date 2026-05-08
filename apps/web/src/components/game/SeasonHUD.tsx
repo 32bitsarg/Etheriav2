@@ -2,6 +2,7 @@
 
 import { useWorldSeason } from "@/hooks/useCity";
 import { Badge } from "@/components/ui/Badge";
+import { useI18n } from "@/i18n";
 
 const SEASON_ICONS: Record<string, string> = {
   SPRING: "🌸",
@@ -10,17 +11,17 @@ const SEASON_ICONS: Record<string, string> = {
   WINTER: "❄️",
 };
 
-const SEASON_NAMES: Record<string, string> = {
-  SPRING: "Primavera",
-  SUMMER: "Verano",
-  AUTUMN: "Otono",
-  WINTER: "Invierno",
+const SEASON_KEYS: Record<string, string> = {
+  SPRING: "play.seasons.spring",
+  SUMMER: "play.seasons.summer",
+  AUTUMN: "play.seasons.autumn",
+  WINTER: "play.seasons.winter",
 };
 
-const PHASE_NAMES: Record<string, string> = {
-  START: "Inicio",
-  PEAK: "Pleno",
-  TRANSITION: "Transicion",
+const PHASE_KEYS: Record<string, string> = {
+  START: "play.seasons.start",
+  PEAK: "play.seasons.mid",
+  TRANSITION: "play.seasons.transition",
 };
 
 function formatTimeRemaining(endsAt: string): string {
@@ -38,6 +39,7 @@ function formatTimeRemaining(endsAt: string): string {
 }
 
 export function SeasonHUD() {
+  const { t } = useI18n();
   const { data, isLoading } = useWorldSeason();
 
   if (isLoading || !data?.season) {
@@ -46,8 +48,8 @@ export function SeasonHUD() {
 
   const { currentSeason, phase, intensity, endsAt } = data.season;
   const icon = SEASON_ICONS[currentSeason] ?? "🌍";
-  const name = SEASON_NAMES[currentSeason] ?? currentSeason;
-  const phaseName = PHASE_NAMES[phase] ?? phase;
+  const name = t(SEASON_KEYS[currentSeason] ?? "");
+  const phaseName = t(PHASE_KEYS[phase] ?? "");
   const timeLeft = formatTimeRemaining(endsAt);
   const isTransition = phase === "TRANSITION";
 

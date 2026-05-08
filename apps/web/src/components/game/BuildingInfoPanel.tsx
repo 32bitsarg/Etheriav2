@@ -8,8 +8,11 @@ import { PanelHeader } from "@/components/ui/PanelHeader";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Badge } from "@/components/ui/Badge";
 import { toastError } from "@/stores/toastStore";
+import { useI18n } from "@/i18n";
+import { getBuildingNameKey, getBuildingDescriptionKey } from "@/lib/constants";
 
 export function BuildingInfoPanel() {
+  const { t } = useI18n();
   const selectedBuilding = useGameStore((s) => s.selectedBuilding);
   const cityId = useGameStore((s) => s.cityId);
   const resources = useGameStore((s) => s.resources);
@@ -40,7 +43,7 @@ export function BuildingInfoPanel() {
     <div className="pointer-events-auto absolute left-4 top-[56px] z-30 w-[300px]">
       <Panel animation="slide-left" className="overflow-hidden">
         <PanelHeader
-          title={info?.name ?? selectedBuilding.type}
+          title={t(getBuildingNameKey(selectedBuilding.type))}
           icon={info?.icon}
           onClose={() => setSelectedBuilding(null)}
         />
@@ -55,8 +58,8 @@ export function BuildingInfoPanel() {
           </div>
 
           {/* Description */}
-          {info?.description && (
-            <p className="text-xs text-etheria-text-muted leading-relaxed">{info.description}</p>
+          {selectedBuilding.type && (
+            <p className="text-xs text-etheria-text-muted leading-relaxed">{t(getBuildingDescriptionKey(selectedBuilding.type))}</p>
           )}
 
           {/* Stats */}

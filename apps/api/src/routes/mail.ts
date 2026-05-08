@@ -4,10 +4,8 @@ import { z } from 'zod';
 import { SendMailMessageRequestSchema } from '@etheria/shared';
 import { db, COLLECTIONS } from '../infrastructure/matecito.js';
 import { requireMatecitoAuth } from '../infrastructure/authMiddleware.js';
-import { getUserProfile } from '../domain/alliances.js';
 import { mergeRecordByLogicalId } from '../infrastructure/matecitoRecord.js';
-
-const genId = () => crypto.randomUUID();
+import { sendMailMessage } from '../domain/mail.js';
 
 export const mailRouter = new Hono();
 
@@ -29,33 +27,9 @@ mailRouter.post('/messages', requireMatecitoAuth(), zValidator('json', SendMailM
   const userId = c.get('userId');
   const data = c.req.valid('json');
 
-  const [sender, recipientCityRes] = await Promise.all([
-    getUserProfile(userId),
-    db.from(COLLECTIONS.CITIES).eq('id', data.recipientCityId).getFirst() as any,
-  ]);
-
-  const recipientCity = recipientCityRes.data;
-  if (!recipientCity) return c.json({ error: 'Recipient city not found' }, 404);
-  if (recipientCity.userId === userId) return c.json({ error: 'Cannot send mail to yourself' }, 400);
-
-  const recipient = await getUserProfile(recipientCity.userId);
-  const nowIso = new Date().toISOString();
-  const message = {
-    id: genId(),
-    senderUserId: userId,
-    senderName: sender?.name?.trim() || sender?.email?.split('@')[0] || 'Commander',
-    recipientUserId: recipientCity.userId,
-    recipientName: recipient?.name?.trim() || recipient?.email?.split('@')[0] || recipientCity.name || 'Commander',
-    recipientCityId: recipientCity.id,
-    recipientCityName: recipientCity.name,
-    subject: data.subject,
-    body: data.body,
-    readAt: null,
-    createdAt: nowIso,
-  };
-
-  await db.from(COLLECTIONS.MAIL_MESSAGES).insert(message);
-  return c.json({ message });
+  const result = await sendMailMessage({ senderUserId: userId, ...data });
+  if ('error' in result) return c.json({ error: result.error }, result.error === 'Recipient city not found' ? 404 : 400);
+  return c.json(result);
 });
 
 mailRouter.post('/messages/:id/read', requireMatecitoAuth(), zValidator('json', z.object({ read: z.boolean().default(true) })), async (c) => {

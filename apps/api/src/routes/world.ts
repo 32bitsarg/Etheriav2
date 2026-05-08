@@ -15,7 +15,8 @@ import {
   ZONE_WINTER_INTENSITY,
 } from '../domain/winterPressure.js';
 import { AttackBarbarianRequestSchema } from '@etheria/shared';
-import { calculateTravelTime } from '../domain/battles.js';
+import { calculatePathSpeedMultiplier } from '../domain/worldTerrainConfigData.js';
+import { repairWorldEntityPlacements } from '../domain/worldTerrainRepair.js';
 import { getUnitStats } from '../domain/units.js';
 import { calculateTechBonuses } from '../domain/techs.js';
 import { calculateEffectiveProduction } from '../domain/production.js';
@@ -197,7 +198,9 @@ worldRouter.post('/barbarians/:id/attack', zValidator('json', AttackBarbarianReq
   const distance = Math.sqrt(
     Math.pow(camp.posX - city.posX, 2) + Math.pow(camp.posY - city.posY, 2)
   );
-  const travelTime = Math.max(10, Math.floor(distance / minSpeed * 60)); // seconds, min 10s
+  const world = await getWorldConfig();
+  const terrainSpeed = calculatePathSpeedMultiplier(city.posX, city.posY, camp.posX, camp.posY, world.map.width, world.map.height);
+  const travelTime = Math.max(10, Math.floor(distance / Math.max(1, minSpeed * terrainSpeed) * 60)); // seconds, min 10s
 
   const now = new Date();
   const arrivesAt = new Date(now.getTime() + travelTime * 1000).toISOString();
@@ -323,4 +326,9 @@ worldRouter.get('/winter-pressure/:cityId', async (c) => {
     winterState: city.winterState ?? null,
     lastWinterEvaluatedAt: city.lastWinterEvaluatedAt ?? null,
   });
+});
+
+worldRouter.post('/admin/repair-terrain', async (c) => {
+  const result = await repairWorldEntityPlacements();
+  return c.json({ ok: true, ...result });
 });

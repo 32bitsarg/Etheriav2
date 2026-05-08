@@ -29,6 +29,7 @@ import {
   trainUnitsAction,
   upgradeBuildingAction,
 } from "../domain/cityActions.js";
+import { sendResourcesAction } from "../domain/tradeActions.js";
 import {
   loadTechConfigs,
   getAllTechConfigs,
@@ -42,6 +43,7 @@ import {
   TrainUnitsRequestSchema,
   AttackRequestSchema,
   StartResearchRequestSchema,
+  SendResourcesRequestSchema,
   BuildingType,
   UnitType,
 } from "@etheria/shared";
@@ -54,11 +56,23 @@ import { normalizeBuildingsByType } from "../domain/buildingNormalization.js";
 import { calculateEffectiveProduction } from "../domain/production.js";
 import { getSeasonState } from "../domain/seasons.js";
 import { getCityPowerMap } from "../domain/cityPower.js";
+import { getActiveMovements } from "../domain/worldActions.js";
 import { generateCityName, generatePlayerName } from "../domain/nameGenerator.js";
+import { getCityQueueConfig } from "../domain/queueConfigData.js";
 
 const genId = () => crypto.randomUUID();
 const citySnapshotCache = new Map<string, { data: any; cachedAt: number }>();
 const CITY_SNAPSHOT_TTL_MS = 15_000;
+const WORLD_MAP_CITY_LIMIT = Number(process.env.WORLD_MAP_CITY_LIMIT ?? 200);
+const RANKING_CITY_LIMIT = Number(process.env.RANKING_CITY_LIMIT ?? 100);
+
+function sortPendingQueues<T extends { startedAt?: string; completesAt?: string }>(queues: T[]): T[] {
+  return [...queues].sort((a, b) => {
+    const completesDiff = new Date(a.completesAt ?? 0).getTime() - new Date(b.completesAt ?? 0).getTime();
+    if (completesDiff !== 0) return completesDiff;
+    return new Date(a.startedAt ?? 0).getTime() - new Date(b.startedAt ?? 0).getTime();
+  });
+}
 
 async function sleep(ms: number) {
   await new Promise((resolve) => setTimeout(resolve, ms));
@@ -137,9 +151,9 @@ async function getCityWithResources(cityId: string) {
     let buildings = normalizeLegacyDefenseBuildings((buildingsRes as any).data ?? []);
     const units = (unitsRes as any).data ?? [];
     const buildQueues = await normalizeActiveBuildQueues(cityId, (buildQueuesRes as any).data ?? []);
-    const trainingQueues = (trainingQueuesRes as any).data ?? [];
+    const trainingQueues = sortPendingQueues((trainingQueuesRes as any).data ?? []);
     const cityTechs = (cityTechsRes as any).data ?? [];
-    const researchQueue = (researchQueueRes as any).data ?? [];
+    const researchQueue = sortPendingQueues((researchQueueRes as any).data ?? []);
     const activeResearch = researchQueue[0] ?? null;
     const allianceMembership = await getAllianceMembershipForUser(city.userId);
 
@@ -403,15 +417,6 @@ cityRouter.post("/bootstrap", requireMatecitoAuth(), async (c) => {
   return c.json({ city: fullCity });
 });
 
-// ─── World map config ───
-cityRouter.get("/world-map", async (c) => {
-  const world = await getWorldConfig();
-  return c.json({
-    map: world.map,
-    spawn: world.spawn,
-  });
-});
-
 // Create Starter City
 cityRouter.post("/create", async (c) => {
   const body = await c.req.json().catch(() => ({}));
@@ -460,7 +465,7 @@ cityRouter.get("/list/all", async (c) => {
 });
 
 cityRouter.get("/ranking/all", async (c) => {
-  const citiesRes = await db.from(COLLECTIONS.CITIES).limit(100).get() as any;
+  const citiesRes = await db.from(COLLECTIONS.CITIES).limit(RANKING_CITY_LIMIT).get() as any;
   const cities = (citiesRes.data ?? []) as any[];
   const powerByCity = await getCityPowerMap(cities.map((city) => city.id));
 
@@ -505,6 +510,27 @@ cityRouter.patch("/:id/name", async (c) => {
   });
 
   return c.json({ success: true, city: { ...city, name } });
+});
+
+// World map endpoints must be registered before "/:id" to avoid route capture.
+cityRouter.get("/world-map", async (c) => {
+  const [config, cities, camps] = await Promise.all([
+    getWorldConfig(),
+    db.from(COLLECTIONS.CITIES).limit(WORLD_MAP_CITY_LIMIT).get() as any,
+    db.from(COLLECTIONS.BARBARIAN_CAMPS).eq("status", "ACTIVE").get() as any,
+  ]);
+
+  return c.json({
+    map: config.map,
+    spawn: config.spawn,
+    cities: cities.data ?? [],
+    barbarianCamps: camps.data ?? [],
+  });
+});
+
+cityRouter.get("/world/movements", async (c) => {
+  const movements = await getActiveMovements();
+  return c.json({ movements });
 });
 
 // Get city
@@ -660,6 +686,22 @@ cityRouter.post("/:id/attack", zValidator("json", AttackRequestSchema), async (c
   }
 });
 
+// Trade / Send resources
+cityRouter.post("/:id/trade", zValidator("json", SendResourcesRequestSchema), async (c) => {
+  const senderCityId = c.req.param("id");
+  const data = c.req.valid("json");
+  try {
+    return c.json(await sendResourcesAction({
+      senderCityId,
+      recipientCityId: data.recipientCityId,
+      resources: data.resources,
+      actor: { type: "human" },
+    }));
+  } catch (error) {
+    return actionErrorResponse(c, error);
+  }
+});
+
 // Get queues
 cityRouter.get("/:id/queue", async (c) => {
   const cityId = c.req.param("id");
@@ -737,27 +779,34 @@ cityRouter.get("/:id/techs", async (c) => {
   ]);
 
   const cityTechs = (cityTechsRes.data ?? []).map((t: any) => ({ techId: t.techId, level: t.level }));
-  const activeResearch = researchQueueRes.data?.[0] ?? null;
+  const researchQueue = sortPendingQueues(researchQueueRes.data ?? []);
+  const activeResearch = researchQueue[0] ?? null;
+  const queueConfig = getCityQueueConfig();
+  const researchSlotsFull = researchQueue.length >= queueConfig.maxSlots.research;
 
   const allConfigs = getAllTechConfigs();
   const techs = allConfigs.map((cfg) => {
     const unlocked = cityTechs.find((t: any) => t.techId === cfg.techId);
     const currentLevel = unlocked?.level ?? 0;
-    const check = canResearch(cfg.techId, currentLevel + 1, cityTechs, activeResearch);
+    const pendingSameTech = researchQueue.filter((queue: any) => queue.techId === cfg.techId).length;
+    const targetLevel = currentLevel + pendingSameTech + 1;
+    const check = researchSlotsFull
+      ? { allowed: false, reason: "Research queue full" }
+      : canResearch(cfg.techId, currentLevel + 1, cityTechs, null);
     const nextCost = currentLevel < cfg.maxLevel ? getResearchCost(cfg.techId, currentLevel + 1) : null;
     const nextTime = currentLevel < cfg.maxLevel ? getResearchTime(cfg.techId, currentLevel + 1) : null;
 
     return {
       ...cfg,
       currentLevel,
-      canResearch: check.allowed,
+      canResearch: check.allowed && targetLevel <= cfg.maxLevel,
       researchBlockedReason: check.reason,
       nextLevelCost: nextCost,
       nextLevelTime: nextTime,
     };
   });
 
-  return c.json({ techs, activeResearch });
+  return c.json({ techs, activeResearch, researchQueue });
 });
 
 cityRouter.post("/:id/research", zValidator("json", StartResearchRequestSchema), async (c) => {

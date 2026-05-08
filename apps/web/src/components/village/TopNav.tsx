@@ -2,15 +2,12 @@
 
 import { useState } from "react";
 import { SeasonHUD } from "@/components/game/SeasonHUD";
+import { useI18n } from "@/i18n";
 
-const NAV_LINKS = [
-  { id: "village", label: "Aldea" },
-  { id: "map", label: "Mapa" },
-  { id: "reports", label: "Informes" },
-  { id: "statistics", label: "Estadisticas" },
-];
+const NAV_LINK_KEYS = ["village", "map", "reports", "statistics"] as const;
 
 export function TopNav() {
+  const { t } = useI18n();
   const [active, setActive] = useState("village");
 
   return (
@@ -20,16 +17,16 @@ export function TopNav() {
           <div className="flex items-center gap-1">
             <span className="text-sm font-decorative text-etheria-gold px-3 py-2 tracking-wider">Etheria</span>
             <div className="flex items-center gap-0.5">
-              {NAV_LINKS.map((link) => (
+              {NAV_LINK_KEYS.map((linkId) => (
                 <button
-                  key={link.id}
-                  onClick={() => setActive(link.id)}
+                  key={linkId}
+                  onClick={() => setActive(linkId)}
                   className={`px-3 py-2 text-xs font-display font-semibold tracking-wide transition-all relative ${
-                    active === link.id ? "text-etheria-gold" : "text-etheria-text-dim hover:text-etheria-text"
+                    active === linkId ? "text-etheria-gold" : "text-etheria-text-dim hover:text-etheria-text"
                   }`}
                 >
-                  {link.label}
-                  {active === link.id && (
+                  {t(`play.topnav.${linkId}`)}
+                  {active === linkId && (
                     <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-etheria-gold" />
                   )}
                 </button>

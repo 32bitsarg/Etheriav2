@@ -8,6 +8,7 @@ export type WorldMapConfig = {
   terrainSeed: number;
   decorDensity: number;
   decorSafeRadius: number;
+  terrainOverlayEnabled?: boolean;
 };
 
 export type WorldSpawnConfig = {
@@ -40,10 +41,11 @@ export const LOCAL_WORLD_CONFIG: WorldConfigDoc = {
     cameraMinZoom: 0.72,
     cameraMaxZoom: 1.8,
     cameraInitialZoom: 1.02,
-    backgroundAssetPath: "/assets/backgrounds/world-map-ground.png",
+    backgroundAssetPath: "/assets/backgrounds/world-map-terrain-v2.png",
     terrainSeed: 1337,
     decorDensity: 0.7,
     decorSafeRadius: 170,
+    terrainOverlayEnabled: false,
   },
   spawn: {
     strategy: "soft-clusters",

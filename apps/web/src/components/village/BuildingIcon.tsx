@@ -1,7 +1,7 @@
 "use client";
 
 import type { BuildingType } from "@etheria/shared";
-import { BUILDING_IMAGE_PATHS } from "@/lib/constants";
+import { getBuildingImagePath } from "@/lib/constants";
 
 const SHEET_COLS = 4;
 const SHEET_ROWS = 4;
@@ -9,7 +9,7 @@ const CELL_WIDTH = 384;
 const CELL_HEIGHT = 256;
 const SPRITESHEET_PATH = "/assets/buildings/structures/isometric-buildings-sheet.png";
 
-const BUILDING_SHEET_MAP: Record<BuildingType, number> = {
+export const BUILDING_SHEET_MAP: Record<BuildingType, number> = {
   TOWN_HALL: 0,
   GOLD_MINE: 1,
   LUMBER_MILL: 2,
@@ -26,14 +26,16 @@ const BUILDING_SHEET_MAP: Record<BuildingType, number> = {
 
 export function BuildingSprite({
   type,
+  level = 1,
   size = 48,
   className = "",
 }: {
   type: BuildingType;
+  level?: number;
   size?: number;
   className?: string;
 }) {
-  const customImage = BUILDING_IMAGE_PATHS[type];
+  const customImage = getBuildingImagePath(type, level);
   if (customImage) {
     return (
       <img

@@ -26,6 +26,10 @@ const MODEL_BY_COLLECTION: Record<string, string> = {
   barbarian_battles: "barbarianBattle",
   barbarian_attacks: "barbarianAttack",
   barbarian_attack_alerts: "barbarianAttackAlert",
+  trade_caravans: "tradeCaravan",
+  bot_players: "botPlayer",
+  bot_action_logs: "botActionLog",
+  bot_metrics_snapshots: "botMetricsSnapshot",
 };
 
 function modelFor(collection: string): any {

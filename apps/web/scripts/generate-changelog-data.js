@@ -36,21 +36,17 @@ function parseChangelog(lines) {
 
           while (i < lines.length) {
             const l = lines[i];
-            // End of section: next ### or ## or blank line followed by ###
             if (l.match(/^#{2,3}\s/)) break;
             
-            // New list item (any level of indentation, followed by dash and space)
             const itemMatch = l.match(/^(\s*)-\s+(.+)$/);
             if (itemMatch) {
               if (currentItem) items.push(currentItem.trim());
               currentItem = itemMatch[2];
               i++;
             } else if (l.match(/^\s{2,}/) && currentItem) {
-              // Indented continuation line
               currentItem += ' ' + l.trim();
               i++;
             } else if (l.trim() === '') {
-              // Blank line - might be end of item or just spacing
               i++;
             } else {
               break;
@@ -82,25 +78,91 @@ releases.forEach(r => {
   console.log(`  ${r.version}: ${r.sections.length} sections, ${r.sections.reduce((a, s) => a + s.items.length, 0)} items`);
 });
 
-const output = `// Auto-generated from CHANGELOG.md
+// Generate changelogData.ts with i18n keys
+function isInternalItem(sectionHeading, item) {
+  if (sectionHeading === 'Technical') return true;
+  if (/\*\*\[(?:INFRA|API|INTERNAL|TECH)\]/i.test(item)) return true;
+  if (/\[(?:INFRA|API|INTERNAL|TECH)\]/i.test(item)) return true;
+  if (/(endpoint|environment|env var|schema|query|worker|payload|typescript|build time|ssg|http-only|CITY_QUEUE_|apps\/|src\/|\.ts)/i.test(item)) return true;
+  return false;
+}
+
+function generateDataFile(releases) {
+  const sectionsCode = releases.map(r => {
+    const secs = r.sections.map(s => {
+      const keys = s.items.map((_, idx) => `          "changelog.items.${r.version}.${s.heading.toLowerCase()}.${idx}"`);
+      const internalKeys = s.items
+        .map((item, idx) => ({ item, idx }))
+        .filter(({ item }) => isInternalItem(s.heading, item))
+        .map(({ idx }) => `          "changelog.items.${r.version}.${s.heading.toLowerCase()}.${idx}"`);
+      const audience = s.heading === 'Technical' ? '\n        audience: "internal",' : '';
+      const internalItemKeys = internalKeys.length > 0 ? `,
+        internalItemKeys: [
+${internalKeys.join(',\n')}
+        ]` : '';
+      return `      {
+        heading: "${s.heading}",${audience}
+        itemKeys: [
+${keys.join(',\n')}
+        ]${internalItemKeys},
+      }`;
+    });
+    return `  {
+    version: "${r.version}",
+    nameKey: "changelog.releases.${r.version}",
+    date: "${r.date}",
+    sections: [
+${secs.join(',\n')}
+    ],
+  }`;
+  });
+
+  return `// Auto-generated from CHANGELOG.md
 // Do not edit manually. Run \`npm run generate:changelog\` to regenerate.
+
+export interface ChangelogSection {
+  heading: string;
+  itemKeys: string[];
+  internalItemKeys?: string[];
+  audience?: "public" | "internal";
+}
 
 export interface ChangelogRelease {
   version: string;
-  name: string;
+  nameKey: string;
   date: string;
-  sections: { heading: string; items: string[] }[];
+  sections: ChangelogSection[];
 }
 
-export const changelogReleases: ChangelogRelease[] = ${JSON.stringify(releases, null, 2)};
+export const changelogReleases: ChangelogRelease[] = [
+${sectionsCode.join(',\n')}
+];
 
 export function getLatestRelease(): ChangelogRelease | null {
   return changelogReleases[0] ?? null;
 }
 `;
+}
+
+// Generate i18n JSON snippets for reference
+function generateI18nSnippets(releases, lang) {
+  const items = {};
+  releases.forEach(r => {
+    const verItems = {};
+    r.sections.forEach(s => {
+      const sectionKey = s.heading.toLowerCase();
+      verItems[sectionKey] = s.items;
+    });
+    items[r.version] = verItems;
+  });
+  return { releases: releases.reduce((acc, r) => { acc[r.version] = r.name; return acc; }, {}), items };
+}
 
 const outPath = path.join(__dirname, '..', 'src', 'data', 'changelogData.ts');
 fs.mkdirSync(path.dirname(outPath), { recursive: true });
-fs.writeFileSync(outPath, output);
+fs.writeFileSync(outPath, generateDataFile(releases));
 
 console.log(`✓ Generated ${outPath}`);
+console.log('\nTip: Add translations to en.json and es.json under "changelog" key.');
+console.log('Release names: changelog.releases.<version>');
+console.log('Items: changelog.items.<version>.<section>.<index>');

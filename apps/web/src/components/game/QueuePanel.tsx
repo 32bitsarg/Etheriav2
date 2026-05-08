@@ -5,6 +5,8 @@ import { BUILDING_INFO, UNIT_INFO, formatTime, formatShortTime } from "@/lib/con
 import { Panel } from "@/components/ui/Panel";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { useCountdown } from "@/hooks/useCountdown";
+import { useI18n } from "@/i18n";
+import { getBuildingNameKey, getUnitNameKey } from "@/lib/constants";
 
 export function QueuePanel() {
   const buildQueues = useGameStore((s) => s.buildQueues);
@@ -39,17 +41,17 @@ export function QueuePanel() {
 }
 
 function BuildQueueItem({ queue }: { queue: { id: string; buildingType: string; targetLevel: number; startedAt: string; completesAt: string } }) {
-  const info = BUILDING_INFO[queue.buildingType as keyof typeof BUILDING_INFO];
+  const { t } = useI18n();
   const { remaining, progress } = useCountdown(queue.completesAt);
   const seconds = remaining() ?? 0;
 
   return (
     <div className="flex items-center gap-2 bg-etheria-bg-light/50 rounded-lg px-3 py-2 border border-etheria-border/50 min-w-[180px]">
-      <span className="text-lg">{info?.icon ?? "🏗️"}</span>
+      <span className="text-lg">🏗️</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-1">
           <span className="text-[10px] font-bold text-etheria-text truncate">
-            {info?.name ?? queue.buildingType} → L{queue.targetLevel}
+            {t(getBuildingNameKey(queue.buildingType as any))} → L{queue.targetLevel}
           </span>
           <span className="text-[10px] font-mono text-amber-400 ml-2">
             {formatTime(seconds)}
@@ -62,17 +64,17 @@ function BuildQueueItem({ queue }: { queue: { id: string; buildingType: string; 
 }
 
 function TrainingQueueItem({ queue }: { queue: { id: string; unitType: string; count: number; startedAt: string; completesAt: string } }) {
-  const info = UNIT_INFO[queue.unitType as keyof typeof UNIT_INFO];
+  const { t } = useI18n();
   const { remaining, progress } = useCountdown(queue.completesAt);
   const seconds = remaining() ?? 0;
 
   return (
     <div className="flex items-center gap-2 bg-etheria-bg-light/50 rounded-lg px-3 py-2 border border-etheria-border/50 min-w-[180px]">
-      <span className="text-lg">{info?.icon ?? "🎖️"}</span>
+      <span className="text-lg">🎖️</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-1">
           <span className="text-[10px] font-bold text-etheria-text truncate">
-            {info?.name ?? queue.unitType} ×{queue.count}
+            {t(getUnitNameKey(queue.unitType as any))} ×{queue.count}
           </span>
           <span className="text-[10px] font-mono text-blue-400 ml-2">
             {formatTime(seconds)}

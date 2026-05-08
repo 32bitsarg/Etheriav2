@@ -45,7 +45,7 @@
   --color-etheria-gems: #4dc7ff;
 
   /* ─── Layout Dimensions ─── */
-  --sidebar-width: 228px;
+  --sidebar-width: 110px;
   --right-panel-width: 356px;
   --topbar-height: 62px;
   --bottombar-height: 84px;
@@ -64,11 +64,17 @@
 }
 
 /* ─── Global Styles ─── */
+html {
+  background: #fafaf9;
+  scroll-behavior: smooth;
+}
+
 body {
-  background: #050707;
-  color: var(--color-etheria-text);
-  font-family: var(--font-body);
-  overflow: hidden;
+  background: #fafaf9 !important;
+  color: #1c1917 !important;
+  font-family: var(--font-body) !important;
+  overflow-x: hidden;
+  min-height: 100vh;
 }
 
 h1, h2, h3, h4, .font-display, .font-serif {
@@ -79,23 +85,11 @@ h1, h2, h3, h4, .font-display, .font-serif {
   font-family: var(--font-decorative);
 }
 
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background:
-    radial-gradient(circle at 45% 20%, rgba(27, 168, 133, 0.16), transparent 28%),
-    radial-gradient(circle at 80% 80%, rgba(77, 199, 255, 0.10), transparent 32%),
-    linear-gradient(135deg, #060909, #11100d 45%, #070b0c);
-  pointer-events: none;
-  z-index: 0;
-}
-
 /* ─── Scrollbar ─── */
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--color-etheria-panel); border-radius: 3px; }
-::-webkit-scrollbar-thumb { background: rgba(215, 168, 76, 0.3); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(215, 168, 76, 0.5); }
+::-webkit-scrollbar-track { background: #f5f5f4; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
 
 /* ─── Game Canvas ─── */
 #game-container canvas { display: block; outline: none; }
@@ -167,56 +161,279 @@ body::before {
 .progress-bar.green > div { background: linear-gradient(90deg, #133c24, #7ed957); }
 .progress-bar.blue > div { background: linear-gradient(90deg, #083048, #4dc7ff); }
 
-/* ─── Nav Button ─── */
-.nav-btn {
-  height: 46px;
-  width: 100%;
-  display: grid;
-  grid-template-columns: 36px 1fr auto;
-  align-items: center;
-  gap: 8px;
-  padding: 0 10px;
-  color: var(--color-etheria-text);
-  text-align: left;
-  border: 1px solid rgba(215, 168, 76, 0.14);
-  border-radius: 4px;
+/* ─── Grepolis-Style Floating Sidebar ─── */
+.grepolis-sidebar {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  max-height: 90vh;
+  border-radius: 0 12px 12px 0;
+  z-index: 40;
+  width: var(--sidebar-width);
+  display: flex;
+  flex-direction: column;
+  /* More translucent deep navy blue */
   background:
-    linear-gradient(90deg, rgba(215, 168, 76, 0.07), transparent 36%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 0, 0, 0.16));
-  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.24);
-  cursor: pointer;
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, rgba(6, 12, 40, 0.45) 0%, rgba(4, 8, 28, 0.50) 50%, rgba(5, 10, 34, 0.40) 100%);
+  backdrop-filter: blur(8px);
+  /* No hard right border — decorative column via ::after */
+  border: 1px solid rgba(215, 168, 76, 0.15);
+  border-left: none;
+  box-shadow: 6px 12px 30px rgba(0,0,0,0.4);
+  overflow: visible; /* allow ::after to extend beyond */
+}
+
+
+
+/* ─── City Header ─── */
+.grepolis-sidebar__header {
+  padding: 6px 6px 5px;
+  text-align: center;
   position: relative;
-  transition: 0.18s ease;
+  background: linear-gradient(180deg, rgba(15, 22, 65, 0.45), rgba(8, 13, 42, 0.35));
+  border-bottom: 1px solid rgba(140, 108, 20, 0.25);
+  flex-shrink: 0;
 }
 
-.nav-btn:hover {
-  border-color: rgba(46, 199, 201, 0.45);
-  background:
-    linear-gradient(90deg, rgba(27, 168, 133, 0.24), transparent 70%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.22));
-  transform: translateX(2px);
-}
-
-.nav-btn.active {
-  color: var(--color-etheria-gold-soft);
-  border-color: rgba(46, 199, 201, 0.70);
-  background:
-    linear-gradient(90deg, rgba(27, 168, 133, 0.78), rgba(8, 24, 24, 0.2) 70%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.2));
-  box-shadow: 0 0 20px rgba(46, 199, 201, 0.20), inset 0 0 20px rgba(46, 199, 201, 0.12);
-}
-
-.nav-btn.active::after {
+.grepolis-sidebar__header::after {
   content: "";
   position: absolute;
-  right: -9px;
-  top: 50%;
-  width: 16px;
+  bottom: -1px;
+  left: 6px;
+  right: 6px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(215, 168, 76, 0.3), transparent);
+  z-index: 1;
+}
+
+.grepolis-sidebar__city-name {
+  font-family: var(--font-serif);
+  font-size: 8px;
+  font-weight: 700;
+  color: #f0d070;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Queue ─── */
+.grepolis-sidebar__queue {
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(60, 45, 8, 0.2);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.grepolis-sidebar__queue-title {
+  font-size: 7px;
+  text-transform: uppercase;
+  color: var(--color-etheria-gold-soft);
+  margin-bottom: 2px;
+  opacity: 0.8;
+  letter-spacing: 0.05em;
+}
+
+/* ─── Navigation ─── */
+.grepolis-sidebar__nav {
+  flex: 1;
+  padding: 2px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.grepolis-sidebar__nav::-webkit-scrollbar { display: none; }
+
+/* ─── Nav Item ─── */
+.grepolis-nav-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 36px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  text-align: left;
+  transition: background 0.13s ease;
+  border-bottom: 1px solid rgba(60, 45, 8, 0.15);
+}
+
+.grepolis-nav-item:hover {
+  background: rgba(20, 35, 100, 0.30);
+}
+
+/* Active: blue wash + left bar */
+.grepolis-nav-item.active {
+  background: linear-gradient(90deg,
+    rgba(30, 55, 155, 0.40) 0%,
+    rgba(15, 28, 80, 0.25) 60%,
+    transparent 100%
+  );
+}
+
+/* Left active bar — golden */
+.grepolis-nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, #f8d858, #b87818, #f8d858);
+  box-shadow: 0 0 10px rgba(215, 168, 76, 0.6);
+  z-index: 1;
+}
+
+/* ─── Icon slot ─── */
+.grepolis-nav-item__icon-wrap {
+  flex: 0 0 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  position: relative;
+}
+
+/* Compact Medallion */
+.grepolis-nav-item__icon {
+  width: 26px;
   height: 26px;
-  transform: translateY(-50%);
-  background: linear-gradient(90deg, rgba(46, 199, 201, 0.9), rgba(215, 168, 76, 0.75));
-  clip-path: polygon(0 0, 100% 50%, 0 100%);
-  filter: drop-shadow(0 0 10px rgba(46, 199, 201, 0.7));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  position: relative;
+  flex-shrink: 0;
+
+  background:
+    /* Highlight glint top-left */
+    radial-gradient(circle at 30% 22%, rgba(160, 190, 255, 0.18) 0%, transparent 38%),
+    /* Dark BLUE inner cavity — key Grepolis trait */
+    radial-gradient(circle at 50% 50%, rgba(5, 10, 42, 0.96) 0%, rgba(12, 22, 70, 0.88) 52%, transparent 72%),
+    /* Bronze/gold conic ring */
+    conic-gradient(from 110deg,
+      #6a3e08 0deg,
+      #b87810 55deg,
+      #e8b828 88deg,
+      #d8a018 115deg,
+      #885010 175deg,
+      #6a3e08 215deg,
+      #b07010 265deg,
+      #e8b828 295deg,
+      #6a3e08 360deg
+    );
+
+  border: 1.5px solid rgba(195, 148, 22, 0.65);
+  outline: 1px solid rgba(25, 15, 3, 0.85);
+  box-shadow:
+    0 0 0 1.5px rgba(12, 8, 1, 0.80),
+    0 4px 10px rgba(0, 0, 0, 0.80),
+    inset 0 1px 2px rgba(120, 160, 255, 0.10);
+  transition: all 0.15s ease;
+}
+
+.grepolis-nav-item:hover .grepolis-nav-item__icon {
+  border-color: rgba(230, 180, 40, 0.90);
+  box-shadow:
+    0 0 0 2.5px rgba(12, 8, 1, 0.80),
+    0 0 20px rgba(215, 168, 76, 0.30),
+    0 5px 14px rgba(0, 0, 0, 0.75),
+    inset 0 2px 4px rgba(140, 180, 255, 0.14),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.65);
+}
+
+.grepolis-nav-item.active .grepolis-nav-item__icon {
+  border-color: rgba(255, 200, 48, 0.95);
+  box-shadow:
+    0 0 0 2.5px rgba(12, 8, 1, 0.80),
+    0 0 26px rgba(242, 201, 76, 0.55),
+    0 0 46px rgba(215, 168, 76, 0.22),
+    0 5px 14px rgba(0, 0, 0, 0.72),
+    inset 0 2px 4px rgba(160, 200, 255, 0.18),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.60);
+  background:
+    radial-gradient(circle at 30% 22%, rgba(180, 210, 255, 0.22) 0%, transparent 38%),
+    radial-gradient(circle at 50% 50%, rgba(8, 15, 58, 0.96) 0%, rgba(18, 32, 95, 0.88) 52%, transparent 72%),
+    conic-gradient(from 110deg,
+      #8a5210 0deg,
+      #d89418 55deg,
+      #ffd030 88deg,
+      #f0b820 115deg,
+      #a86818 175deg,
+      #8a5210 215deg,
+      #cc8818 265deg,
+      #ffd030 295deg,
+      #8a5210 360deg
+    );
+}
+
+/* ─── Label ─── */
+.grepolis-nav-item__label {
+  flex: 1;
+  min-width: 0;
+  padding-right: 6px;
+  font-family: var(--font-serif);
+  font-size: 9px;
+  font-weight: 600;
+  color: #d4aa5a;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
+  transition: color 0.12s ease;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.grepolis-nav-item:hover .grepolis-nav-item__label {
+  color: #f5cc60;
+}
+
+.grepolis-nav-item.active .grepolis-nav-item__label {
+  color: #fae070;
+  text-shadow: 0 0 10px rgba(215, 168, 76, 0.40), 0 1px 3px rgba(0, 0, 0, 0.95);
+}
+
+/* ─── Badge — BLUE with gold border (authentic Grepolis) ─── */
+.grepolis-nav-item__badge {
+  position: absolute;
+  top: 4px;
+  left: 28px;
+  min-width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1a4acc, #0d2880);
+  border: 1.5px solid rgba(220, 175, 40, 0.75);
+  font-size: 8px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.65),
+    0 0 10px rgba(26, 74, 204, 0.50);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* ─── Divider ─── */
+.grepolis-sidebar__divider {
+  height: 1px;
+  margin: 3px 10px;
+  background: linear-gradient(90deg, transparent, rgba(160, 120, 25, 0.45), transparent);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
 }
 
 /* ─── Gold Button ─── */
@@ -252,6 +469,13 @@ body::before {
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--right-panel-width);
   grid-template-rows: var(--topbar-height) minmax(0, 1fr) var(--bottombar-height);
 }
+
+/* Sidebar always spans all grid rows */
+.village-sidebar {
+  grid-column: 1;
+  grid-row: 1 / -1;
+}
+
 
 .hero-panel {
   position: relative;
@@ -741,14 +965,14 @@ body::before {
 
 @media (max-width: 1280px) {
   @theme {
-    --sidebar-width: 198px;
+    --sidebar-width: 110px;
     --right-panel-width: 312px;
   }
 }
 
 @media (max-width: 1100px) {
   @theme {
-    --sidebar-width: 176px;
+    --sidebar-width: 110px;
     --right-panel-width: 280px;
   }
 
@@ -792,7 +1016,73 @@ body::before {
 
   .village-sidebar {
     grid-row: 1;
+    min-height: unset;
   }
+
+  /* Mobile: sidebar becomes a horizontal icon bar */
+  .grepolis-sidebar {
+    min-height: unset;
+    flex-direction: row;
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid rgba(160, 120, 40, 0.22);
+    overflow-x: auto;
+  }
+
+  .grepolis-sidebar::after {
+    display: none;
+  }
+
+  .grepolis-sidebar__header,
+  .grepolis-sidebar__queue,
+  .grepolis-sidebar__divider {
+    display: none;
+  }
+
+  .grepolis-sidebar__nav {
+    flex-direction: row;
+    padding: 4px 4px;
+    gap: 2px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex: 1;
+  }
+
+  .grepolis-nav-item {
+    flex-direction: column;
+    min-height: unset;
+    min-width: 44px;
+    border-bottom: none;
+    border-right: 1px solid rgba(80, 55, 15, 0.22);
+    padding: 4px 2px;
+    gap: 2px;
+  }
+
+  .grepolis-nav-item.active::after {
+    top: 0;
+    left: 6px;
+    right: 6px;
+    bottom: unset;
+    width: unset;
+    height: 3px;
+    border-radius: 0 0 2px 2px;
+  }
+
+  .grepolis-nav-item__icon-wrap {
+    height: 36px;
+    flex: 0 0 36px;
+  }
+
+  .grepolis-nav-item__icon {
+    width: 32px;
+    height: 32px;
+    font-size: 15px;
+  }
+
+  .grepolis-nav-item__label {
+    display: none;
+  }
+
 
   .village-topbar {
     grid-row: 2;

@@ -13,7 +13,7 @@ async function getAllianceDashboard(userId: string) {
   const gate = await canUseAllianceCenter(userId);
   const membership = await getAllianceMembershipForUser(userId);
   const alliancesRes = await db.from(COLLECTIONS.ALLIANCES).limit(100).get() as any;
-  const alliances = alliancesRes.data ?? [];
+  const alliances = (alliancesRes.data ?? []).filter((alliance: any) => !alliance.disbandedAt);
   if (!membership?.allianceId) return { gate, membership, alliances, members: [], diplomacy: [], events: [], effects: [] };
   const [membersRes, diplomacyA, diplomacyB, eventsRes, effectsRes] = await Promise.all([
     db.from(COLLECTIONS.ALLIANCE_MEMBERS).eq('allianceId', membership.allianceId).get() as any,
@@ -35,6 +35,28 @@ async function getAllianceDashboard(userId: string) {
 
 function orderedPair(a: string, b: string) {
   return [a, b].sort() as [string, string];
+}
+
+async function getMembershipById(memberId: string) {
+  const res = await db.from(COLLECTIONS.ALLIANCE_MEMBERS).eq('id', memberId).getFirst() as any;
+  return res.data ?? null;
+}
+
+async function countAllianceMembers(allianceId: string) {
+  const res = await db.from(COLLECTIONS.ALLIANCE_MEMBERS).eq('allianceId', allianceId).get() as any;
+  return (res.data ?? []).length;
+}
+
+async function addAllianceEvent(allianceId: string, type: string, message: string, otherAllianceId?: string | null) {
+  await db.from(COLLECTIONS.ALLIANCE_DIPLOMACY_EVENTS).insert({
+    id: genId(),
+    allianceId,
+    otherAllianceId: otherAllianceId ?? null,
+    type,
+    message,
+    public: false,
+    createdAt: new Date().toISOString(),
+  });
 }
 
 allianceRouter.get('/me', requireMatecitoAuth(), async (c) => {
@@ -64,6 +86,71 @@ allianceRouter.patch('/me', requireMatecitoAuth(), zValidator('json', UpdateAlli
   if (!canEditAllianceForum(membership.role)) return c.json({ error: 'Insufficient role' }, 403);
   const data = c.req.valid('json');
   await mergeRecordByLogicalId(COLLECTIONS.ALLIANCES, membership.allianceId, { ...data, updatedAt: new Date().toISOString() });
+  return c.json({ success: true });
+});
+
+allianceRouter.post('/me/leave', requireMatecitoAuth(), async (c) => {
+  const userId = c.get('userId');
+  const membership = await getAllianceMembershipForUser(userId);
+  if (!membership?.allianceId) return c.json({ error: 'No alliance' }, 404);
+  if (membership.role === 'LEADER' && (await countAllianceMembers(membership.allianceId)) > 1) return c.json({ error: 'Transfer leadership before leaving' }, 400);
+  await db.from(COLLECTIONS.ALLIANCE_MEMBERS).eq('id', membership.id).delete() as any;
+  await addAllianceEvent(membership.allianceId, 'MEMBER_LEFT', 'Un miembro abandonó la alianza.');
+  return c.json({ success: true });
+});
+
+allianceRouter.post('/me/disband', requireMatecitoAuth(), async (c) => {
+  const userId = c.get('userId');
+  const membership = await getAllianceMembershipForUser(userId);
+  if (!membership?.allianceId) return c.json({ error: 'No alliance' }, 404);
+  if (membership.role !== 'LEADER') return c.json({ error: 'Insufficient role' }, 403);
+  const membersRes = await db.from(COLLECTIONS.ALLIANCE_MEMBERS).eq('allianceId', membership.allianceId).get() as any;
+  for (const member of membersRes.data ?? []) await db.from(COLLECTIONS.ALLIANCE_MEMBERS).eq('id', member.id).delete() as any;
+  await mergeRecordByLogicalId(COLLECTIONS.ALLIANCES, membership.allianceId, { disbandedAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+  return c.json({ success: true });
+});
+
+allianceRouter.post('/members/:memberId/kick', requireMatecitoAuth(), async (c) => {
+  const userId = c.get('userId');
+  const membership = await getAllianceMembershipForUser(userId);
+  if (!membership?.allianceId) return c.json({ error: 'No alliance' }, 404);
+  if (membership.role !== 'LEADER' && membership.role !== 'OFFICER') return c.json({ error: 'Insufficient role' }, 403);
+  const target = await getMembershipById(c.req.param('memberId'));
+  if (!target || target.allianceId !== membership.allianceId) return c.json({ error: 'Member not found' }, 404);
+  if (target.role === 'LEADER' || target.id === membership.id) return c.json({ error: 'Invalid target' }, 400);
+  if (membership.role === 'OFFICER' && target.role !== 'MEMBER') return c.json({ error: 'Insufficient role' }, 403);
+  await db.from(COLLECTIONS.ALLIANCE_MEMBERS).eq('id', target.id).delete() as any;
+  await addAllianceEvent(membership.allianceId, 'MEMBER_KICKED', 'Un miembro fue expulsado de la alianza.');
+  return c.json({ success: true });
+});
+
+allianceRouter.patch('/members/:memberId/role', requireMatecitoAuth(), async (c) => {
+  const userId = c.get('userId');
+  const membership = await getAllianceMembershipForUser(userId);
+  if (!membership?.allianceId) return c.json({ error: 'No alliance' }, 404);
+  if (membership.role !== 'LEADER') return c.json({ error: 'Insufficient role' }, 403);
+  const body = await c.req.json().catch(() => ({})) as { role?: string };
+  const nextRole = body.role;
+  if (!['MEMBER', 'OFFICER', 'DIPLOMAT'].includes(nextRole ?? '')) return c.json({ error: 'Invalid role' }, 400);
+  const target = await getMembershipById(c.req.param('memberId'));
+  if (!target || target.allianceId !== membership.allianceId) return c.json({ error: 'Member not found' }, 404);
+  if (target.role === 'LEADER') return c.json({ error: 'Invalid target' }, 400);
+  await mergeRecordByLogicalId(COLLECTIONS.ALLIANCE_MEMBERS, target.id, { role: nextRole, updatedAt: new Date().toISOString() });
+  await addAllianceEvent(membership.allianceId, 'MEMBER_ROLE_CHANGED', 'Rol de miembro actualizado.');
+  return c.json({ success: true });
+});
+
+allianceRouter.post('/members/:memberId/transfer', requireMatecitoAuth(), async (c) => {
+  const userId = c.get('userId');
+  const membership = await getAllianceMembershipForUser(userId);
+  if (!membership?.allianceId) return c.json({ error: 'No alliance' }, 404);
+  if (membership.role !== 'LEADER') return c.json({ error: 'Insufficient role' }, 403);
+  const target = await getMembershipById(c.req.param('memberId'));
+  if (!target || target.allianceId !== membership.allianceId || target.id === membership.id) return c.json({ error: 'Member not found' }, 404);
+  await mergeRecordByLogicalId(COLLECTIONS.ALLIANCE_MEMBERS, membership.id, { role: 'OFFICER', updatedAt: new Date().toISOString() });
+  await mergeRecordByLogicalId(COLLECTIONS.ALLIANCE_MEMBERS, target.id, { role: 'LEADER', updatedAt: new Date().toISOString() });
+  await mergeRecordByLogicalId(COLLECTIONS.ALLIANCES, membership.allianceId, { ownerUserId: target.userId, updatedAt: new Date().toISOString() });
+  await addAllianceEvent(membership.allianceId, 'LEADERSHIP_TRANSFERRED', 'Liderazgo de alianza transferido.');
   return c.json({ success: true });
 });
 

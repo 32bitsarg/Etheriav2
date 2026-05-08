@@ -1,0 +1,896 @@
+{
+  "meta": {
+    "title": "Etheria - Real-Time Strategy",
+    "description": "Build your empire in Etheria, a real-time MMORPG strategy game"
+  },
+  "nav": {
+    "login": "Log In",
+    "playNow": "Play Now",
+    "changelog": "Changelog",
+    "register": "Register",
+    "quickLogin": {
+      "identifier": "Email or username",
+      "password": "Password",
+      "submit": "Sign In",
+      "error": "Invalid credentials. Check your details and try again."
+    }
+  },
+  "hero": {
+    "badge": "Real-Time Strategy",
+    "gameName": "Etheria",
+    "tagline": "Conquer. Build. Dominate.",
+    "subtitle": "Dive into a world of tactical strategy where thousands of players compete for dominance. Manage resources, lead armies, and forge your destiny.",
+    "ctaPlay": "Play Free",
+    "ctaLearnMore": "Learn More",
+    "stats": {
+      "players": "Active Players",
+      "battles": "Daily Battles",
+      "empires": "Empires Built"
+    },
+    "form": {
+      "title": "Start Your Empire",
+      "subtitle": "Create your account and begin your conquest",
+      "email": "Email",
+      "confirmEmail": "Confirm Email",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "passwordPlaceholder": "Minimum 6 characters",
+      "submit": "Create Free Account",
+      "loading": "Creating account...",
+      "error": "Could not register. Check your email or password.",
+      "hasAccount": "Already have an account?",
+      "loginLink": "Sign in",
+      "secure": "Secure & free to play"
+    }
+  },
+  "latestVersion": {
+    "title": "Latest Update",
+    "subtitle": "New features and improvements available",
+    "viewDetails": "View full details →"
+  },
+  "features": {
+    "title": "Why Etheria?",
+    "subtitle": "Real strategy, real decisions",
+    "items": [
+      {
+        "icon": "⚔️",
+        "title": "Tactical combat",
+        "description": "Battles where every decision matters. Combine units and use terrain to your advantage."
+      },
+      {
+        "icon": "🏰",
+        "title": "Build your empire",
+        "description": "Develop cities, farms, and mines to sustain your war economy."
+      },
+      {
+        "icon": "🌍",
+        "title": "Living world",
+        "description": "A persistent world that evolves with all players' actions."
+      },
+      {
+        "icon": "🤝",
+        "title": "Alliances & diplomacy",
+        "description": "Form alliances, negotiate treaties, and lead factions."
+      },
+      {
+        "icon": "📊",
+        "title": "Deep progression",
+        "description": "Multiple tech trees. Research, unlock, and develop unique strategies."
+      },
+      {
+        "icon": "🏆",
+        "title": "Seasons & rankings",
+        "description": "Compete in ranked seasons with dynamic matchmaking and exclusive rewards."
+      }
+    ]
+  },
+  "howToPlay": {
+    "title": "How to Play",
+    "subtitle": "Get started in minutes",
+    "steps": [
+      {
+        "title": "Create your account",
+        "description": "Free registration in seconds. No downloads."
+      },
+      {
+        "title": "Build your base",
+        "description": "Expand your territory, gather resources, and develop technologies."
+      },
+      {
+        "title": "Conquer the world",
+        "description": "Join massive battles, form alliances, and dominate the rankings."
+      }
+    ]
+  },
+  "socialProof": {
+    "title": "Active community",
+    "subtitle": "Thousands of strategists are already playing",
+    "stats": [
+      { "value": "50,000+", "label": "Players" },
+      { "value": "12,000+", "label": "Battles" },
+      { "value": "98%", "label": "Satisfaction" }
+    ]
+  },
+  "cta": {
+    "title": "Ready for the Conquest?",
+    "subtitle": "Join thousands of players and start your empire today",
+    "button": "Create Free Account"
+  },
+  "screenshots": {
+    "title": "Game Screenshots",
+    "subtitle": "Choose your side in the eternal war",
+    "items": [
+      { "caption": "World Map View" },
+      { "caption": "Battle Interface" },
+      { "caption": "Resource Management" },
+      { "caption": "Diplomacy System" }
+    ]
+  },
+  "lore": {
+    "title": "The World of Etheria",
+    "subtitle": "A land forged by forgotten gods",
+    "paragraphs": [
+      "Etheria was created when the ancient gods awoke from their thousand-year slumber. In their fury, they shattered the world into floating islands, each a battlefield where mortals and divine beings fight for increasingly scarce resources.",
+      "Today, three main factions dominate the landscape: the Aurelion, guardians of the golden light; the Shadowmere, masters of intrigue and shadows; and the Frostborne, northern warriors who worship ice crystals. You will choose your side."
+    ]
+  },
+  "footer": {
+    "brand": "Etheria",
+    "tagline": "Conquer. Build. Dominate.",
+    "links": [
+      { "label": "Changelog", "href": "/changelog" },
+      { "label": "Terms", "href": "/terms" },
+      { "label": "Privacy", "href": "/privacy" }
+    ],
+    "copyright": "© 2026 Etheria. All rights reserved.",
+    "developer": "Made with 💛 by the Etheria Team"
+  },
+  "login": {
+    "title": "Welcome Back",
+    "subtitle": "Sign in with your email or username to see your village.",
+    "identifier": "Email or Username",
+    "identifierPlaceholder": "you@example.com or Commander",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "submit": "Sign In",
+    "error": "Invalid credentials. Check your email/username and password.",
+    "rememberEmail": "Remember me",
+    "loading": "Loading...",
+    "noAccount": "Don't have an account?",
+    "registerLink": "Create account"
+  },
+  "register": {
+    "title": "Create Account",
+    "subtitle": "Your village is automatically created on an available island.",
+    "name": "Your name",
+    "namePlaceholder": "Commander",
+    "cityName": "Village name",
+    "cityNamePlaceholder": "Etheria",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "password": "Password",
+    "passwordPlaceholder": "Minimum 6 characters",
+    "confirmPassword": "Confirm Password",
+    "confirmPasswordPlaceholder": "Repeat your password",
+    "submit": "Create my account",
+    "error": "Could not register. Check your details and try again.",
+    "rememberEmail": "Remember my user",
+    "loading": "Loading...",
+    "hasAccount": "Already have an account?",
+    "loginLink": "Sign in"
+  },
+  "validation": {
+    "email": {
+      "required": "Email is required",
+      "invalid": "Enter a valid email address"
+    },
+    "password": {
+      "minLength": "Password must be at least 6 characters",
+      "maxLength": "Password must be less than 72 characters",
+      "uppercase": "Include at least one uppercase letter",
+      "lowercase": "Include at least one lowercase letter",
+      "number": "Include at least one number",
+      "mismatch": "Passwords do not match"
+    },
+    "confirmEmail": {
+      "required": "Please confirm your email",
+      "mismatch": "Email addresses do not match"
+    },
+    "confirmPassword": {
+      "required": "Please confirm your password",
+      "mismatch": "Passwords do not match"
+    },
+    "username": {
+      "minLength": "Username must be at least 3 characters",
+      "maxLength": "Username must be less than 20 characters",
+      "invalid": "Only letters, numbers, and underscores allowed"
+    },
+    "name": {
+      "minLength": "Name must be at least 2 characters",
+      "maxLength": "Name must be less than 50 characters"
+    },
+    "cityName": {
+      "minLength": "Village name must be at least 2 characters",
+      "maxLength": "Village name must be less than 30 characters"
+    },
+    "identifier": {
+      "required": "Email or username is required",
+      "invalid": "Enter a valid email or username"
+    },
+    "strength": {
+      "weak": "Weak",
+      "medium": "Medium",
+      "strong": "Strong"
+    }
+  },
+  "changelog": {
+    "title": "Changelog",
+    "subtitle": "Change history of Conquest of Etheria",
+    "viewAll": "View all changes →",
+    "backToList": "← Back to Changelog",
+    "backToHome": "Back to Home",
+    "headings": {
+      "Added": "Added",
+      "Changed": "Changed",
+      "Fixed": "Fixed",
+      "Technical": "Technical"
+    },
+    "releases": {
+      "0.2.1": "The Queue Workshop",
+      "v0_2_0": "The Living Map",
+      "v0_1_1": "The Gateway to Etheria",
+      "v0_1_0": "The Winter Resistance",
+      "v0_0_4": "The Diplomacy of the Realms",
+      "v0_0_3": "The Forge of Weapons",
+      "v0_0_2": "The First Wars",
+      "v0_0_1": "The Foundation of Etheria"
+    },
+    "items": {
+      "0.2.1": {
+        "added": [
+          "[CORE] Configurable sequential queues",
+          "Construction, training, and research now support up to 3 pending slots per city.",
+          "Only 1 slot runs actively by default; the following slots are chained and advance when the previous one finishes.",
+          "Slot limits and concurrency are configuration-driven to follow the no-hardcoded-gameplay-values guideline.",
+          "[UI] Persistent right queue panel",
+          "/play shows construction, training, and knowledge in one always-visible right panel.",
+          "Each queue item includes a cancel button with a 50% resource refund.",
+          "[WORLD] Village map asset",
+          "Player and bot cities in /mapa now use a fortified village sprite instead of the generic marker.",
+          "[BOTS] Living player simulation",
+          "Bots can now recover from critical resources, prioritize economy before spending, and keep decision memory.",
+          "Bots can create alliances, join alliances, talk in chat, and send diplomatic messages through the same services used by players."
+        ],
+        "changed": [
+          "[BOTS] AI aligned with the queue engine",
+          "Bots can fill pending slots through the same city actions used by players instead of stopping on any active queue.",
+          "Bot simulation now runs on the compatible data layer so it respects the configured provider between PostgreSQL and MatecitoDB.",
+          "[UI] Simplified game sidebar",
+          "Duplicate queues were removed from the left sidebar and bottom dock to keep a single visual source."
+        ],
+        "fixed": [
+          "[EDITOR] World terrain mask",
+          "Painting plains is now visible in the map editor overlay.",
+          "The brush covers grid edges more reliably to avoid hard-to-paint cells.",
+          "The editor camera can pan with extra margin so panel-covered map edges can be painted."
+        ]
+      },
+      "v0_2_0": {
+        "added": [
+          "Live World Map: Real-time visualization of armies and trade caravans with physical movement.",
+          "Seasonal Weather Layer: Visual effects for snow, autumn, and summer applied dynamically to the map.",
+          "Fog of War System: Progressive map discovery around your city.",
+          "Advanced Bot AI: Bots now attack players (respecting protection), trade with each other, and hunt barbarians.",
+          "Interactive Radial Menu: A new quick way to interact with the world map.",
+          "Bots now use the exact same city functions as players for authentic QA."
+        ]
+      },
+      "v0_1_1": {
+        "added": [
+          "New public landing page with dark fantasy design, animated hero, and features section.",
+          "Automated changelog blog that reads directly from the version history.",
+          "Shared public layout with consistent Navbar and Footer.",
+          "Game access moved to /play route to separate marketing from gameplay.",
+          "Visual redesign of Login and Register pages with glassmorphism style."
+        ]
+      },
+      "v0_1_0": {
+        "fixed": [
+          "Fixed winter pressure calculation: troops now consume food based on real elapsed time, preventing instant desertion.",
+          "Removed double food penalty in winter that was draining resources too fast.",
+          "Improved production accuracy: buildings now generate 1-3 extra units/hour after fixing rounding."
+        ],
+        "changed": [
+          "Season effects are now configurable and loaded from config files.",
+          "Rebalanced building production curve: high-level upgrades (15-20) are now more cost-effective.",
+          "Optimized performance: resource updates now batch-load data instead of querying one by one."
+        ],
+        "added": [
+          "Visible season system: spring, summer, autumn and winter with effects on production and the map.",
+          "Barbarian camps on the world map with visible army composition and rewards.",
+          "Barbarian camp attack system: select troops, attack and earn loot.",
+          "Barbarian attack alerts: urgent banner with countdown when a camp approaches your city.",
+          "Winter pressure: your troops consume food in winter; if supplies run out, they desert or lose combat power.",
+          "Camp scaling: surviving camps level up over time, becoming more dangerous.",
+          "Climate zones: the north and mountains suffer harsher winters; the south and coast are milder.",
+          "Simulation bot system for automated gameplay testing.",
+          "City ranking by Power accessible from the sidebar."
+        ],
+        "technical": [
+          "Vitest test suite with 21 tests for winterPressure and production.",
+          "Config refactor: seasonEffects, cityBaseConfig, battleConfigData extracted to dedicated files.",
+          "Eliminated N+1 queries in processResourceTicks.",
+          "Persistence diagnostics in barbarian spawn with DB error validation.",
+          "README rewritten, .env.example with placeholders, .gitignore expanded."
+        ]
+      },
+      "v0_0_4": {
+        "added": [
+          "Alliance system: create or join alliances, manage roles, edit public description and sign peace treaties.",
+          "Player mail with unread badge from the sidebar.",
+          "Real-time chat with Global and Alliance channels in the bottom dock.",
+          "Immersive bottom dock: construction queue, active research and chat unified."
+        ],
+        "changed": [
+          "Resource generation now applies technology bonuses and alliance peace effects.",
+          "Combat and training consistently use technology modifiers.",
+          "Village actions (upgrade, train, research) now use real backend mutations.",
+          "World map with continuous terrain: castles positioned directly on city coordinates.",
+          "Tower as the only defensive structure (wall removed from catalog)."
+        ],
+        "fixed": [
+          "Technology modifiers no longer lose global unit bonuses.",
+          "Combat no longer applies defender defensive bonuses to the attacker.",
+          "Training cancellation refunds respect the actual reduced cost.",
+          "Authentication system with HTTP-only sessions and remember me support."
+        ]
+      },
+      "v0_0_3": {
+        "added": [
+          "Technology tree: 22 researches across 3 categories (Economy, Military, Defense).",
+          "Two exclusive specialization branches: Siege Mastery vs Cavalry Mastery.",
+          "Real combat bonuses: attack, HP, defense, speed and armor penetration per unit type.",
+          "Wall and Tower now impact combat: wall increases defensive HP, tower deals damage per round.",
+          "Unit unlocks: Cavalry, Siege and Spy require specific technologies.",
+          "Research panel with visual cards, prerequisites and completion timer."
+        ],
+        "changed": [
+          "Unit stats are now calculated dynamically with technology bonuses.",
+          "Research queue is processed between training and resource ticks."
+        ]
+      },
+      "v0_0_2": {
+        "added": [
+          "Full battle system: attack other cities, earn loot and receive combat reports.",
+          "Battle panel with 3 tabs: Attack, Reports and Active (with live timers).",
+          "HP-based combat model: each unit has hit points and armor penetration.",
+          "5 unit types with distinct roles: Warrior (tank), Archer (damage), Cavalry (fast), Siege (destroys walls), Spy (scouting)."
+        ],
+        "changed": [
+          "Procedural sprites for 13 building types with dark fantasy theme.",
+          "Complete frontend-backend integration: auto city management, real-time polling.",
+          "Resource bar with local calculation between server syncs."
+        ]
+      },
+      "v0_0_1": {
+        "added": [
+          "Game engine with 50x50 tilemap, panoramic camera and click-to-build.",
+          "10 initial buildings: Town Hall, Barracks, Stable, Farm, Gold Mine, Sawmill, Quarry, Alliance Center, Library, Warehouse.",
+          "5 resources: Gold, Wood, Stone, Food, Gems with passive generation.",
+          "Construction and military training queue system.",
+          "Attack system with travel time between cities.",
+          "Offline progression: resources are calculated based on elapsed time.",
+          "HUD overlay with resource bar and building menu in React."
+        ],
+        "technical": [
+          "Monorepo architecture with Turborepo + pnpm workspaces.",
+          "Frontend: Next.js 15 + React 19 + Phaser 3.85.",
+          "Backend: Hono API with Clean Architecture.",
+          "Migration from PostgreSQL/Prisma to matecito.dev document DB.",
+          "Building and unit configs stored in DB (310 records).",
+          "Shared package with Zod schemas for type contracts."
+        ]
+      }
+    }
+  },
+  "editor": {
+    "title": "Editor",
+    "open": "Open",
+    "hide": "Hide",
+    "save": "Save",
+    "reset": "Reset",
+    "saving": "Saving...",
+    "saveError": "Could not save",
+    "unsaved": "Unsaved changes",
+    "noChanges": "No changes",
+    "file": "File",
+    "reference": "Reference",
+    "selected": "Selected",
+    "tabs": {
+      "village": "Village",
+      "mask": "Mask"
+    },
+    "village": {
+      "description": "1:1 village preview. Drag a building over the real background and save the JSON.",
+      "saveJson": "Save JSON",
+      "resetSelected": "Reset selected",
+      "resetAll": "Reset all",
+      "centerView": "Center view",
+      "grid": "Grid",
+      "safeAreas": "Safe areas",
+      "snap": "Snap",
+      "lock": "Lock",
+      "unlock": "Unlock",
+      "hideBuilding": "Hide",
+      "show": "Show",
+      "hidden": "Hidden",
+      "locked": "Locked",
+      "camera": "Camera",
+      "note": "Note",
+      "savedAnchors": "Saved anchors",
+      "ghost": "Ghost",
+      "custom": "Custom",
+      "default": "Default"
+    },
+    "mask": {
+      "description": "Paint mountains, water, forests and roads. Mountain/Water block spawn and pathing; soldiers and merchants must route around them.",
+      "save": "Save mask",
+      "resetPlains": "Reset plains",
+      "hideOverlay": "Hide overlay",
+      "showOverlay": "Show overlay",
+      "grid": "Grid",
+      "rule": "Rule",
+      "spawn": "spawn",
+      "noSpawn": "no spawn",
+      "path": "path",
+      "block": "block",
+      "speed": "speed",
+      "brush": "Brush"
+    },
+    "terrain": {
+      "plains": "Plains",
+      "forest": "Forest",
+      "mountain": "Mountain",
+      "water": "Water",
+      "road": "Road",
+      "coast": "Coast"
+    }
+  },
+  "play": {
+    "settings": {
+      "title": "Settings",
+      "close": "Close",
+      "language": "Language",
+      "logout": "Log Out"
+    },
+    "sidebar": {
+      "village": "Village",
+      "map": "Map",
+      "ranking": "Ranking",
+      "mail": "Messages",
+      "alliances": "Alliances",
+      "construction": "Construction",
+      "training": "Training",
+      "renameCity": "Rename City"
+    },
+    "queues": {
+      "title": "Queues",
+      "empty": "No active actions.",
+      "knowledge": "Knowledge",
+      "noConstruction": "No construction.",
+      "noTraining": "No training.",
+      "noResearch": "No research."
+    },
+    "resources": {
+      "gold": "Gold",
+      "wood": "Wood",
+      "stone": "Stone",
+      "food": "Food",
+      "gems": "Gems"
+    },
+    "buildings": {
+      "title": "Buildings",
+      "subtitle": "buildings in your village. Select one to see details, costs and available upgrades.",
+      "eyebrow": "Infrastructure",
+      "town_hall": {
+        "name": "Town Hall",
+        "description": "The heart of your city. Upgrading unlocks new buildings and increases storage capacity."
+      },
+      "gold_mine": {
+        "name": "Gold Mine",
+        "description": "Extracts gold from the earth. Higher levels produce more gold per hour."
+      },
+      "lumber_mill": {
+        "name": "Lumber Mill",
+        "description": "Processes wood from nearby forests. Essential for construction and training."
+      },
+      "quarry": {
+        "name": "Quarry",
+        "description": "Mines stone for building fortifications and structures."
+      },
+      "farm": {
+        "name": "Farm",
+        "description": "Produces food to sustain your growing army."
+      },
+      "barracks": {
+        "name": "Barracks",
+        "description": "Train infantry units. Higher levels unlock stronger warriors."
+      },
+      "stable": {
+        "name": "Stable",
+        "description": "Train cavalry units. Faster and stronger than infantry."
+      },
+      "alliance_center": {
+        "name": "Alliance Center",
+        "description": "Manage alliances and coordinate with other players."
+      },
+      "library": {
+        "name": "Library",
+        "description": "Research technologies to improve your city and army."
+      },
+      "storage": {
+        "name": "Storage",
+        "description": "Increases your maximum resource capacity."
+      },
+      "tower": {
+        "name": "Tower",
+        "description": "Main defensive structure. Grants the city's defense bonus and attacks incoming enemies."
+      },
+      "market": {
+        "name": "Market",
+        "description": "Trade resources with other players. Higher levels unlock better trade rates."
+      }
+    },
+    "units": {
+      "warrior": { "name": "Warrior", "short": "War" },
+      "archer": { "name": "Archer", "short": "Arc" },
+      "cavalry": { "name": "Cavalry", "short": "Cav" },
+      "siege": { "name": "Siege Engine", "short": "Sie" },
+      "spy": { "name": "Spy", "short": "Spy" }
+    },
+    "categories": {
+      "all": "All",
+      "economic": "Economic",
+      "military": "Military",
+      "civic": "Civic"
+    },
+    "tech": {
+      "categories": {
+        "economy": "Economy",
+        "military": "Military",
+        "defense": "Defense"
+      },
+      "names": {
+        "efficient_collection_1": "Efficient Collection I",
+        "efficient_collection_2": "Efficient Collection II",
+        "efficient_collection_3": "Efficient Collection III",
+        "advanced_storage": "Advanced Storage",
+        "wartime_economy": "Wartime Economy",
+        "trade_routes": "Trade Routes",
+        "weapon_forge_1": "Weapon Forge I",
+        "weapon_forge_2": "Weapon Forge II",
+        "reinforced_bows": "Reinforced Bows",
+        "horse_breeding": "Horse Breeding",
+        "heavy_cavalry": "Heavy Cavalry",
+        "siege_engineering": "Siege Engineering",
+        "ballistics": "Ballistics",
+        "guerrilla_tactics": "Guerrilla Tactics",
+        "masonry": "Masonry",
+        "stone_walls": "Stone Walls",
+        "watchtower_network": "Watchtower Network",
+        "poisoned_arrows": "Poisoned Arrows",
+        "fortifications": "Fortifications",
+        "spy_network": "Spy Network",
+        "siege_mastery": "Siege Mastery",
+        "cavalry_mastery": "Cavalry Mastery"
+      },
+      "desc": {
+        "efficient_collection_1": "Increases all resource production by 5%",
+        "efficient_collection_2": "Increases all resource production by 10%",
+        "efficient_collection_3": "Increases all resource production by 15%",
+        "advanced_storage": "Increases storage capacity by 20%",
+        "wartime_economy": "Reduces unit training costs by 15%",
+        "trade_routes": "Unlocks market trading and increases gold production by 10%",
+        "weapon_forge_1": "Increases all unit attack by 10%",
+        "weapon_forge_2": "Increases all unit attack by 15% and armor penetration by 5",
+        "reinforced_bows": "Archer attack +20% and range bonus",
+        "horse_breeding": "Unlocks Cavalry units. Cavalry HP +15%",
+        "heavy_cavalry": "Cavalry defense +20% and attack +10%",
+        "siege_engineering": "Unlocks Siege units. Siege attack +15%",
+        "ballistics": "Siege armor penetration +15 and attack +10%",
+        "guerrilla_tactics": "All unit speed +10%",
+        "masonry": "Tower defense effectiveness +25%",
+        "stone_walls": "Tower fortification effectiveness +40%",
+        "watchtower_network": "Tower damage +10 per round",
+        "poisoned_arrows": "Tower damage +20 per round and Archer attack +10%",
+        "fortifications": "Tower fortifications +50%",
+        "spy_network": "Unlocks Spy units",
+        "siege_mastery": "Siege units: attack +30%, armor penetration +20, HP +20%",
+        "cavalry_mastery": "Cavalry units: attack +25%, speed +20%, HP +25%"
+      }
+    },
+    "topnav": {
+      "village": "Village",
+      "map": "Map",
+      "reports": "Reports",
+      "statistics": "Statistics"
+    },
+    "seasons": {
+      "spring": "Spring",
+      "summer": "Summer",
+      "autumn": "Autumn",
+      "winter": "Winter",
+      "start": "Start",
+      "mid": "Mid",
+      "transition": "Transition"
+    },
+    "inspection": {
+      "title": "Inspection Panel",
+      "subtitle": "Select a building to view level, upgrade cost and lot data.",
+      "empty": "Empty Village",
+      "emptySubtitle": "When buildings exist in the city they will appear positioned directly on the urban plan.",
+      "buildings": "Buildings",
+      "buildingsSubtitle": "buildings in your village. Select one to see details, costs and available upgrades.",
+      "infrastructure": "Infrastructure",
+      "upgradeTo": "Upgrade to",
+      "inQueue": "In Queue",
+      "upgrade": "Upgrade",
+      "army": "Army",
+      "armySubtitle": "unit types,",
+      "armySubtitle2": "total units ready for defense or expansion.",
+      "militaryForces": "Military Forces",
+      "unit": "Unit",
+      "amount": "Amount",
+      "atk": "Atk",
+      "def": "Def",
+      "hp": "HP",
+      "noTroops": "No troops available",
+      "train": "Train",
+      "costPerUnit": "Cost per unit:",
+      "selectUnit": "Select a unit",
+      "research": "Research",
+      "researchSubtitle": "active technologies and",
+      "researchSubtitle2": "accumulated development levels.",
+      "techDevelopment": "Technological Development",
+      "notResearched": "Not researched",
+      "researchBtn": "Research",
+      "changeCategory": "Change category to see more options",
+      "level": "Level",
+      "upgradeLabel": "Upgrade",
+      "category": "Category",
+      "currentLevel": "Current Level",
+      "position": "Position",
+      "info": "Information",
+      "id": "ID:",
+      "created": "Created:",
+      "buildingDesc": "The {name} is a building in your village.",
+      "buildingDescKey": "The {name} is a key structure in your village.",
+      "upgrading": "Upgrading...",
+      "insufficientResources": "Insufficient resources."
+    },
+    "ranking": {
+      "title": "Village Ranking",
+      "subtitle": "Ordered by total Power: buildings, army and research.",
+      "close": "Close",
+      "village": "Village",
+      "power": "Power",
+      "buildings": "Buildings",
+      "army": "Army",
+      "research": "Research",
+      "loading": "Loading ranking...",
+      "error": "Could not load ranking.",
+      "empty": "No villages ranked yet."
+    },
+    "map": {
+      "centerMyVillage": "Center my village",
+      "villageLabel": "Village",
+      "enter": "Enter",
+      "attack": "Attack",
+      "spy": "Spy",
+      "movements": "Movements",
+      "weather": "Weather",
+      "fog": "Fog of War",
+      "caravan": "Trade Caravan",
+      "army": "Marching Army",
+      "discovery": "Discovered Territory"
+    },
+    "rename": {
+      "title": "Change Name",
+      "label": "Village name",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "mail": {
+      "title": "Messages",
+      "unread": "unread",
+      "inbox": "Inbox",
+      "sent": "Sent",
+      "new": "New",
+      "loading": "Loading...",
+      "empty": "No messages.",
+      "to": "To",
+      "from": "From",
+      "recipient": "Recipient",
+      "selectCity": "Select city...",
+      "subjectPlaceholder": "Subject",
+      "bodyPlaceholder": "Write your message...",
+      "sending": "Sending...",
+      "send": "Send",
+      "selectMessage": "Select a message."
+    },
+    "alliance": {
+      "title": "Alliances",
+      "modernizingNotice": "The alliance system is being modernized for the next season.",
+      "loading": "Loading...",
+      "requiredCenter": "Alliance Center Required",
+      "requiredCenterDesc": "You need Alliance Center level 5 to create or join an alliance.",
+      "createTitle": "Create Alliance",
+      "namePlaceholder": "Name",
+      "tagPlaceholder": "TAG",
+      "create": "Create",
+      "join": "Join",
+      "honor": "Honor",
+      "brokenTreaties": "broken treaties",
+      "role": "Role",
+      "broken": "Broken",
+      "publicPresentation": "Public Presentation",
+      "forum": "Forum / Internal Announcement",
+      "saveForum": "Save Forum",
+      "members": "Members",
+      "diplomacy": "Diplomacy",
+      "targetAlliance": "Target alliance...",
+      "peace24h": "Peace 24h",
+      "break": "Break",
+      "expires": "Expires",
+      "noDate": "no date",
+      "publicHistory": "Public History",
+      "activeEffects": "Active Effects",
+      "empty": "No active records.",
+      "leave": "Leave",
+      "disband": "Disband",
+      "kick": "Kick",
+      "transfer": "Transfer",
+      "actionFailed": "Alliance action failed",
+      "roles": {
+        "LEADER": "Leader",
+        "OFFICER": "Officer",
+        "DIPLOMAT": "Diplomat",
+        "MEMBER": "Member"
+      }
+    },
+    "battle": {
+      "title": "Battle",
+      "command": "Battle Command",
+      "attack": "Attack",
+      "reports": "Reports",
+      "active": "Active",
+      "targetCity": "Target City",
+      "selectTarget": "Select a target...",
+      "troops": "Troops",
+      "noTroops": "No troops available. Train units in Barracks.",
+      "sending": "Sending...",
+      "sendAttack": "Send Attack",
+      "noReports": "No battle reports yet.",
+      "victory": "Victory",
+      "defeat": "Defeat",
+      "barbarianAttack": "Barbarian Attack",
+      "attackerLosses": "Attacker losses:",
+      "defenderLosses": "Defender losses:",
+      "none": "None",
+      "loot": "Loot:",
+      "markRead": "Mark as read",
+      "noActiveBattles": "No active battles.",
+      "marching": "Marching to attack",
+      "enemyApproaching": "Enemy approaching",
+      "returningHome": "Returning home",
+      "enemyReturning": "Enemy returning",
+      "attackSent": "Attack sent",
+      "attackSentMsg": "Your troops are marching to the target.",
+      "attackFailed": "Attack failed"
+    },
+    "buildConfirm": {
+      "started": "Construction started",
+      "startedAt": "is being built at",
+      "failed": "Build failed",
+      "position": "Position",
+      "size": "Size",
+      "building": "Building...",
+      "confirm": "Confirm build",
+      "cancel": "Cancel"
+    },
+    "dock": {
+      "construction": "Construction",
+      "noConstruction": "No construction",
+      "training": "Troop",
+      "noTraining": "No troop",
+      "research": "Knowledge",
+      "noResearch": "No knowledge",
+      "upgradeCancelled": "Upgrade cancelled",
+      "refund50": "50% refunded.",
+      "cancelFailed": "Could not cancel",
+      "trainingCancelled": "Training cancelled",
+      "researchCancelled": "Research cancelled",
+      "cancel": "Cancel",
+      "cancelWithRefund": "Cancel · refund"
+    },
+    "espionage": {
+      "title": "Espionage",
+      "pending": "Espionage pending implementation."
+    },
+    "building": {
+      "close": "Close",
+      "level": "Level",
+      "upgrade": "Upgrade",
+      "upgradeTo": "Upgrade to",
+      "inQueue": "In Queue",
+      "upgrading": "Upgrading...",
+      "maxLevel": "Max level",
+      "insufficientResources": "Insufficient resources.",
+      "currentLevel": "Current Level",
+      "category": "Category",
+      "position": "Position",
+      "info": "Information",
+      "created": "Created:"
+    },
+    "research": {
+      "title": "Research",
+      "subtitle": "active technologies and accumulated development levels.",
+      "eyebrow": "Technological Development",
+      "notResearched": "Not researched",
+      "research": "Research",
+      "ready": "Ready",
+      "blocked": "Blocked",
+      "no": "No",
+      "go": "Go",
+      "categories": {
+        "economy": "Economy",
+        "military": "Military",
+        "defense": "Defense"
+      }
+    },
+    "army": {
+      "title": "Army",
+      "subtitle": "unit types ready for defense or expansion.",
+      "eyebrow": "Military Forces",
+      "noTroops": "No troops available",
+      "selectUnit": "Select a unit",
+      "inQueue": "In Queue",
+      "empty": "Empty",
+      "unit": "Unit",
+      "amount": "Amount",
+      "atk": "Atk",
+      "def": "Def",
+      "hp": "HP"
+    },
+    "training": {
+      "title": "Train",
+      "ready": "Ready",
+      "train": "Train"
+    },
+    "toasts": {
+      "upgradeStarted": "Upgrade started",
+      "upgradeFailed": "Upgrade failed",
+      "trainingStarted": "Training started",
+      "trainingFailed": "Training failed",
+      "researchStarted": "Research started",
+      "researchFailed": "Research failed",
+      "insufficientResources": "Insufficient resources",
+      "attack": "Attack",
+      "spyTitle": "Espionage",
+      "spyMsg": "Espionage on {name} pending implementation.",
+      "invalidName": "Invalid name",
+      "invalidNameMsg": "Use between 2 and 30 characters.",
+      "cityRenamed": "Village renamed",
+      "renameFailed": "Could not rename",
+      "incompleteMessage": "Incomplete message",
+      "messageSent": "Message sent",
+      "sendFailed": "Could not send",
+      "createFailed": "Could not create",
+      "upgradeCancelled": "Upgrade cancelled",
+      "refundMsg": "50% refunded.",
+      "cancelFailed": "Could not cancel",
+      "trainingCancelled": "Training cancelled",
+      "researchCancelled": "Research cancelled"
+    }
+  }
+}

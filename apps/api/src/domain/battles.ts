@@ -179,3 +179,15 @@ export function calculateTravelTime(
   const distance = Math.sqrt(Math.pow(toX - fromX, 2) + Math.pow(toY - fromY, 2));
   return Math.floor((distance / speed) * 3600); // seconds
 }
+
+export function calculateTravelTimeWithMultiplier(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  speed: number,
+  speedMultiplier: number
+): number {
+  const effectiveSpeed = Math.max(1, speed * Math.max(0.1, speedMultiplier));
+  return calculateTravelTime(fromX, fromY, toX, toY, effectiveSpeed);
+}
