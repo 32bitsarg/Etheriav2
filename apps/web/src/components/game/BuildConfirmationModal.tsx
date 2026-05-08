@@ -2,14 +2,15 @@
 
 import { useGameStore } from "@/stores/gameStore";
 import { useBuildBuilding } from "@/hooks/useCity";
-import { BUILDING_INFO, BUILDING_SIZES } from "@/lib/constants";
+import { BUILDING_INFO, BUILDING_SIZES, getBuildingDescriptionKey, getBuildingNameKey } from "@/lib/constants";
 import { Panel } from "@/components/ui/Panel";
 import { toastError, toastSuccess } from "@/stores/toastStore";
+import { useI18n } from "@/i18n";
 
 export function BuildConfirmationModal() {
+  const { t } = useI18n();
   const store = useGameStore();
   const buildMutation = useBuildBuilding();
-
   const { buildMode, selectedBuildingType, selectedTile, cityId } = store;
 
   if (!buildMode || !selectedBuildingType || !selectedTile || !cityId) return null;
@@ -30,10 +31,13 @@ export function BuildConfirmationModal() {
           store.setBuildMode(false);
           store.setSelectedBuildingType(null);
           store.setSelectedTile(null);
-          toastSuccess("Construction Started", `${info?.name} is being built at (${selectedTile.x}, ${selectedTile.y})`);
+          toastSuccess(
+            t("play.buildConfirm.started"),
+            `${t(getBuildingNameKey(selectedBuildingType))} ${t("play.buildConfirm.startedAt")} (${selectedTile.x}, ${selectedTile.y})`
+          );
         },
         onError: (err) => {
-          toastError("Build Failed", err.message);
+          toastError(t("play.buildConfirm.failed"), err.message);
         },
       }
     );
@@ -46,52 +50,47 @@ export function BuildConfirmationModal() {
   };
 
   return (
-    <div className="pointer-events-auto absolute bottom-20 left-1/2 -translate-x-1/2 z-30">
+    <div className="pointer-events-auto absolute bottom-20 left-1/2 z-30 -translate-x-1/2">
       <Panel animation="slide-up" className="min-w-[340px]">
         <div className="p-4">
-          {/* Building Preview */}
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 rounded-lg bg-etheria-bg-light/50 border border-etheria-border flex items-center justify-center text-2xl">
-              {info?.icon ?? "🏗️"}
+          <div className="mb-3 flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-etheria-border bg-etheria-bg-light/50 text-2xl">
+              {info?.icon ?? "???"}
             </div>
             <div>
-              <h3 className="font-display font-bold text-etheria-gold text-sm">{info?.name}</h3>
+              <h3 className="font-display text-sm font-bold text-etheria-gold">{t(getBuildingNameKey(selectedBuildingType))}</h3>
               <p className="text-[10px] text-etheria-text-dim">
-                Position: ({selectedTile.x}, {selectedTile.y}) • Size: {size.w}×{size.h}
+                {t("play.buildConfirm.position")}: ({selectedTile.x}, {selectedTile.y}) · {t("play.buildConfirm.size")}: {size.w}x{size.h}
               </p>
             </div>
           </div>
 
-          {/* Description */}
-          {info?.description && (
-            <p className="text-xs text-etheria-text-muted mb-4 leading-relaxed">{info.description}</p>
-          )}
+          <p className="mb-4 text-xs leading-relaxed text-etheria-text-muted">{t(getBuildingDescriptionKey(selectedBuildingType))}</p>
 
-          {/* Actions */}
           <div className="flex gap-2">
             <button
               onClick={handleBuild}
               disabled={buildMutation.isPending}
-              className="flex-1 bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-600 hover:to-emerald-500 disabled:from-slate-700 disabled:to-slate-600 text-white font-bold py-2.5 px-4 rounded-lg transition-all text-sm uppercase tracking-wider shadow-lg"
+              className="flex-1 rounded-lg bg-gradient-to-r from-emerald-700 to-emerald-600 px-4 py-2.5 text-sm font-bold uppercase tracking-wider text-white shadow-lg transition-all hover:from-emerald-600 hover:to-emerald-500 disabled:from-slate-700 disabled:to-slate-600"
             >
               {buildMutation.isPending ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="animate-spin">⏳</span> Building...
+                  <span className="animate-spin">?</span> {t("play.buildConfirm.building")}
                 </span>
               ) : (
-                "Confirm Build"
+                t("play.buildConfirm.confirm")
               )}
             </button>
             <button
               onClick={handleCancel}
-              className="flex-1 bg-etheria-bg-light border border-etheria-border hover:bg-etheria-panel-hover text-etheria-text font-bold py-2.5 px-4 rounded-lg transition-all text-sm"
+              className="flex-1 rounded-lg border border-etheria-border bg-etheria-bg-light px-4 py-2.5 text-sm font-bold text-etheria-text transition-all hover:bg-etheria-panel-hover"
             >
-              Cancel
+              {t("play.buildConfirm.cancel")}
             </button>
           </div>
 
           {buildMutation.isError && (
-            <p className="mt-2 text-xs text-red-400 text-center">{buildMutation.error.message}</p>
+            <p className="mt-2 text-center text-xs text-red-400">{buildMutation.error.message}</p>
           )}
         </div>
       </Panel>

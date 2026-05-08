@@ -19,8 +19,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${cinzel.variable} ${cinzelDecorative.variable} ${inter.className} antialiased`}>
-        <QueryProvider>{children}</QueryProvider>
+      <body
+        className={`${inter.variable} ${cinzel.variable} ${cinzelDecorative.variable} ${inter.className} antialiased`}
+        style={{ backgroundColor: "#fafaf9", color: "#1c1917" }}
+      >
+        <QueryProvider>
+          {children}
+        </QueryProvider>
       </body>
     </html>
   );

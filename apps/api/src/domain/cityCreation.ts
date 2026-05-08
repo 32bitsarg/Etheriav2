@@ -4,6 +4,7 @@ import { STARTER_BUILDING_LAYOUT, type BuildingType, type UnitType } from "@ethe
 import { calculateCityStats } from "./buildings.js";
 import { getWorldConfig, type WorldSpawnConfig } from "./worldConfig.js";
 import type { WorldConfigDoc } from "./worldConfigData.js";
+import { isBuildableTerrain } from "./worldTerrainConfigData.js";
 
 const genId = () => crypto.randomUUID();
 
@@ -61,8 +62,9 @@ function distance(a: WorldPoint, b: WorldPoint) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-function isFarEnough(candidate: WorldPoint, occupied: WorldPoint[], minDistance: number) {
-  return occupied.every((city) => distance(candidate, city) >= minDistance);
+function isValidCitySpawn(candidate: WorldPoint, occupied: WorldPoint[], minDistance: number, mapWidth: number, mapHeight: number) {
+  return isBuildableTerrain(candidate.x, candidate.y, mapWidth, mapHeight)
+    && occupied.every((city) => distance(candidate, city) >= minDistance);
 }
 
 function hashSeed(seed: string) {
@@ -83,10 +85,29 @@ function getFallbackSpawn(seed: string, world: WorldConfigDoc): WorldPoint {
   const yRange = Math.max(1, maxY - minY + 1);
   const hash = hashSeed(seed);
 
-  return {
+  const initial = {
     x: minX + (hash % xRange),
     y: minY + (Math.floor(hash / 97) % yRange),
   };
+  if (isBuildableTerrain(initial.x, initial.y, world.map.width, world.map.height)) return initial;
+
+  const attempts = Math.max(24, Math.ceil(Math.min(world.map.width, world.map.height) / Math.max(1, world.spawn.clusterSearchStep)));
+  for (let i = 1; i <= attempts; i++) {
+    const angle = (Math.PI * 2 * ((hash + i * 37) % attempts)) / attempts;
+    const radius = Math.min(world.spawn.clusterRadius, world.spawn.clusterSearchStep * i);
+    const candidate = clampPoint(
+      {
+        x: initial.x + Math.cos(angle) * radius,
+        y: initial.y + Math.sin(angle) * radius,
+      },
+      world.map.width,
+      world.map.height,
+      world.spawn.edgePadding
+    );
+    if (isBuildableTerrain(candidate.x, candidate.y, world.map.width, world.map.height)) return candidate;
+  }
+
+  return isBuildableTerrain(0, 0, world.map.width, world.map.height) ? { x: 0, y: 0 } : initial;
 }
 
 function getClusterCenters(occupied: WorldPoint[], config: WorldSpawnConfig) {
@@ -124,7 +145,7 @@ function pickClusterSpawn(occupied: WorldPoint[], mapWidth: number, mapHeight: n
         mapHeight,
         config.edgePadding
       );
-      if (isFarEnough(candidate, occupied, config.minCityDistance)) return candidate;
+      if (isValidCitySpawn(candidate, occupied, config.minCityDistance, mapWidth, mapHeight)) return candidate;
     }
   }
 
@@ -150,7 +171,7 @@ function pickNewClusterSpawn(occupied: WorldPoint[], mapWidth: number, mapHeight
         mapHeight,
         config.edgePadding
       );
-      if (isFarEnough(candidate, occupied, config.minCityDistance)) return candidate;
+      if (isValidCitySpawn(candidate, occupied, config.minCityDistance, mapWidth, mapHeight)) return candidate;
     }
   }
 
@@ -173,7 +194,7 @@ export async function allocatePositionForCity(seed: string): Promise<WorldPoint 
     return getFallbackSpawn(seed, world);
   }
 
-  if (occupied.length === 0) return { x: 0, y: 0 };
+  if (occupied.length === 0 && isBuildableTerrain(0, 0, world.map.width, world.map.height)) return { x: 0, y: 0 };
 
   const clusterPoint = pickClusterSpawn(occupied, world.map.width, world.map.height, world.spawn);
   if (clusterPoint) return clusterPoint;

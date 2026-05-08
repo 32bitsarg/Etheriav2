@@ -9,7 +9,78 @@ Each release is named after a legendary era in the world of Etheria.
 
 ---
 
-## [Unreleased]
+## [0.2.1] - El Taller de Colas - 2026-05-07
+
+### Added
+- **[CORE] Colas secuenciales configurables**
+  - Construcción, entrenamiento e investigación ahora soportan hasta 3 slots pendientes por ciudad.
+  - Sólo 1 slot se ejecuta activamente por defecto; los siguientes quedan encadenados y avanzan cuando termina el anterior.
+  - Los límites de slots y concurrencia salen de configuración (`CITY_QUEUE_*_MAX_SLOTS`, `CITY_QUEUE_*_ACTIVE_SLOTS`) para respetar el guideline de no hardcodear valores de gameplay.
+- **[UI] Panel derecho de colas persistente**
+  - `/play` muestra construcción, entrenamiento y saber en un único panel derecho siempre visible.
+  - Cada item de cola incluye botón de cancelación con reembolso del 50% de recursos.
+- **[WORLD] Asset de aldeas en mapa**
+  - Las ciudades de jugadores y bots en `/mapa` ahora usan un sprite de aldea fortificada en vez del marcador genérico.
+- **[BOTS] Simulacion viva de jugadores**
+  - Los bots ahora pueden recuperarse de recursos criticos, priorizar economia antes de gastar y mantener memoria de sus decisiones.
+  - Los bots pueden crear alianzas, unirse a alianzas, hablar por chat y enviar mensajes diplomaticos usando los mismos servicios que los jugadores.
+
+### Changed
+- **[BOTS] IA alineada con el motor de colas**
+  - Los bots pueden llenar slots pendientes usando las mismas acciones de ciudad que los jugadores, en vez de detenerse ante una cola activa.
+  - La simulacion de bots ahora funciona sobre la capa compatible de datos para respetar el proveedor configurado entre PostgreSQL y MatecitoDB.
+- **[UI] Sidebar de juego simplificado**
+  - Las colas duplicadas del sidebar izquierdo y del dock inferior fueron removidas para dejar una única fuente visual.
+
+### Fixed
+- **[EDITOR] Máscara de terreno del mapa**
+  - Pintar `plains` ahora es visible en el overlay del editor.
+  - El pincel cubre mejor los bordes de la grilla para evitar celdas difíciles de pintar.
+  - La cámara del editor permite desplazar el mapa con margen adicional para pintar bordes cubiertos por paneles.
+
+## [0.2.0] - El Mapa Viviente - 2026-05-06
+
+### Added
+- **[WORLD] Mapa del Mundo Dinámico (Live World Map)**
+  - Visualización en tiempo real de ejércitos y caravanas comerciales sobre el mapa.
+  - Las unidades se desplazan físicamente entre ciudades usando interpolación basada en tiempos de servidor.
+  - Capa de **Clima Estacional**: El mapa refleja visualmente la estación actual (Nieve en invierno, tinte cálido en otoño, brillo solar en verano).
+  - Sistema de **Niebla de Guerra**: Los jugadores solo pueden ver el mapa alrededor de su propia ciudad, revelando territorio al expandirse o explorar.
+  - Menú Radial Interactivo: Nueva interfaz táctil/clic para interactuar con ciudades y campamentos directamente desde el mapa.
+- **[BOTS] IA Avanzada y QA Automatizado**
+  - Los bots ahora pueden atacar a jugadores reales de forma aleatoria, respetando la protección de novatos y tiempos de cooldown global.
+  - Sistema de comercio automático: los bots envían recursos sobrantes a aliados o a ellos mismos para optimizar su economía.
+  - Caza de bárbaros: la IA ahora detecta y elimina campamentos cercanos para limpiar el mapa y obtener recursos.
+  - Los bots utilizan las mismas funciones (`cityActions`) que los jugadores, asegurando una validación de QA constante del motor de juego.
+- **[API] Infraestructura de Movimientos Globales**
+  - Endpoint `GET /api/city/world/movements`: unifica todas las batallas y caravanas activas del servidor en un solo flujo de datos para el cliente.
+  - Soporte para ataques coordinados a campamentos bárbaros con tiempo de viaje real.
+
+---
+
+## [0.1.1] - La Puerta de Etheria - 2026-05-05
+
+### Added
+- **[WEB] Landing page pública para Conquest of Etheria**
+  - Nueva landing page en `/` con diseño moderno y minimalista: Hero, Features, Screenshots, Lore, Footer, y sección de última versión.
+  - Todo el contenido de marketing configurable desde `landingContent.ts` (zero hardcodeo).
+  - Sección `LatestVersionSection` que muestra la última versión del changelog directamente en la landing.
+  - Diseño dark fantasy refinado: glassmorphism sutil, gradientes ambientales, tipografía elegante.
+- **[WEB] Blog de changelog sincronizado automáticamente**
+  - Rutas `/changelog` y `/changelog/[version]` con SSG y páginas estáticas.
+  - Parser robusto en `changelogParser.ts` con búsqueda recursiva del archivo para build time.
+  - `getLatestRelease()` utilidad para obtener la versión más reciente.
+- **[WEB] Layout público compartido**
+  - Route group `(public)` con layout compartido que incluye Navbar fija y Footer en todas las páginas públicas.
+  - Navbar y Footer visibles siempre en landing, login, registro y changelog.
+  - Footer con atribución: "Desarrollado por 32bitsarg <3".
+- **[WEB] Juego movido a `/play`**
+  - Ruta `/play` es la nueva entrada al cliente de juego.
+  - Login y registro redirigen a `/play` tras autenticación exitosa.
+  - `GameInitializer` actualizado para permitir rutas públicas sin redirección forzada.
+- **[WEB] Login y Registro rediseñados**
+  - Nuevo diseño minimalista con tarjetas glassmorphism, mejor espaciado y tipografía.
+  - Inputs con bordes redondeados, estados focus mejorados, y mensajes de error refinados.
 
 ---
 
@@ -449,8 +520,8 @@ Each release is named after a legendary era in the world of Etheria.
 | 0.0.1 | **La Fundación de Etheria** | The First Cities |
 | 0.0.2 | **Las Primeras Guerras** | Military & Warfare |
 | 0.0.3 | *La Forja de Armas* | Advanced Units & Gear |
-| 0.1.0 | *El Gran Asedio* | Sieges & Conquest |
-| 0.2.0 | *El Comercio de Especies* | Market & Economy |
+| 0.1.0 | **La Resistencia del Invierno** | Seasons & Barbarians |
+| 0.2.0 | **El Mapa Viviente** | Live World & Smart Bots |
 | 0.3.0 | *Las Ruinas Olvidadas* | Exploration & PvE |
 | 0.4.0 | *El Pacto de Sangre* | Diplomacy & Alliances |
 | 0.5.0 | *La Edad de los Héroes* | Heroes & Quests |

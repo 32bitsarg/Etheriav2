@@ -39,9 +39,9 @@ export function ResourceBar() {
   }, []);
 
   return (
-    <div className="w-full bg-gradient-to-b from-etheria-panel to-etheria-panel-light border-b border-etheria-border">
-      <div className="max-w-5xl mx-auto px-2 py-1">
-        <div className="flex items-center gap-3">
+    <div className="pointer-events-auto w-full">
+      <div className="mx-auto w-[min(980px,calc(100vw-132px))] rounded-xl border border-white/10 bg-black/35 px-2 py-1.5 backdrop-blur-md shadow-[0_10px_28px_rgba(0,0,0,.35)]">
+        <div className="flex items-center gap-2">
           {RESOURCES.map(({ key, prodKey }) => {
             const value = liveResources[key as keyof typeof liveResources] ?? 0;
             const prod = production[prodKey as keyof typeof production] ?? 0;
@@ -49,14 +49,14 @@ export function ResourceBar() {
             const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
 
             return (
-              <div key={key} className="flex items-center gap-1.5 flex-1 min-w-0">
-                <ResourceIcon type={key} size={20} />
+              <div key={key} className="flex items-center gap-1.5 min-w-0 flex-1">
+                <ResourceIcon type={key} size={16} />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-xs font-semibold text-etheria-text truncate">{formatNumber(Math.floor(value))}</span>
-                    <span className="text-[10px] text-etheria-text-dim">+{prod}/h</span>
+                  <div className="flex items-baseline gap-1 leading-none">
+                    <span className="text-[11px] font-semibold text-etheria-text truncate">{formatNumber(Math.floor(value))}</span>
+                    <span className="text-[9px] text-etheria-text-dim">+{prod}/h</span>
                   </div>
-                  <div className="h-0.5 bg-etheria-bg rounded-full overflow-hidden">
+                  <div className="mt-1 h-[2px] rounded-full bg-black/45 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-1000 ${
                         key === "gold" ? "bg-etheria-gold" : key === "wood" ? "bg-etheria-wood" : key === "stone" ? "bg-etheria-stone" : "bg-etheria-food"
@@ -69,9 +69,9 @@ export function ResourceBar() {
             );
           })}
 
-          <div className="flex items-center gap-1.5 pl-3 border-l border-etheria-border shrink-0">
-            <ResourceIcon type="gems" size={20} />
-            <span className="text-xs font-semibold text-etheria-gems">{formatNumber(Math.floor(liveResources.gems))}</span>
+          <div className="ml-1 flex items-center gap-1.5 border-l border-white/10 pl-2 shrink-0">
+            <ResourceIcon type="gems" size={16} />
+            <span className="text-[11px] font-semibold text-etheria-gems">{formatNumber(Math.floor(liveResources.gems))}</span>
           </div>
         </div>
       </div>

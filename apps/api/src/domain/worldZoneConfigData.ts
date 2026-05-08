@@ -163,8 +163,8 @@ export function resolveWorldZone(
   worldWidth: number,
   worldHeight: number
 ): WorldZone {
-  const normalizedX = posX / worldWidth;
-  const normalizedY = posY / worldHeight;
+  const normalizedX = (posX + worldWidth / 2) / worldWidth;
+  const normalizedY = (posY + worldHeight / 2) / worldHeight;
 
   // Norte: Y < 0.33
   if (normalizedY < 0.33) {

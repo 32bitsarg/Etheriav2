@@ -19,6 +19,9 @@ const RECORD_SELECTORS: Partial<Record<CollectionName, SelectorField[]>> = {
   [COLLECTIONS.ALLIANCES]: ["created_at", "name"],
   [COLLECTIONS.ALLIANCE_MEMBERS]: ["created_at", "userId", "allianceId"],
   [COLLECTIONS.CHAT_MESSAGES]: ["created_at", "channel", "userId"],
+  [COLLECTIONS.BOT_PLAYERS]: ["id", "createdAt", "userId", "cityId"],
+  [COLLECTIONS.BOT_ACTION_LOGS]: ["id", "createdAt", "botId", "cityId", "actionType"],
+  [COLLECTIONS.BOT_METRICS_SNAPSHOTS]: ["id", "createdAt", "windowEndedAt"],
 };
 
 const USE_POSTGRES = process.env.DB_PROVIDER === "postgres";

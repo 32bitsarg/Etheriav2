@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { AllianceMembership, ChatChannel, ChatMessage, City, Building, BuildQueue, MailMessage, ResearchQueue, SendChatMessageRequest, SendMailMessageRequest, TrainingQueue, Unit, Resources, WorldSeasonState, WorldStateResponse, BarbarianCampMapItem, BarbarianCampDetail } from "@etheria/shared";
+import type { AllianceMembership, ChatChannel, ChatMessage, City, Building, BuildQueue, MailMessage, ResearchQueue, SendChatMessageRequest, SendMailMessageRequest, TrainingQueue, Unit, Resources, WorldSeasonState, WorldStateResponse, BarbarianCampMapItem, BarbarianCampDetail, WorldMovement } from "@etheria/shared";
 import type { VillageLayoutData } from "@/lib/villageLayout";
+import type { WorldTerrainMaskData } from "@/lib/worldTerrainMask";
 import villageLayoutJson from "@/data/village-layout.json";
+import { normalizeVillageLayout } from "@/lib/villageLayout";
 import { matecito } from "@/lib/matecitoClient";
 
 const API_BASE = "/api";
@@ -100,7 +102,19 @@ export function useBuildBuilding() {
       }
       return res.json();
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
+      if (data?.queue) {
+        queryClient.setQueryData(["city", variables.cityId], (current: any) => {
+          if (!current) return current;
+          const nextQueues = [...(current.trainingQueues ?? []), data.queue]
+            .sort((a: any, b: any) => new Date(a.completesAt ?? 0).getTime() - new Date(b.completesAt ?? 0).getTime());
+          return {
+            ...current,
+            trainingQueues: nextQueues,
+            ...(data.resources ? { resources: data.resources, lastResourceUpdate: new Date().toISOString() } : {}),
+          };
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
     },
   });
@@ -142,7 +156,7 @@ export function useUpgradeBuilding() {
         queryClient.setQueryData(["city", variables.cityId], (current: any) => {
           if (!current) return current;
           const nextQueues = [...(current.buildQueues ?? []).filter((queue: any) => queue.buildingId !== data.queue.buildingId), data.queue];
-          nextQueues.sort((a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime());
+          nextQueues.sort((a, b) => new Date(a.completesAt).getTime() - new Date(b.completesAt).getTime());
           return {
             ...current,
             buildQueues: nextQueues,
@@ -376,6 +390,7 @@ export interface WorldMapConfig {
   terrainSeed: number;
   decorDensity: number;
   decorSafeRadius: number;
+  terrainOverlayEnabled?: boolean;
 }
 
 export interface WorldSpawnConfig {
@@ -398,22 +413,39 @@ export function useWorldMap() {
       return {
         map: data.map as WorldMapConfig,
         spawn: data.spawn as WorldSpawnConfig,
+        cities: data.cities as TargetCity[],
+        barbarianCamps: data.barbarianCamps as BarbarianCampMapItem[],
       };
     },
     staleTime: 30000,
   });
 }
 
+export function useWorldMovements() {
+  return useQuery({
+    queryKey: ["world", "movements"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/city/world/movements`);
+      if (!res.ok) throw new Error("Failed to fetch movements");
+      const data = await res.json();
+      return data.movements as WorldMovement[];
+    },
+    staleTime: 5000,
+    refetchInterval: 10000,
+  });
+}
+
 export function useVillageLayout() {
   return useQuery({
     queryKey: ["village", "layout"],
-    initialData: villageLayoutJson as VillageLayoutData,
+    placeholderData: normalizeVillageLayout(villageLayoutJson as VillageLayoutData),
     queryFn: async () => {
-      const res = await fetch("/api/editor/layout");
+      const res = await fetch("/api/editor/layout", { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to fetch village layout");
       return await res.json() as VillageLayoutData;
     },
-    staleTime: 30000,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 
@@ -428,10 +460,43 @@ export function useSaveVillageLayout() {
         body: JSON.stringify(layout),
       });
       if (!res.ok) throw new Error("Failed to save village layout");
+      return await res.json() as VillageLayoutData;
+    },
+    onSuccess: (layout) => {
+      queryClient.setQueryData(["village", "layout"], layout);
+      queryClient.invalidateQueries({ queryKey: ["village", "layout"] });
+    },
+  });
+}
+
+export function useWorldTerrainMask() {
+  return useQuery({
+    queryKey: ["editor", "world-terrain-mask"],
+    queryFn: async () => {
+      const res = await fetch("/api/editor/world-terrain", { cache: "no-store" });
+      if (!res.ok) throw new Error("Failed to fetch world terrain mask");
+      return await res.json() as WorldTerrainMaskData;
+    },
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+}
+
+export function useSaveWorldTerrainMask() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (mask: WorldTerrainMaskData) => {
+      const res = await fetch("/api/editor/world-terrain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(mask),
+      });
+      if (!res.ok) throw new Error("Failed to save world terrain mask");
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["village", "layout"] });
+      queryClient.invalidateQueries({ queryKey: ["editor", "world-terrain-mask"] });
     },
   });
 }
@@ -690,6 +755,60 @@ export function useJoinAlliance() {
   });
 }
 
+function useAllianceActionMutation<TInput>(pathBuilder: (input: TInput) => string, method: "POST" | "PATCH" = "POST") {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: TInput) => {
+      const res = await fetch(`${API_BASE}${pathBuilder(input)}`, {
+        method,
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: method === "PATCH" ? JSON.stringify(input) : undefined,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Alliance action failed");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["alliance", "me"] });
+      queryClient.invalidateQueries({ queryKey: ["cities", "all"] });
+      queryClient.invalidateQueries({ queryKey: ["city"] });
+    },
+  });
+}
+
+export function useLeaveAlliance() {
+  return useAllianceActionMutation<void>(() => "/alliances/me/leave");
+}
+
+export function useDisbandAlliance() {
+  return useAllianceActionMutation<void>(() => "/alliances/me/disband");
+}
+
+export function useKickAllianceMember() {
+  return useAllianceActionMutation<string>((memberId) => `/alliances/members/${memberId}/kick`);
+}
+
+export function useTransferAllianceLeadership() {
+  return useAllianceActionMutation<string>((memberId) => `/alliances/members/${memberId}/transfer`);
+}
+
+export function useUpdateAllianceMemberRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ memberId, role }: { memberId: string; role: "MEMBER" | "OFFICER" | "DIPLOMAT" }) => {
+      const res = await fetch(`${API_BASE}/alliances/members/${memberId}/role`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ role }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to update role");
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alliance", "me"] }),
+  });
+}
+
 export function useChatMessages(channel: ChatChannel, enabled = true) {
   return useQuery({
     queryKey: ["chat", channel],
@@ -817,7 +936,20 @@ export function useResearchTech() {
       }
       return res.json();
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
+      if (data?.queue) {
+        queryClient.setQueryData(["city", variables.cityId], (current: any) => {
+          if (!current) return current;
+          const nextQueue = [...(current.researchQueue ?? []), data.queue]
+            .sort((a: any, b: any) => new Date(a.completesAt ?? 0).getTime() - new Date(b.completesAt ?? 0).getTime());
+          return {
+            ...current,
+            researchQueue: nextQueue,
+            activeResearch: nextQueue[0] ?? null,
+            ...(data.resources ? { resources: data.resources, lastResourceUpdate: new Date().toISOString() } : {}),
+          };
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["techs", variables.cityId] });
       queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
     },
@@ -942,7 +1074,7 @@ export function useBarbarianAttackAlerts(cityId: string | null) {
     queryKey: ["barbarian", "attack-alerts", cityId],
     queryFn: async () => {
       if (!cityId) throw new Error("No city ID");
-      const res = await fetch(`${API_BASE}/city/${cityId}/barbarian-alerts`);
+      const res = await fetch(`${API_BASE}/world/barbarian-alerts/${cityId}`);
       if (!res.ok) throw new Error("Failed to fetch attack alerts");
       const data = await res.json();
       return data.alerts as BarbarianAttackAlert[];
@@ -958,7 +1090,7 @@ export function useMarkBarbarianAlertRead() {
 
   return useMutation({
     mutationFn: async ({ alertId }: { alertId: string }) => {
-      const res = await fetch(`${API_BASE}/barbarian-alerts/${alertId}/read`, {
+      const res = await fetch(`${API_BASE}/world/barbarian-alerts/${alertId}/read`, {
         method: "POST",
       });
       if (!res.ok) throw new Error("Failed to mark alert as read");

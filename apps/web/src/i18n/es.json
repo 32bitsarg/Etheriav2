@@ -1,0 +1,896 @@
+{
+  "meta": {
+    "title": "Etheria - Estrategia en Tiempo Real",
+    "description": "Construye tu imperio en Etheria, un juego de estrategia MMORPG en tiempo real"
+  },
+  "nav": {
+    "login": "Iniciar Sesión",
+    "playNow": "Jugar Ahora",
+    "changelog": "Changelog",
+    "register": "Registrarse",
+    "quickLogin": {
+      "identifier": "Email o username",
+      "password": "Contraseña",
+      "submit": "Entrar",
+      "error": "Credenciales inválidas. Revisá tus datos e intentá de nuevo."
+    }
+  },
+  "hero": {
+    "badge": "Estrategia en Tiempo Real",
+    "gameName": "Etheria",
+    "tagline": "Conquista. Construye. Domina.",
+    "subtitle": "Sumérgete en un mundo de estrategia táctica donde miles de jugadores compiten por el dominio. Gestiona recursos, lidera ejércitos y forja tu destino.",
+    "ctaPlay": "Jugar Gratis",
+    "ctaLearnMore": "Más Información",
+    "stats": {
+      "players": "Jugadores Activos",
+      "battles": "Batallas Diarias",
+      "empires": "Imperios Construidos"
+    },
+    "form": {
+      "title": "Comienza tu Imperio",
+      "subtitle": "Crea tu cuenta y comienza tu conquista",
+      "email": "Email",
+      "confirmEmail": "Confirmar Email",
+      "password": "Contraseña",
+      "confirmPassword": "Confirmar Contraseña",
+      "passwordPlaceholder": "Mínimo 6 caracteres",
+      "submit": "Crear Cuenta Gratis",
+      "loading": "Creando cuenta...",
+      "error": "No se pudo registrar. Revisá el email o la contraseña.",
+      "hasAccount": "¿Ya tenés cuenta?",
+      "loginLink": "Iniciá sesión",
+      "secure": "Seguro y gratis para jugar"
+    }
+  },
+  "latestVersion": {
+    "title": "Última Actualización",
+    "subtitle": "Nuevas funciones y mejoras disponibles",
+    "viewDetails": "Ver detalles completos →"
+  },
+  "features": {
+    "title": "¿Por qué Etheria?",
+    "subtitle": "Estrategia real, decisiones reales",
+    "items": [
+      {
+        "icon": "⚔️",
+        "title": "Combate táctico",
+        "description": "Batallas donde cada decisión importa. Combina unidades y usa el terreno a tu favor."
+      },
+      {
+        "icon": "🏰",
+        "title": "Construye tu imperio",
+        "description": "Desarrolla ciudades, granjas y minas para sostener tu economía de guerra."
+      },
+      {
+        "icon": "🌍",
+        "title": "Mundo vivo",
+        "description": "Un mundo persistente que evoluciona con las acciones de todos los jugadores."
+      },
+      {
+        "icon": "🤝",
+        "title": "Alianzas y diplomacia",
+        "description": "Forma alianzas, negocia tratados y lidera facciones."
+      },
+      {
+        "icon": "📊",
+        "title": "Progresión profunda",
+        "description": "Múltiples ramas tecnológicas. Investiga, desbloquea y desarrolla estrategias únicas."
+      },
+      {
+        "icon": "🏆",
+        "title": "Temporadas y rankings",
+        "description": "Compite en temporadas ranked con matchmaking dinámico y recompensas exclusivas."
+      }
+    ]
+  },
+  "howToPlay": {
+    "title": "Cómo Jugar",
+    "subtitle": "Comienza en minutos",
+    "steps": [
+      {
+        "title": "Crea tu cuenta",
+        "description": "Registro gratuito en segundos. Sin descargas."
+      },
+      {
+        "title": "Construye tu base",
+        "description": "Expande tu territorio, recolecta recursos y desarrolla tecnologías."
+      },
+      {
+        "title": "Conquista el mundo",
+        "description": "Únete a batallas masivas, forma alianzas y domina el ranking."
+      }
+    ]
+  },
+  "socialProof": {
+    "title": "Comunidad activa",
+    "subtitle": "Miles de estrategas ya están jugando",
+    "stats": [
+      { "value": "50,000+", "label": "Jugadores" },
+      { "value": "12,000+", "label": "Batallas" },
+      { "value": "98%", "label": "Satisfacción" }
+    ]
+  },
+  "cta": {
+    "title": "¿Listo para la Conquista?",
+    "subtitle": "Únete a miles de jugadores y empieza tu imperio hoy",
+    "button": "Crear Cuenta Gratis"
+  },
+  "screenshots": {
+    "title": "Capturas del Juego",
+    "subtitle": "Elige tu bando en la guerra eterna",
+    "items": [
+      { "caption": "Vista del Mapa Mundial" },
+      { "caption": "Interfaz de Batalla" },
+      { "caption": "Gestión de Recursos" },
+      { "caption": "Sistema de Diplomacia" }
+    ]
+  },
+  "lore": {
+    "title": "El Mundo de Etheria",
+    "subtitle": "Una tierra forjada por dioses olvidados",
+    "paragraphs": [
+      "Etheria fue creada cuando los dioses antiguos despertaron de su letargo milenario. En su furia, fragmentaron el mundo en islas flotantes, cada una un campo de batalla donde mortales y seres divinos luchan por recursos cada vez más escasos.",
+      "Hoy, tres facciones principales dominan el panorama: los Aurelion, guardianes de la luz dorada; los Shadowmere, maestros de la intriga y las sombras; y los Frostborne, guerreros del norte que adoran a los cristales de hielo. Tú elegirás tu bando."
+    ]
+  },
+  "footer": {
+    "brand": "Etheria",
+    "tagline": "Conquista. Construye. Domina.",
+    "links": [
+      { "label": "Changelog", "href": "/changelog" },
+      { "label": "Términos", "href": "/terminos" },
+      { "label": "Privacidad", "href": "/privacidad" }
+    ],
+    "copyright": "© 2026 Etheria. Todos los derechos reservados.",
+    "developer": "Desarrollado con 💛 por el Equipo Etheria"
+  },
+  "login": {
+    "title": "Bienvenido de vuelta",
+    "subtitle": "Entrá con tu email o username para ver tu aldea y el mapa mundial.",
+    "identifier": "Email o Username",
+    "identifierPlaceholder": "tu@email.com o Commander",
+    "password": "Contraseña",
+    "passwordPlaceholder": "Ingresá tu contraseña",
+    "submit": "Entrar",
+    "error": "Credenciales inválidas. Revisá tu email/username y contraseña.",
+    "rememberEmail": "Recordar usuario",
+    "loading": "Cargando...",
+    "noAccount": "¿No tenés cuenta?",
+    "registerLink": "Crear cuenta"
+  },
+  "register": {
+    "title": "Crear Cuenta",
+    "subtitle": "Tu aldea se crea automáticamente en una isla con espacio disponible.",
+    "name": "Tu nombre",
+    "namePlaceholder": "Commander",
+    "cityName": "Nombre de aldea",
+    "cityNamePlaceholder": "Etheria",
+    "email": "Email",
+    "emailPlaceholder": "tu@email.com",
+    "password": "Contraseña",
+    "passwordPlaceholder": "Mínimo 6 caracteres",
+    "confirmPassword": "Confirmar Contraseña",
+    "confirmPasswordPlaceholder": "Repetí tu contraseña",
+    "submit": "Crear mi cuenta",
+    "error": "No se pudo registrar. Revisá tus datos e intentá de nuevo.",
+    "rememberEmail": "Recordar mi usuario",
+    "loading": "Cargando...",
+    "hasAccount": "¿Ya tenés cuenta?",
+    "loginLink": "Iniciá sesión"
+  },
+  "validation": {
+    "email": {
+      "required": "El email es obligatorio",
+      "invalid": "Ingresá un email válido"
+    },
+    "password": {
+      "minLength": "La contraseña debe tener al menos 6 caracteres",
+      "maxLength": "La contraseña debe tener menos de 72 caracteres",
+      "uppercase": "Incluí al menos una letra mayúscula",
+      "lowercase": "Incluí al menos una letra minúscula",
+      "number": "Incluí al menos un número",
+      "mismatch": "Las contraseñas no coinciden"
+    },
+    "confirmEmail": {
+      "required": "Confirmá tu email",
+      "mismatch": "Los emails no coinciden"
+    },
+    "confirmPassword": {
+      "required": "Confirmá tu contraseña",
+      "mismatch": "Las contraseñas no coinciden"
+    },
+    "username": {
+      "minLength": "El username debe tener al menos 3 caracteres",
+      "maxLength": "El username debe tener menos de 20 caracteres",
+      "invalid": "Solo se permiten letras, números y guiones bajos"
+    },
+    "name": {
+      "minLength": "El nombre debe tener al menos 2 caracteres",
+      "maxLength": "El nombre debe tener menos de 50 caracteres"
+    },
+    "cityName": {
+      "minLength": "El nombre de aldea debe tener al menos 2 caracteres",
+      "maxLength": "El nombre de aldea debe tener menos de 30 caracteres"
+    },
+    "identifier": {
+      "required": "El email o username es obligatorio",
+      "invalid": "Ingresá un email o username válido"
+    },
+    "strength": {
+      "weak": "Débil",
+      "medium": "Media",
+      "strong": "Fuerte"
+    }
+  },
+  "changelog": {
+    "title": "Changelog",
+    "subtitle": "Historial de cambios de Conquest of Etheria",
+    "viewAll": "Ver todos los cambios →",
+    "backToList": "← Volver al Changelog",
+    "backToHome": "Volver al Inicio",
+    "headings": {
+      "Added": "Agregado",
+      "Changed": "Modificado",
+      "Fixed": "Corregido",
+      "Technical": "Técnico"
+    },
+    "releases": {
+      "0.2.1": "El Taller de Colas",
+      "v0_2_0": "El Mapa Viviente",
+      "v0_1_1": "La Puerta de Etheria",
+      "v0_1_0": "La Resistencia del Invierno",
+      "v0_0_4": "La Diplomacia de los Reinos",
+      "v0_0_3": "La Forja de Armas",
+      "v0_0_2": "Las Primeras Guerras",
+      "v0_0_1": "La Fundación de Etheria"
+    },
+    "items": {
+      "0.2.1": {
+        "added": [
+          "[CORE] Colas secuenciales configurables",
+          "Construccion, entrenamiento e investigacion ahora soportan hasta 3 slots pendientes por ciudad.",
+          "Solo 1 slot se ejecuta activamente por defecto; los siguientes quedan encadenados y avanzan cuando termina el anterior.",
+          "Los limites de slots y concurrencia salen de configuracion para respetar el guideline de no hardcodear valores de gameplay.",
+          "[UI] Panel derecho de colas persistente",
+          "/play muestra construccion, entrenamiento y saber en un unico panel derecho siempre visible.",
+          "Cada item de cola incluye boton de cancelacion con reembolso del 50% de recursos.",
+          "[WORLD] Asset de aldeas en mapa",
+          "Las ciudades de jugadores y bots en /mapa ahora usan un sprite de aldea fortificada en vez del marcador generico.",
+          "[BOTS] Simulacion viva de jugadores",
+          "Los bots ahora pueden recuperarse de recursos criticos, priorizar economia antes de gastar y mantener memoria de sus decisiones.",
+          "Los bots pueden crear alianzas, unirse a alianzas, hablar por chat y enviar mensajes diplomaticos usando los mismos servicios que los jugadores."
+        ],
+        "changed": [
+          "[BOTS] IA alineada con el motor de colas",
+          "Los bots pueden llenar slots pendientes usando las mismas acciones de ciudad que los jugadores, en vez de detenerse ante una cola activa.",
+          "La simulacion de bots ahora funciona sobre la capa compatible de datos para respetar el proveedor configurado entre PostgreSQL y MatecitoDB.",
+          "[UI] Sidebar de juego simplificado",
+          "Las colas duplicadas del sidebar izquierdo y del dock inferior fueron removidas para dejar una unica fuente visual."
+        ],
+        "fixed": [
+          "[EDITOR] Mascara de terreno del mapa",
+          "Pintar plains ahora es visible en el overlay del editor de mapa.",
+          "El pincel cubre mejor los bordes de la grilla para evitar celdas dificiles de pintar.",
+          "La camara del editor permite desplazar el mapa con margen adicional para pintar bordes cubiertos por paneles."
+        ]
+      },
+      "v0_2_0": {
+        "added": [
+          "Mapa del Mundo Dinámico: Visualización en tiempo real de ejércitos y caravanas comerciales con movimiento físico.",
+          "Capa de Clima Estacional: Efectos visuales de nieve, otoño y verano aplicados dinámicamente al mapa.",
+          "Sistema de Niebla de Guerra: Descubrimiento progresivo del mapa alrededor de tu ciudad.",
+          "IA de Bots Avanzada: Los bots ahora atacan jugadores (respetando protección), comercian entre sí y cazan bárbaros.",
+          "Menú Radial Interactivo: Nueva forma rápida de interactuar con el mapa mundial.",
+          "Los bots ahora usan exactamente las mismas funciones de ciudad que los jugadores para un QA real."
+        ]
+      },
+      "v0_1_1": {
+        "added": [
+          "Nueva landing page pública con diseño dark fantasy, hero animado y sección de características.",
+          "Blog de changelog automatizado que lee directamente el historial de versiones.",
+          "Layout público compartido con Navbar y Footer consistentes.",
+          "Acceso al juego movido a la ruta /play para separar marketing de gameplay.",
+          "Rediseño visual de las páginas de Login y Registro con estilo glassmorphism."
+        ]
+      },
+      "v0_1_0": {
+        "fixed": [
+          "Corregido el cálculo de presión invernal: las tropas ahora consumen comida según el tiempo real transcurrido, evitando deserciones instantáneas.",
+          "Eliminada la penalización doble de comida en invierno que reducía recursos de más.",
+          "Mejorada la precisión de producción: los edificios ahora generan 1-3 unidades/hora adicionales al corregir el redondeo."
+        ],
+        "changed": [
+          "Los efectos de estación ahora son configurables y se cargan desde archivos de configuración.",
+          "Rebalanceada la curva de producción de edificios: las mejoras de niveles altos (15-20) son más rentables.",
+          "Optimizado el rendimiento: las actualizaciones de recursos ahora cargan datos en lote en vez de consulta por consulta."
+        ],
+        "added": [
+          "Sistema de estaciones visible: primavera, verano, otoño e invierno con efectos en producción y el mapa.",
+          "Campamentos bárbaros en el mapa mundial con composición de ejército y recompensas visibles.",
+          "Sistema de ataque a campamentos bárbaros: seleccioná tropas, atacá y obtené botín.",
+          "Alertas de ataque bárbaro: banner urgente con cuenta regresiva cuando un campamento se acerca a tu ciudad.",
+          "Presión invernal: tus tropas consumen comida en invierno; si no alcanzan, desertan o pierden poder de combate.",
+          "Escalado de campamentos: los campamentos supervivientes suben de nivel con el tiempo, volviéndose más peligrosos.",
+          "Zonas climáticas: el norte y las montañas sufren inviernos más duros; el sur y la costa son más templados.",
+          "Sistema de bots de simulación para pruebas automáticas de gameplay.",
+          "Ranking de ciudades por Fuerza accesible desde la barra lateral."
+        ],
+        "technical": [
+          "Base de Vitest con 21 tests para winterPressure y production.",
+          "Refactor de configs: seasonEffects, cityBaseConfig, battleConfigData extraídos a archivos dedicados.",
+          "Eliminación de queries N+1 en processResourceTicks.",
+          "Diagnósticos de persistencia en spawn de bárbaros con validación de errores DB.",
+          "README reescrito, .env.example con placeholders, .gitignore expandido."
+        ]
+      },
+      "v0_0_4": {
+        "added": [
+          "Sistema de alianzas: creá o unite a alianzas, gestioná roles, editá la descripción pública y firmá tratados de paz.",
+          "Correo entre jugadores con badge de no leídos desde la barra lateral.",
+          "Chat en tiempo real con canales Global y Alianza en el dock inferior.",
+          "Dock inmersivo inferior: cola de construcción, investigación activa y chat unificados."
+        ],
+        "changed": [
+          "La generación de recursos ahora aplica bonificaciones de tecnología y efectos de paz de alianzas.",
+          "Combate y entrenamiento usan modificadores de tecnología de forma consistente.",
+          "Las acciones de aldea (mejorar, entrenar, investigar) ahora usan mutaciones reales del backend.",
+          "Mapa mundial con terreno continuo: castillos posicionados directamente en coordenadas de ciudades.",
+          "Torre como única estructura defensiva (muro removido del catálogo)."
+        ],
+        "fixed": [
+          "Los modificadores de tecnología ya no pierden bonificaciones globales de unidades.",
+          "El combate ya no aplica bonos defensivos del defensor al atacante.",
+          "Reembolsos de cancelación de entrenamiento respetan el costo reducido efectivo.",
+          "Sistema de autenticación con sesiones HTTP-only y soporte de recordar usuario."
+        ]
+      },
+      "v0_0_3": {
+        "added": [
+          "Árbol de tecnologías: 22 investigaciones en 3 categorías (Economía, Militar, Defensa).",
+          "Dos ramas de especialización exclusivas: Maestría de Asedio vs Maestría de Caballería.",
+          "Bonos de combate reales: ataque, HP, defensa, velocidad y penetración de armadura por tipo de unidad.",
+          "Muro y Torre ahora impactan en combate: el muro aumenta HP defensivo, la torre inflige daño por ronda.",
+          "Desbloqueo de unidades: Caballería, Asedio y Espía requieren tecnologías específicas.",
+          "Panel de investigación con tarjetas visuales, prerequisitos y timer de completado."
+        ],
+        "changed": [
+          "Las estadísticas de unidades ahora se calculan dinámicamente con bonos de tecnología.",
+          "La cola de investigación se procesa entre entrenamiento y ticks de recursos."
+        ]
+      },
+      "v0_0_2": {
+        "added": [
+          "Sistema de batalla completo: atacá otras ciudades, obtené botín y recibí reportes de combate.",
+          "Panel de batalla con 3 pestañas: Atacar, Reportes y Activos (con timers en vivo).",
+          "Modelo de combate por HP: cada unidad tiene puntos de vida y penetración de armadura.",
+          "5 tipos de unidades con roles distintos: Guerrero (tanque), Arquero (daño), Caballería (rápido), Asedio (destruye muros), Espía (exploración)."
+        ],
+        "changed": [
+          "Sprites procedurales para los 13 tipos de edificios con tema dark fantasy.",
+          "Integración frontend-backend completa: autogestión de ciudad, polling en tiempo real.",
+          "Barra de recursos con cálculo local entre sincronizaciones del servidor."
+        ]
+      },
+      "v0_0_1": {
+        "added": [
+          "Motor de juego con mapa tilemap 50x50, cámara panorámica y click-to-build.",
+          "10 edificios iniciales: Ayuntamiento, Cuartel, Establo, Granja, Mina de Oro, Aserradero, Cantera, Centro de Alianzas, Biblioteca, Almacén.",
+          "5 recursos: Oro, Madera, Piedra, Comida, Gemas con generación pasiva.",
+          "Sistema de colas de construcción y entrenamiento militar.",
+          "Sistema de ataque con tiempo de viaje entre ciudades.",
+          "Progresión offline: los recursos se calculan según el tiempo transcurrido.",
+          "HUD overlay con barra de recursos y menú de edificios en React."
+        ],
+        "technical": [
+          "Arquitectura monorepo con Turborepo + pnpm workspaces.",
+          "Frontend: Next.js 15 + React 19 + Phaser 3.85.",
+          "Backend: Hono API con Clean Architecture.",
+          "Migración de PostgreSQL/Prisma a matecito.dev document DB.",
+          "Configs de edificios y unidades almacenados en DB (310 registros).",
+          "Paquete shared con schemas Zod para contratos de tipos."
+        ]
+      }
+    }
+  },
+  "editor": {
+    "title": "Editor",
+    "open": "Abrir",
+    "hide": "Ocultar",
+    "save": "Guardar",
+    "reset": "Reset",
+    "saving": "Guardando...",
+    "saveError": "No se pudo guardar",
+    "unsaved": "Cambios sin guardar",
+    "noChanges": "Sin cambios",
+    "file": "Archivo",
+    "reference": "Referencia",
+    "selected": "Seleccionado",
+    "tabs": {
+      "village": "Aldea",
+      "mask": "Mask"
+    },
+    "village": {
+      "description": "Preview 1:1 de la aldea. Arrastra un edificio sobre el fondo real y guarda el JSON.",
+      "saveJson": "Guardar JSON",
+      "resetSelected": "Reset seleccionado",
+      "resetAll": "Reset all",
+      "centerView": "Centrar vista",
+      "grid": "Grilla",
+      "safeAreas": "Zonas seguras",
+      "snap": "Snap",
+      "lock": "Bloquear",
+      "unlock": "Desbloquear",
+      "hideBuilding": "Ocultar",
+      "show": "Mostrar",
+      "hidden": "Oculto",
+      "locked": "Bloqueado",
+      "camera": "Camara",
+      "note": "Nota",
+      "savedAnchors": "Anchors guardados",
+      "ghost": "Ghost",
+      "custom": "Custom",
+      "default": "Default"
+    },
+    "mask": {
+      "description": "Pinta montañas, agua, bosques y caminos. Mountain/Water bloquean spawn y path; soldados y merchants deben rodearlos.",
+      "save": "Guardar mask",
+      "resetPlains": "Reset plains",
+      "hideOverlay": "Ocultar overlay",
+      "showOverlay": "Ver overlay",
+      "grid": "Grid",
+      "rule": "Regla",
+      "spawn": "spawn",
+      "noSpawn": "no spawn",
+      "path": "path",
+      "block": "block",
+      "speed": "speed",
+      "brush": "Brush"
+    },
+    "terrain": {
+      "plains": "Llanura",
+      "forest": "Bosque",
+      "mountain": "Montaña",
+      "water": "Agua",
+      "road": "Camino",
+      "coast": "Costa"
+    }
+  },
+  "play": {
+    "settings": {
+      "title": "Ajustes",
+      "close": "Cerrar",
+      "language": "Idioma",
+      "logout": "Cerrar sesión"
+    },
+    "sidebar": {
+      "village": "Pueblo",
+      "map": "Mapa",
+      "ranking": "Ranking",
+      "mail": "Mensajes",
+      "alliances": "Alianzas",
+      "construction": "Construcción",
+      "training": "Entrenamiento",
+      "renameCity": "Renombrar Ciudad"
+    },
+    "queues": {
+      "title": "Colas",
+      "empty": "No hay acciones activas.",
+      "knowledge": "Saber",
+      "noConstruction": "Sin construcciones.",
+      "noTraining": "Sin entrenamiento.",
+      "noResearch": "Sin investigaciones."
+    },
+    "resources": {
+      "gold": "Oro",
+      "wood": "Madera",
+      "stone": "Piedra",
+      "food": "Cereal",
+      "gems": "Gemas"
+    },
+    "buildings": {
+      "title": "Edificios",
+      "subtitle": "edificios en tu aldea. Seleccioná uno para ver detalles, costes y mejoras disponibles.",
+      "eyebrow": "Infraestructura",
+      "town_hall": {
+        "name": "Ayuntamiento",
+        "description": "El corazón de tu ciudad. Mejorar desbloquea nuevos edificios y aumenta la capacidad de almacenamiento."
+      },
+      "gold_mine": {
+        "name": "Mina de Oro",
+        "description": "Extrae oro de la tierra. Niveles más altos producen más oro por hora."
+      },
+      "lumber_mill": {
+        "name": "Aserradero",
+        "description": "Procesa madera de bosques cercanos. Esencial para construcción y entrenamiento."
+      },
+      "quarry": {
+        "name": "Cantera",
+        "description": "Extrae piedra para fortificaciones y estructuras."
+      },
+      "farm": {
+        "name": "Granja",
+        "description": "Produce alimento para sostener tu ejército creciente."
+      },
+      "barracks": {
+        "name": "Cuartel",
+        "description": "Entrena unidades de infantería. Niveles más altos desbloquean guerreros más fuertes."
+      },
+      "stable": {
+        "name": "Establo",
+        "description": "Entrena unidades de caballería. Más rápidas y fuertes que la infantería."
+      },
+      "alliance_center": {
+        "name": "Centro de Alianzas",
+        "description": "Gestiona alianzas y coordina con otros jugadores."
+      },
+      "library": {
+        "name": "Biblioteca",
+        "description": "Investiga tecnologías para mejorar tu ciudad y ejército."
+      },
+      "storage": {
+        "name": "Almacén",
+        "description": "Aumenta tu capacidad máxima de recursos."
+      },
+      "tower": {
+        "name": "Torre",
+        "description": "Estructura defensiva principal. Otorga bonus de defensa a la ciudad y ataca enemigos entrantes."
+      },
+      "market": {
+        "name": "Mercado",
+        "description": "Comercia recursos con otros jugadores. Niveles más altos desbloquean mejores tasas."
+      }
+    },
+    "units": {
+      "warrior": { "name": "Guerrero", "short": "Gue" },
+      "archer": { "name": "Arquero", "short": "Arq" },
+      "cavalry": { "name": "Caballería", "short": "Cab" },
+      "siege": { "name": "Máquina de Asedio", "short": "Asi" },
+      "spy": { "name": "Espía", "short": "Esp" }
+    },
+    "categories": {
+      "all": "Todos",
+      "economic": "Económicos",
+      "military": "Militares",
+      "civic": "Cívicos"
+    },
+    "tech": {
+      "categories": {
+        "economy": "Economía",
+        "military": "Militar",
+        "defense": "Defensa"
+      },
+      "names": {
+        "efficient_collection_1": "Recolección Eficiente I",
+        "efficient_collection_2": "Recolección Eficiente II",
+        "efficient_collection_3": "Recolección Eficiente III",
+        "advanced_storage": "Almacenamiento Avanzado",
+        "wartime_economy": "Economía de Guerra",
+        "trade_routes": "Rutas Comerciales",
+        "weapon_forge_1": "Forja de Armas I",
+        "weapon_forge_2": "Forja de Armas II",
+        "reinforced_bows": "Arcos Reforzados",
+        "horse_breeding": "Cría de Caballos",
+        "heavy_cavalry": "Caballería Pesada",
+        "siege_engineering": "Ingeniería de Asedio",
+        "ballistics": "Balística",
+        "guerrilla_tactics": "Tácticas de Guerrilla",
+        "masonry": "Mampostería",
+        "stone_walls": "Muros de Piedra",
+        "watchtower_network": "Red de Atalayas",
+        "poisoned_arrows": "Flechas Envenenadas",
+        "fortifications": "Fortificaciones",
+        "spy_network": "Red de Espionaje",
+        "siege_mastery": "Maestría de Asedio",
+        "cavalry_mastery": "Maestría de Caballería"
+      },
+      "desc": {
+        "efficient_collection_1": "Aumenta la producción de todos los recursos un 5%",
+        "efficient_collection_2": "Aumenta la producción de todos los recursos un 10%",
+        "efficient_collection_3": "Aumenta la producción de todos los recursos un 15%",
+        "advanced_storage": "Aumenta la capacidad de almacenamiento un 20%",
+        "wartime_economy": "Reduce los costos de entrenamiento de unidades un 15%",
+        "trade_routes": "Desbloquea comercio en el mercado y aumenta producción de oro un 10%",
+        "weapon_forge_1": "Aumenta el ataque de todas las unidades un 10%",
+        "weapon_forge_2": "Aumenta el ataque de todas las unidades un 15% y penetración de armadura en 5",
+        "reinforced_bows": "Ataque de arqueros +20% y bonus de alcance",
+        "horse_breeding": "Desbloquea unidades de Caballería. HP de Caballería +15%",
+        "heavy_cavalry": "Defensa de Caballería +20% y ataque +10%",
+        "siege_engineering": "Desbloquea unidades de Asedio. Ataque de Asedio +15%",
+        "ballistics": "Penetración de armadura de Asedio +15 y ataque +10%",
+        "guerrilla_tactics": "Velocidad de todas las unidades +10%",
+        "masonry": "Efectividad de defensa de Torre +25%",
+        "stone_walls": "Efectividad de fortificación de Torre +40%",
+        "watchtower_network": "Daño de Torre +10 por ronda",
+        "poisoned_arrows": "Daño de Torre +20 por ronda y ataque de Arqueros +10%",
+        "fortifications": "Fortificaciones de Torre +50%",
+        "spy_network": "Desbloquea unidades de Espía",
+        "siege_mastery": "Unidades de Asedio: ataque +30%, penetración de armadura +20, HP +20%",
+        "cavalry_mastery": "Unidades de Caballería: ataque +25%, velocidad +20%, HP +25%"
+      }
+    },
+    "topnav": {
+      "village": "Aldea",
+      "map": "Mapa",
+      "reports": "Informes",
+      "statistics": "Estadísticas"
+    },
+    "seasons": {
+      "spring": "Primavera",
+      "summer": "Verano",
+      "autumn": "Otoño",
+      "winter": "Invierno",
+      "start": "Inicio",
+      "mid": "Pleno",
+      "transition": "Transición"
+    },
+    "inspection": {
+      "title": "Panel de Inspección",
+      "subtitle": "Selecciona un edificio para ver nivel, coste de mejora y datos del lote.",
+      "empty": "Pueblo Vacío",
+      "emptySubtitle": "Cuando existan edificios en la ciudad aparecerán posicionados directamente sobre el plano urbano.",
+      "buildings": "Edificios",
+      "buildingsSubtitle": "edificios en tu aldea. Selecciona uno para ver detalles, costes y mejoras disponibles.",
+      "infrastructure": "Infraestructura",
+      "upgradeTo": "Mejorar a",
+      "inQueue": "En cola",
+      "upgrade": "Mejorar",
+      "army": "Ejército",
+      "armySubtitle": "tipos de tropas,",
+      "armySubtitle2": "unidades totales listas para defensa o expansión.",
+      "militaryForces": "Fuerzas Militares",
+      "unit": "Unidad",
+      "amount": "Cantidad",
+      "atk": "Atq",
+      "def": "Def",
+      "hp": "HP",
+      "noTroops": "No hay tropas disponibles",
+      "train": "Entrenar",
+      "costPerUnit": "Costo por unidad:",
+      "selectUnit": "Selecciona una unidad",
+      "research": "Investigación",
+      "researchSubtitle": "tecnologías activas y",
+      "researchSubtitle2": "niveles acumulados de desarrollo.",
+      "techDevelopment": "Desarrollo Tecnológico",
+      "notResearched": "No investigada",
+      "researchBtn": "Investigar",
+      "changeCategory": "Cambiar categoría para ver más opciones",
+      "level": "Nivel",
+      "upgradeLabel": "Mejora",
+      "category": "Categoría",
+      "currentLevel": "Nivel Actual",
+      "position": "Posición",
+      "info": "Información",
+      "id": "ID:",
+      "created": "Creado:",
+      "buildingDesc": "El {name} es un edificio de tu aldea.",
+      "buildingDescKey": "El {name} es una estructura clave de tu aldea.",
+      "upgrading": "Mejorando...",
+      "insufficientResources": "Recursos insuficientes."
+    },
+    "ranking": {
+      "title": "Ranking de Aldeas",
+      "subtitle": "Ordenado por Fuerza total: edificios, ejército e investigación.",
+      "close": "Cerrar",
+      "village": "Aldea",
+      "power": "Fuerza",
+      "buildings": "Edificios",
+      "army": "Ejército",
+      "research": "Invest.",
+      "loading": "Cargando ranking...",
+      "error": "No se pudo cargar el ranking.",
+      "empty": "Todavía no hay aldeas rankeadas."
+    },
+    "map": {
+      "centerMyVillage": "Centrar mi aldea",
+      "villageLabel": "Aldea",
+      "enter": "Entrar",
+      "attack": "Atacar",
+      "spy": "Espiar",
+      "movements": "Movimientos",
+      "weather": "Clima",
+      "fog": "Niebla de Guerra",
+      "caravan": "Caravana Comercial",
+      "army": "Ejército en Marcha",
+      "discovery": "Territorio Descubierto"
+    },
+    "rename": {
+      "title": "Cambiar Nombre",
+      "label": "Nombre de la aldea",
+      "cancel": "Cancelar",
+      "save": "Guardar"
+    },
+    "mail": {
+      "title": "Mensajes",
+      "unread": "sin leer",
+      "inbox": "Bandeja",
+      "sent": "Enviados",
+      "new": "Nuevo",
+      "loading": "Cargando...",
+      "empty": "Sin mensajes.",
+      "to": "Para",
+      "from": "De",
+      "recipient": "Destinatario",
+      "selectCity": "Seleccionar ciudad...",
+      "subjectPlaceholder": "Asunto",
+      "bodyPlaceholder": "Escribí tu mensaje...",
+      "sending": "Enviando...",
+      "send": "Enviar",
+      "selectMessage": "Selecciona un mensaje."
+    },
+    "alliance": {
+      "title": "Alianzas",
+      "modernizingNotice": "El sistema de alianzas está siendo modernizado para la siguiente temporada.",
+      "loading": "Cargando...",
+      "requiredCenter": "Centro de Alianza Requerido",
+      "requiredCenterDesc": "Necesitas Centro de Alianzas nivel 5 para crear o unirte a una alianza.",
+      "createTitle": "Crear Alianza",
+      "namePlaceholder": "Nombre",
+      "tagPlaceholder": "TAG",
+      "create": "Crear",
+      "join": "Unirse",
+      "honor": "Honor",
+      "brokenTreaties": "tratados rotos",
+      "role": "Rol",
+      "broken": "Rotos",
+      "publicPresentation": "Presentación Pública",
+      "forum": "Foro / Anuncio Interno",
+      "saveForum": "Guardar Foro",
+      "members": "Miembros",
+      "diplomacy": "Diplomacia",
+      "targetAlliance": "Alianza objetivo...",
+      "peace24h": "Paz 24h",
+      "break": "Romper",
+      "expires": "Expira",
+      "noDate": "sin fecha",
+      "publicHistory": "Historia Pública",
+      "activeEffects": "Efectos Activos",
+      "empty": "No hay registros activos.",
+      "leave": "Salir",
+      "disband": "Disolver",
+      "kick": "Expulsar",
+      "transfer": "Transferir",
+      "actionFailed": "Accion de alianza fallida",
+      "roles": {
+        "LEADER": "Lider",
+        "OFFICER": "Oficial",
+        "DIPLOMAT": "Diplomatico",
+        "MEMBER": "Miembro"
+      }
+    },
+    "battle": {
+      "title": "Batalla",
+      "command": "Comando de Batalla",
+      "attack": "Ataque",
+      "reports": "Reportes",
+      "active": "Activos",
+      "targetCity": "Ciudad Objetivo",
+      "selectTarget": "Selecciona un objetivo...",
+      "troops": "Tropas",
+      "noTroops": "No hay tropas disponibles. Entrena unidades en el Cuartel.",
+      "sending": "Enviando...",
+      "sendAttack": "Enviar Ataque",
+      "noReports": "Sin reportes de batalla aún.",
+      "victory": "Victoria",
+      "defeat": "Derrota",
+      "barbarianAttack": "Ataque Bárbaro",
+      "attackerLosses": "Pérdidas del atacante:",
+      "defenderLosses": "Pérdidas del defensor:",
+      "none": "Ninguna",
+      "loot": "Botín:",
+      "markRead": "Marcar leído",
+      "noActiveBattles": "Sin batallas activas.",
+      "marching": "Marchando para atacar",
+      "enemyApproaching": "Enemigo acercándose",
+      "returningHome": "Volviendo a casa",
+      "enemyReturning": "Enemigo regresando",
+      "attackSent": "Ataque enviado",
+      "attackSentMsg": "Tus tropas marchan hacia el objetivo.",
+      "attackFailed": "Ataque fallido"
+    },
+    "buildConfirm": {
+      "started": "Construcción iniciada",
+      "startedAt": "se está construyendo en",
+      "failed": "Construcción fallida",
+      "position": "Posición",
+      "size": "Tamaño",
+      "building": "Construyendo...",
+      "confirm": "Confirmar construcción",
+      "cancel": "Cancelar"
+    },
+    "dock": {
+      "construction": "Obra",
+      "noConstruction": "Sin obra",
+      "training": "Tropa",
+      "noTraining": "Sin tropa",
+      "research": "Saber",
+      "noResearch": "Sin saber",
+      "upgradeCancelled": "Mejora cancelada",
+      "refund50": "Se devolvió el 50%.",
+      "cancelFailed": "No se pudo cancelar",
+      "trainingCancelled": "Entrenamiento cancelado",
+      "researchCancelled": "Investigación cancelada",
+      "cancel": "Cancelar",
+      "cancelWithRefund": "Cancelar · reintegro"
+    },
+    "espionage": {
+      "title": "Espionaje",
+      "pending": "Espionaje pendiente de implementar."
+    },
+    "building": {
+      "close": "Cerrar",
+      "level": "Nivel",
+      "upgrade": "Mejora",
+      "upgradeTo": "Mejorar a",
+      "inQueue": "En cola",
+      "upgrading": "Mejorando...",
+      "maxLevel": "Nivel máximo",
+      "insufficientResources": "Recursos insuficientes.",
+      "currentLevel": "Nivel actual",
+      "category": "Categoría",
+      "position": "Posición",
+      "info": "Información",
+      "created": "Creado:"
+    },
+    "research": {
+      "title": "Investigación",
+      "subtitle": "tecnologías activas y niveles acumulados de desarrollo.",
+      "eyebrow": "Desarrollo tecnológico",
+      "notResearched": "No investigada",
+      "research": "Investigar",
+      "ready": "Lista",
+      "blocked": "Bloqueada",
+      "no": "No",
+      "go": "Ir",
+      "categories": {
+        "economy": "Economía",
+        "military": "Militar",
+        "defense": "Defensa"
+      }
+    },
+    "army": {
+      "title": "Ejército",
+      "subtitle": "tipos de tropas listas para defensa o expansión.",
+      "eyebrow": "Fuerzas militares",
+      "noTroops": "No hay tropas disponibles",
+      "selectUnit": "Seleccioná una unidad",
+      "inQueue": "En cola",
+      "empty": "Vacío",
+      "unit": "Unidad",
+      "amount": "Cantidad",
+      "atk": "Atq",
+      "def": "Def",
+      "hp": "HP"
+    },
+    "training": {
+      "title": "Entrenar",
+      "ready": "Listas",
+      "train": "Entrenar"
+    },
+    "toasts": {
+      "upgradeStarted": "Mejora iniciada",
+      "upgradeFailed": "Mejora fallida",
+      "trainingStarted": "Entrenamiento iniciado",
+      "trainingFailed": "Entrenamiento fallido",
+      "researchStarted": "Investigación iniciada",
+      "researchFailed": "Investigación fallida",
+      "insufficientResources": "Recursos insuficientes",
+      "attack": "Ataque",
+      "spyTitle": "Espionaje",
+      "spyMsg": "Espionaje sobre {name} pendiente de implementar.",
+      "invalidName": "Nombre inválido",
+      "invalidNameMsg": "Usá entre 2 y 30 caracteres.",
+      "cityRenamed": "Aldea renombrada",
+      "renameFailed": "No se pudo renombrar",
+      "incompleteMessage": "Mensaje incompleto",
+      "messageSent": "Mensaje enviado",
+      "sendFailed": "No se pudo enviar",
+      "createFailed": "No se pudo crear",
+      "upgradeCancelled": "Mejora cancelada",
+      "refundMsg": "Se devolvió el 50%.",
+      "cancelFailed": "No se pudo cancelar",
+      "trainingCancelled": "Entrenamiento cancelado",
+      "researchCancelled": "Investigación cancelada"
+    }
+  }
+}

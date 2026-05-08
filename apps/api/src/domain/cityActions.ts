@@ -1,7 +1,9 @@
 import type { BuildingType, UnitType } from "@etheria/shared";
 import { db, COLLECTIONS } from "../infrastructure/matecito.js";
 import { mergeRecordBySelector } from "../infrastructure/matecitoRecord.js";
-import { calculateTravelTime } from "./battles.js";
+import { calculateTravelTimeWithMultiplier } from "./battles.js";
+import { getWorldConfig } from "./worldConfig.js";
+import { calculatePathSpeedMultiplier } from "./worldTerrainConfigData.js";
 import {
   calculateCityStats,
   getBuildingCost,
@@ -22,6 +24,7 @@ import {
   getUnitCost,
   getUnitStats,
 } from "./units.js";
+import { getCityQueueConfig, type CityQueueKind } from "./queueConfigData.js";
 
 const genId = () => crypto.randomUUID();
 
@@ -58,6 +61,36 @@ export class CityActionError extends Error {
 
 type CitySnapshot = any;
 
+function sortPendingQueues<T extends { startedAt?: string; completesAt?: string }>(queues: T[]): T[] {
+  return [...queues].sort((a, b) => {
+    const completesDiff = new Date(a.completesAt ?? 0).getTime() - new Date(b.completesAt ?? 0).getTime();
+    if (completesDiff !== 0) return completesDiff;
+    return new Date(a.startedAt ?? 0).getTime() - new Date(b.startedAt ?? 0).getTime();
+  });
+}
+
+function assertQueueSlotAvailable(kind: CityQueueKind, pendingQueues: unknown[]) {
+  const config = getCityQueueConfig();
+  const maxSlots = config.maxSlots[kind];
+  if (pendingQueues.length >= maxSlots) {
+    throw new CityActionError("Queue slots full", 409, { blockedBy: "queue", kind, maxSlots });
+  }
+}
+
+function scheduleSequentialQueue(kind: CityQueueKind, pendingQueues: Array<{ completesAt?: string }>, durationSeconds: number, now: Date) {
+  const config = getCityQueueConfig();
+  const activeSlots = Math.min(config.activeSlots[kind], config.maxSlots[kind]);
+  const sorted = sortPendingQueues(pendingQueues);
+  const activeAnchor = sorted.length >= activeSlots ? sorted[sorted.length - activeSlots]?.completesAt : null;
+  const startAtMs = Math.max(now.getTime(), activeAnchor ? new Date(activeAnchor).getTime() : now.getTime());
+  const startedAt = new Date(startAtMs);
+  const completesAt = new Date(startAtMs + durationSeconds * 1000);
+  return {
+    startedAt: startedAt.toISOString(),
+    completesAt: completesAt.toISOString(),
+  };
+}
+
 async function loadCityActionSnapshot(cityId: string): Promise<CitySnapshot | null> {
   const [cityRes, buildingsRes, unitsRes, cityTechsRes, researchQueueRes, buildQueuesRes, trainingQueuesRes] = await Promise.all([
     db.from(COLLECTIONS.CITIES).eq("id", cityId).getFirst() as any,
@@ -77,15 +110,19 @@ async function loadCityActionSnapshot(cityId: string): Promise<CitySnapshot | nu
   const cityTechs = cityTechsRes.data ?? [];
   const techBonuses = city.techBonuses ?? calculateTechBonuses(cityTechs.map((tech: any) => ({ techId: tech.techId, level: tech.level })));
 
+  const researchQueue = sortPendingQueues(researchQueueRes.data ?? []);
+  const buildQueues = sortPendingQueues(buildQueuesRes.data ?? []);
+  const trainingQueues = sortPendingQueues(trainingQueuesRes.data ?? []);
+
   return {
     ...city,
     buildings,
     units: unitsRes.data ?? [],
     cityTechs,
-    researchQueue: researchQueueRes.data ?? [],
-    buildQueues: buildQueuesRes.data ?? [],
-    trainingQueues: trainingQueuesRes.data ?? [],
-    activeResearch: researchQueueRes.data?.[0] ?? null,
+    researchQueue,
+    buildQueues,
+    trainingQueues,
+    activeResearch: researchQueue[0] ?? null,
     resources: {
       gold: city.gold,
       wood: city.wood,
@@ -207,6 +244,8 @@ export async function upgradeBuildingAction(input: {
   if ((pendingQueueRes.data ?? []).length > 0) {
     throw new CityActionError("Upgrade already queued", 409, { blockedBy: "queue" });
   }
+  const activeBuildQueues = sortPendingQueues(city.buildQueues ?? []);
+  assertQueueSlotAvailable("construction", activeBuildQueues);
 
   const nextLevel = building.level + 1;
   const cost = getBuildingCost(building.type as BuildingType, nextLevel);
@@ -217,7 +256,7 @@ export async function upgradeBuildingAction(input: {
   const buildTime = getBuildingTime(building.type as BuildingType, nextLevel);
   const now = new Date();
   const nowIso = now.toISOString();
-  const completesAt = new Date(now.getTime() + buildTime * 1000).toISOString();
+  const schedule = scheduleSequentialQueue("construction", activeBuildQueues, buildTime, now);
   const queueId = genId();
   const newResources = subtractResources(city.resources, cost);
 
@@ -235,8 +274,8 @@ export async function upgradeBuildingAction(input: {
     buildingId: input.buildingId,
     buildingType: building.type,
     targetLevel: nextLevel,
-    startedAt: nowIso,
-    completesAt,
+    startedAt: schedule.startedAt,
+    completesAt: schedule.completesAt,
     isComplete: false,
   });
 
@@ -244,7 +283,7 @@ export async function upgradeBuildingAction(input: {
     success: true,
     nextLevel,
     completesIn: buildTime,
-    completesAt,
+    completesAt: schedule.completesAt,
     resources: newResources,
     queue: {
       id: queueId,
@@ -252,8 +291,8 @@ export async function upgradeBuildingAction(input: {
       buildingId: input.buildingId,
       buildingType: building.type,
       targetLevel: nextLevel,
-      startedAt: nowIso,
-      completesAt,
+      startedAt: schedule.startedAt,
+      completesAt: schedule.completesAt,
       isComplete: false,
     },
   };
@@ -267,6 +306,8 @@ export async function trainUnitsAction(input: {
   citySnapshot?: CitySnapshot;
 }) {
   const city = await getCitySnapshot(input.cityId, input.citySnapshot);
+  const activeTrainingQueues = sortPendingQueues(city.trainingQueues ?? []);
+  assertQueueSlotAvailable("training", activeTrainingQueues);
   const cost = applyTrainingCostReduction(
     getUnitCost(input.unitType, input.count),
     city.techBonuses?.trainingCostReduction ?? 0
@@ -278,7 +319,8 @@ export async function trainUnitsAction(input: {
   const trainingTime = getTrainingTime(input.unitType, input.count);
   const now = new Date();
   const nowIso = now.toISOString();
-  const completesAt = new Date(now.getTime() + trainingTime * 1000).toISOString();
+  const schedule = scheduleSequentialQueue("training", activeTrainingQueues, trainingTime, now);
+  const queueId = genId();
   const newResources = subtractResources(city.resources, cost);
 
   await mergeRecordBySelector(COLLECTIONS.CITIES, city, {
@@ -290,16 +332,30 @@ export async function trainUnitsAction(input: {
     lastResourceUpdate: nowIso,
   });
   await db.from(COLLECTIONS.TRAINING_QUEUES).insert({
-    id: genId(),
+    id: queueId,
     cityId: input.cityId,
     unitType: input.unitType,
     count: input.count,
-    startedAt: nowIso,
-    completesAt,
+    startedAt: schedule.startedAt,
+    completesAt: schedule.completesAt,
     isComplete: false,
   });
 
-  return { success: true, completesIn: trainingTime, completesAt };
+  return {
+    success: true,
+    completesIn: trainingTime,
+    completesAt: schedule.completesAt,
+    resources: newResources,
+    queue: {
+      id: queueId,
+      cityId: input.cityId,
+      unitType: input.unitType,
+      count: input.count,
+      startedAt: schedule.startedAt,
+      completesAt: schedule.completesAt,
+      isComplete: false,
+    },
+  };
 }
 
 export async function startResearchAction(input: {
@@ -312,15 +368,18 @@ export async function startResearchAction(input: {
   const cityTechsRes = await db.from(COLLECTIONS.CITY_TECHS).eq("cityId", input.cityId).get() as any;
   const researchQueueRes = await db.from(COLLECTIONS.RESEARCH_QUEUES).eq("cityId", input.cityId).eq("isComplete", false).get() as any;
   const cityTechs = (cityTechsRes.data ?? []).map((t: any) => ({ techId: t.techId, level: t.level }));
-  const activeResearch = researchQueueRes.data?.[0] ?? null;
+  const activeResearchQueues = sortPendingQueues(researchQueueRes.data ?? []);
+  assertQueueSlotAvailable("research", activeResearchQueues);
 
   const cfg = getAllTechConfigs().find((t) => t.techId === input.techId);
   if (!cfg) throw new CityActionError("Tech not found", 404);
 
   const currentLevel = cityTechs.find((t: any) => t.techId === input.techId)?.level ?? 0;
-  const targetLevel = currentLevel + 1;
-  const check = canResearch(input.techId as any, targetLevel, cityTechs, activeResearch);
+  const pendingSameTech = activeResearchQueues.filter((queue: any) => queue.techId === input.techId).length;
+  const targetLevel = currentLevel + pendingSameTech + 1;
+  const check = canResearch(input.techId as any, currentLevel + 1, cityTechs, null);
   if (!check.allowed) throw new CityActionError(check.reason ?? "Research blocked", 400, { blockedBy: "queue" });
+  if (targetLevel > cfg.maxLevel) throw new CityActionError("Max level reached", 400);
 
   const cost = getResearchCost(input.techId as any, targetLevel);
   const researchTime = getResearchTime(input.techId as any, targetLevel);
@@ -330,7 +389,8 @@ export async function startResearchAction(input: {
 
   const now = new Date();
   const nowIso = now.toISOString();
-  const completesAt = new Date(now.getTime() + researchTime * 1000).toISOString();
+  const schedule = scheduleSequentialQueue("research", activeResearchQueues, researchTime, now);
+  const queueId = genId();
   const newResources = subtractResources(city.resources, cost);
 
   await mergeRecordBySelector(COLLECTIONS.CITIES, city, {
@@ -342,16 +402,32 @@ export async function startResearchAction(input: {
     lastResourceUpdate: nowIso,
   });
   await db.from(COLLECTIONS.RESEARCH_QUEUES).insert({
-    id: genId(),
+    id: queueId,
     cityId: input.cityId,
     techId: input.techId,
     targetLevel,
-    startedAt: nowIso,
-    completesAt,
+    startedAt: schedule.startedAt,
+    completesAt: schedule.completesAt,
     isComplete: false,
   });
 
-  return { success: true, techId: input.techId, targetLevel, completesIn: researchTime, completesAt };
+  return {
+    success: true,
+    techId: input.techId,
+    targetLevel,
+    completesIn: researchTime,
+    completesAt: schedule.completesAt,
+    resources: newResources,
+    queue: {
+      id: queueId,
+      cityId: input.cityId,
+      techId: input.techId,
+      targetLevel,
+      startedAt: schedule.startedAt,
+      completesAt: schedule.completesAt,
+      isComplete: false,
+    },
+  };
 }
 
 export async function attackCityAction(input: {
@@ -375,12 +451,15 @@ export async function attackCityAction(input: {
 
   const speeds = input.units.map((u) => getUnitStats(u.type, 1, attackerCity.techBonuses).speed);
   const minSpeed = Math.min(...speeds);
-  const travelTime = calculateTravelTime(
+  const world = await getWorldConfig();
+  const terrainSpeed = calculatePathSpeedMultiplier(attackerCity.posX, attackerCity.posY, defenderCity.posX, defenderCity.posY, world.map.width, world.map.height);
+  const travelTime = calculateTravelTimeWithMultiplier(
     attackerCity.posX,
     attackerCity.posY,
     defenderCity.posX,
     defenderCity.posY,
-    minSpeed
+    minSpeed,
+    terrainSpeed
   );
   const now = new Date();
   const nowIso = now.toISOString();
@@ -391,6 +470,63 @@ export async function attackCityAction(input: {
     id: battleId,
     attackerCityId: input.attackerCityId,
     defenderCityId: input.targetCityId,
+    status: "MARCHING",
+    startedAt: nowIso,
+    arrivesAt,
+    units: input.units.map((u) => ({ type: u.type, count: u.count })),
+  });
+
+  for (const unit of input.units) {
+    const existing = attackerCity.units.find((u: any) => u.type === unit.type);
+    if (existing) {
+      await mergeRecordBySelector(COLLECTIONS.UNITS, existing, { count: existing.count - unit.count });
+    }
+  }
+
+  return { battleId, travelTime, arrivesAt };
+}
+
+export async function attackBarbarianCampAction(input: {
+  attackerCityId: string;
+  targetCampId: string;
+  units: Array<{ type: UnitType; count: number }>;
+  actor: CityActionActor;
+  citySnapshot?: CitySnapshot;
+}) {
+  const attackerCity = await getCitySnapshot(input.attackerCityId, input.citySnapshot);
+  const campRes = await db.from(COLLECTIONS.BARBARIAN_CAMPS).eq("id", input.targetCampId).getFirst() as any;
+  const camp = campRes.data;
+  if (!camp) throw new CityActionError("Barbarian camp not found", 404);
+
+  for (const unit of input.units) {
+    const available = attackerCity.units.find((u: any) => u.type === unit.type);
+    if (!available || available.count < unit.count) {
+      throw new CityActionError(`Not enough ${unit.type}`, 400);
+    }
+  }
+
+  const speeds = input.units.map((u) => getUnitStats(u.type, 1, attackerCity.techBonuses).speed);
+  const minSpeed = Math.min(...speeds);
+  const world = await getWorldConfig();
+  const terrainSpeed = calculatePathSpeedMultiplier(attackerCity.posX, attackerCity.posY, camp.posX, camp.posY, world.map.width, world.map.height);
+  const travelTime = calculateTravelTimeWithMultiplier(
+    attackerCity.posX,
+    attackerCity.posY,
+    camp.posX,
+    camp.posY,
+    minSpeed,
+    terrainSpeed
+  );
+  
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const arrivesAt = new Date(now.getTime() + travelTime * 1000).toISOString();
+  const battleId = genId();
+
+  await db.from(COLLECTIONS.BARBARIAN_BATTLES).insert({
+    id: battleId,
+    attackerCityId: input.attackerCityId,
+    targetCampId: input.targetCampId,
     status: "MARCHING",
     startedAt: nowIso,
     arrivesAt,

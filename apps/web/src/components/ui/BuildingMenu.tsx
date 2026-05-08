@@ -6,18 +6,21 @@ import type { BuildingType } from "@etheria/shared";
 import { BUILDING_INFO, CATEGORY_LABELS, CATEGORY_ICONS } from "@/lib/constants";
 import { Panel } from "./Panel";
 import { Tooltip } from "./Tooltip";
+import { useI18n } from "@/i18n";
+import { getBuildingNameKey, getBuildingDescriptionKey } from "@/lib/constants";
 
 type BuildingCategory = "economic" | "military" | "civic";
 
-const CATEGORIES: { id: BuildingCategory; label: string; icon: string }[] = [
-  { id: "economic", label: CATEGORY_LABELS.economic, icon: CATEGORY_ICONS.economic },
-  { id: "military", label: CATEGORY_LABELS.military, icon: CATEGORY_ICONS.military },
-  { id: "civic", label: CATEGORY_LABELS.civic, icon: CATEGORY_ICONS.civic },
-];
-
 export function BuildingMenu() {
+  const { t } = useI18n();
   const { buildMode, selectedBuildingType, setBuildMode, setSelectedBuildingType, buildings, resources } = useGameStore();
   const [expandedCategories, setExpandedCategories] = useState<Set<BuildingCategory>>(new Set(["economic", "military", "civic"]));
+
+  const CATEGORIES: { id: BuildingCategory; label: string; icon: string }[] = [
+    { id: "economic", label: t(CATEGORY_LABELS.economic), icon: CATEGORY_ICONS.economic },
+    { id: "military", label: t(CATEGORY_LABELS.military), icon: CATEGORY_ICONS.military },
+    { id: "civic", label: t(CATEGORY_LABELS.civic), icon: CATEGORY_ICONS.civic },
+  ];
 
   const toggleCategory = (cat: BuildingCategory) => {
     setExpandedCategories((prev) => {
@@ -94,16 +97,16 @@ export function BuildingMenu() {
                       const isSelected = selectedBuildingType === b.type && buildMode;
 
                       return (
-                        <Tooltip
-                          key={b.type}
-                          content={
-                            <div className="space-y-1">
-                              <p className="font-bold text-etheria-gold">{b.name}</p>
-                              <p className="text-etheria-text-muted">{b.description}</p>
-                              {count > 0 && <p className="text-etheria-text-dim">Built: {count}</p>}
-                            </div>
-                          }
-                        >
+                          <Tooltip
+                            key={b.type}
+                            content={
+                              <div className="space-y-1">
+                                <p className="font-bold text-etheria-gold">{t(getBuildingNameKey(b.type))}</p>
+                                <p className="text-etheria-text-muted">{t(getBuildingDescriptionKey(b.type))}</p>
+                                {count > 0 && <p className="text-etheria-text-dim">Built: {count}</p>}
+                              </div>
+                            }
+                          >
                           <button
                             onClick={() => selectBuilding(b.type)}
                             className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-2.5 transition-all ${
@@ -113,7 +116,7 @@ export function BuildingMenu() {
                             }`}
                           >
                             <span className="text-xl">{b.icon}</span>
-                            <span className="text-[9px] font-medium leading-tight text-center">{b.name}</span>
+                            <span className="text-[9px] font-medium leading-tight text-center">{t(getBuildingNameKey(b.type))}</span>
                             {count > 0 && (
                               <span className="text-[9px] text-etheria-text-dim">×{count}</span>
                             )}

@@ -125,6 +125,7 @@ export const WorldMapConfigSchema = z.object({
   terrainSeed: z.number().int(),
   decorDensity: z.number().nonnegative(),
   decorSafeRadius: z.number().int().nonnegative(),
+  terrainOverlayEnabled: z.boolean().optional(),
 });
 
 export type WorldMapConfig = z.infer<typeof WorldMapConfigSchema>;
@@ -360,6 +361,35 @@ export const AttackRequestSchema = z.object({
 });
 
 export type AttackRequest = z.infer<typeof AttackRequestSchema>;
+
+export const SendResourcesRequestSchema = z.object({
+  recipientCityId: z.string().uuid(),
+  resources: ResourcesSchema,
+});
+
+export type SendResourcesRequest = z.infer<typeof SendResourcesRequestSchema>;
+
+export const WorldMovementSchema = z.object({
+  id: z.string(),
+  type: z.enum(["ATTACK", "BARBARIAN_ATTACK", "BARBARIAN_RAID", "TRADE"]),
+  status: z.enum(["MARCHING", "RETURNING"]),
+  from: z.object({
+    x: z.number(),
+    y: z.number(),
+    name: z.string(),
+  }),
+  to: z.object({
+    x: z.number(),
+    y: z.number(),
+    name: z.string(),
+  }),
+  startedAt: z.string().datetime(),
+  arrivesAt: z.string().datetime(),
+  resolvedAt: z.string().datetime().optional(),
+  returnsAt: z.string().datetime().optional(),
+});
+
+export type WorldMovement = z.infer<typeof WorldMovementSchema>;
 
 // Tech / Research re-exports
 export * from "./tech";

@@ -26,9 +26,9 @@ function mapCityToStore(cityData: any) {
   const buildQueues = Array.isArray(cityData.buildQueues)
     ? [...cityData.buildQueues]
         .sort((a: any, b: any) => {
-          const levelDiff = (b.targetLevel ?? 0) - (a.targetLevel ?? 0);
-          if (levelDiff !== 0) return levelDiff;
-          return new Date(b.startedAt ?? 0).getTime() - new Date(a.startedAt ?? 0).getTime();
+          const completesDiff = new Date(a.completesAt ?? 0).getTime() - new Date(b.completesAt ?? 0).getTime();
+          if (completesDiff !== 0) return completesDiff;
+          return new Date(a.startedAt ?? 0).getTime() - new Date(b.startedAt ?? 0).getTime();
         })
         .reduce((acc: any[], queue: any) => {
           const existing = acc.find((item) => item.buildingId === queue.buildingId);
@@ -56,10 +56,14 @@ function mapCityToStore(cityData: any) {
     buildings: cityData.buildings,
     units: cityData.units,
     buildQueues,
-    trainingQueues: cityData.trainingQueues,
+    trainingQueues: Array.isArray(cityData.trainingQueues)
+      ? [...cityData.trainingQueues].sort((a: any, b: any) => new Date(a.completesAt ?? 0).getTime() - new Date(b.completesAt ?? 0).getTime())
+      : [],
     cityTechs: cityData.cityTechs ?? [],
-    researchQueue: cityData.researchQueue ?? [],
-    activeResearch: cityData.activeResearch ?? null,
+    researchQueue: Array.isArray(cityData.researchQueue)
+      ? [...cityData.researchQueue].sort((a: any, b: any) => new Date(a.completesAt ?? 0).getTime() - new Date(b.completesAt ?? 0).getTime())
+      : [],
+    activeResearch: Array.isArray(cityData.researchQueue) ? [...cityData.researchQueue].sort((a: any, b: any) => new Date(a.completesAt ?? 0).getTime() - new Date(b.completesAt ?? 0).getTime())[0] ?? null : cityData.activeResearch ?? null,
     allianceMembership: cityData.allianceMembership ?? null,
     techBonuses: cityData.techBonuses ?? getDefaultTechBonuses(),
     lastResourceUpdate: cityData.lastResourceUpdate ?? new Date().toISOString(),
@@ -104,8 +108,9 @@ export function GameInitializer() {
   // Require Matecito auth for the main game.
   useEffect(() => {
     if (!mounted) return;
-    const inAuth = pathname === "/login" || pathname === "/registro";
-    if (inAuth) return;
+    const publicPaths = ["/login", "/registro", "/", "/changelog"];
+    const inPublic = publicPaths.some((p) => pathname === p || pathname.startsWith("/changelog/"));
+    if (inPublic) return;
     if (!auth.ready) return;
     if (!auth.isLoggedIn) {
       router.replace("/login");

@@ -612,6 +612,8 @@ enum BotActionType {
   TRAIN_UNITS
   START_RESEARCH
   ATTACK_CITY
+  ATTACK_BARBARIAN
+  SEND_RESOURCES
   IDLE
 }
 
@@ -620,4 +622,20 @@ enum BotActionStatus {
   EXPECTED_BLOCKED
   VALIDATION_ERROR
   UNEXPECTED_ERROR
+}
+
+model TradeCaravan {
+  id               String   @id
+  senderCityId     String
+  recipientCityId  String
+  resources        Json
+  status           String   @default("MARCHING") // "MARCHING", "COMPLETED", "RETURNING"
+  startedAt        DateTime @default(now())
+  arrivesAt        DateTime
+  completedAt      DateTime?
+
+  @@index([senderCityId])
+  @@index([recipientCityId])
+  @@index([status, arrivesAt])
+  @@map("trade_caravans")
 }

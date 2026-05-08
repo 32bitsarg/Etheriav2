@@ -33,7 +33,7 @@ interface BaseBuildingConfig {
 const BASE_CONFIGS: BaseBuildingConfig[] = [
   {
     type: "TOWN_HALL",
-    maxLevel: 20,
+    maxLevel: 25,
     baseCost: { gold: 0, wood: 0, stone: 0, food: 0, gems: 0 }, // Free starter
     baseBuildTimeSeconds: 0,
     costMultiplier: 1.8,
@@ -47,7 +47,7 @@ const BASE_CONFIGS: BaseBuildingConfig[] = [
   },
   {
     type: "GOLD_MINE",
-    maxLevel: 20,
+    maxLevel: 25,
     baseCost: { gold: 50, wood: 100, stone: 20, food: 0, gems: 0 },
     baseBuildTimeSeconds: 30,
     costMultiplier: 1.45,
@@ -58,7 +58,7 @@ const BASE_CONFIGS: BaseBuildingConfig[] = [
   },
   {
     type: "LUMBER_MILL",
-    maxLevel: 20,
+    maxLevel: 25,
     baseCost: { gold: 50, wood: 50, stone: 20, food: 0, gems: 0 },
     baseBuildTimeSeconds: 30,
     costMultiplier: 1.45,
@@ -69,7 +69,7 @@ const BASE_CONFIGS: BaseBuildingConfig[] = [
   },
   {
     type: "QUARRY",
-    maxLevel: 20,
+    maxLevel: 25,
     baseCost: { gold: 100, wood: 150, stone: 0, food: 0, gems: 0 },
     baseBuildTimeSeconds: 45,
     costMultiplier: 1.5,
@@ -80,7 +80,7 @@ const BASE_CONFIGS: BaseBuildingConfig[] = [
   },
   {
     type: "FARM",
-    maxLevel: 20,
+    maxLevel: 25,
     baseCost: { gold: 40, wood: 80, stone: 10, food: 0, gems: 0 },
     baseBuildTimeSeconds: 30,
     costMultiplier: 1.45,
@@ -91,7 +91,7 @@ const BASE_CONFIGS: BaseBuildingConfig[] = [
   },
   {
     type: "BARRACKS",
-    maxLevel: 20,
+    maxLevel: 25,
     baseCost: { gold: 200, wood: 200, stone: 100, food: 50, gems: 0 },
     baseBuildTimeSeconds: 60,
     costMultiplier: 1.5,
@@ -101,7 +101,7 @@ const BASE_CONFIGS: BaseBuildingConfig[] = [
   },
   {
     type: "STABLE",
-    maxLevel: 20,
+    maxLevel: 25,
     baseCost: { gold: 250, wood: 300, stone: 150, food: 100, gems: 0 },
     baseBuildTimeSeconds: 90,
     costMultiplier: 1.55,
@@ -111,7 +111,7 @@ const BASE_CONFIGS: BaseBuildingConfig[] = [
   },
   {
     type: "ALLIANCE_CENTER",
-    maxLevel: 10,
+    maxLevel: 25,
     baseCost: { gold: 500, wood: 400, stone: 200, food: 100, gems: 0 },
     baseBuildTimeSeconds: 300,
     costMultiplier: 1.6,
@@ -121,7 +121,7 @@ const BASE_CONFIGS: BaseBuildingConfig[] = [
   },
   {
     type: "LIBRARY",
-    maxLevel: 15,
+    maxLevel: 25,
     baseCost: { gold: 300, wood: 400, stone: 300, food: 50, gems: 0 },
     baseBuildTimeSeconds: 120,
     costMultiplier: 1.55,
@@ -131,7 +131,7 @@ const BASE_CONFIGS: BaseBuildingConfig[] = [
   },
   {
     type: "STORAGE",
-    maxLevel: 20,
+    maxLevel: 25,
     baseCost: { gold: 100, wood: 200, stone: 100, food: 0, gems: 0 },
     baseBuildTimeSeconds: 60,
     costMultiplier: 1.5,
@@ -145,7 +145,7 @@ const BASE_CONFIGS: BaseBuildingConfig[] = [
   },
   {
     type: "WALL",
-    maxLevel: 15,
+    maxLevel: 25,
     baseCost: { gold: 100, wood: 300, stone: 300, food: 0, gems: 0 },
     baseBuildTimeSeconds: 120,
     costMultiplier: 1.5,
@@ -155,7 +155,7 @@ const BASE_CONFIGS: BaseBuildingConfig[] = [
   },
   {
     type: "TOWER",
-    maxLevel: 15,
+    maxLevel: 25,
     baseCost: { gold: 150, wood: 200, stone: 200, food: 0, gems: 0 },
     baseBuildTimeSeconds: 180,
     costMultiplier: 1.5,
@@ -165,7 +165,7 @@ const BASE_CONFIGS: BaseBuildingConfig[] = [
   },
   {
     type: "MARKET",
-    maxLevel: 10,
+    maxLevel: 25,
     baseCost: { gold: 300, wood: 250, stone: 150, food: 50, gems: 0 },
     baseBuildTimeSeconds: 240,
     costMultiplier: 1.55,

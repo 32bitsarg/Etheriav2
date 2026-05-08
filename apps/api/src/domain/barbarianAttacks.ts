@@ -6,9 +6,10 @@ import {
   getArmyFractionForArchetype,
 } from './barbarianAttackConfigData.js';
 import { getSeasonState } from './seasons.js';
-import { calculateTravelTime } from './battles.js';
+import { calculateTravelTimeWithMultiplier } from './battles.js';
 import { getUnitStats } from './units.js';
-import { calculateTechBonuses } from './techs.js';
+import { getWorldConfig } from './worldConfig.js';
+import { calculatePathSpeedMultiplier } from './worldTerrainConfigData.js';
 
 const genId = () => crypto.randomUUID();
 
@@ -184,10 +185,18 @@ export async function createBarbarianAttack(params: {
     if (stats.speed < minSpeed) minSpeed = stats.speed;
   }
 
-  const travelTime = calculateTravelTime(
+  const world = await getWorldConfig();
+  const terrainSpeed = calculatePathSpeedMultiplier(
     camp.posX, camp.posY,
     targetCity.posX, targetCity.posY,
-    minSpeed
+    world.map.width,
+    world.map.height
+  );
+  const travelTime = calculateTravelTimeWithMultiplier(
+    camp.posX, camp.posY,
+    targetCity.posX, targetCity.posY,
+    minSpeed,
+    terrainSpeed
   );
 
   const arrivesAt = new Date(now.getTime() + travelTime * 1000).toISOString();

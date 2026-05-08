@@ -6,7 +6,7 @@ import {
   mergeRecordBySelector,
 } from '../infrastructure/matecitoRecord.js';
 import { calculateCityStats } from '../domain/buildings.js';
-import { resolveBattle, calculateLoot, calculateTravelTime } from '../domain/battles.js';
+import { resolveBattle, calculateLoot, calculateTravelTimeWithMultiplier } from '../domain/battles.js';
 import { getUnitStats } from '../domain/units.js';
 import { addResources } from '../domain/resources.js';
 import { calculateTechBonuses } from '../domain/techs.js';
@@ -19,6 +19,7 @@ import { processBarbarianAttacks } from '../domain/barbarianAttacks.js';
 import { LOCAL_BARBARIAN_ATTACK_CONFIG } from '../domain/barbarianAttackConfigData.js';
 import { resolveWorldZone } from '../domain/worldZoneConfigData.js';
 import { getWorldConfig } from '../domain/worldConfig.js';
+import { calculatePathSpeedMultiplier } from '../domain/worldTerrainConfigData.js';
 import {
   evaluateWinterPressure,
   resetWinterState,
@@ -61,6 +62,7 @@ export function startQueueWorker(): void {
       await processBarbarianAttacks();
       await resolveBarbarianAttackArrivals();
       await processBarbarianAttackReturns();
+      await processTradeCaravans();
     } catch (err) {
       console.error('Queue worker error:', err);
     } finally {
@@ -447,12 +449,22 @@ async function resolveAndProcessBattle(battle: any) {
     .filter(([, count]) => count > 0)
     .map(([type]) => getUnitStats(type as any, 1, attackerTechBonuses).speed);
   const minSpeed = speeds.length > 0 ? Math.min(...speeds) : 60;
-  const returnTime = calculateTravelTime(
+  const worldConfig = await getWorldConfig();
+  const terrainSpeed = calculatePathSpeedMultiplier(
     attackerCityRes.data?.posX ?? 0,
     attackerCityRes.data?.posY ?? 0,
     defenderCityRes.data?.posX ?? 0,
     defenderCityRes.data?.posY ?? 0,
-    minSpeed
+    worldConfig.map.width,
+    worldConfig.map.height
+  );
+  const returnTime = calculateTravelTimeWithMultiplier(
+    attackerCityRes.data?.posX ?? 0,
+    attackerCityRes.data?.posY ?? 0,
+    defenderCityRes.data?.posX ?? 0,
+    defenderCityRes.data?.posY ?? 0,
+    minSpeed,
+    terrainSpeed
   );
   const returnsAt = new Date(now.getTime() + returnTime * 1000).toISOString();
 
@@ -1092,4 +1104,73 @@ async function processBarbarianAttackReturn(attack: any) {
   }).execute() as any;
 
   console.log(`✅ Barbarian attack completed: ${finalStatus} | Troops returned to camp ${attack.campId}`);
+}
+// ─── Trade Caravans ───
+
+async function processTradeCaravans() {
+  const now = new Date().toISOString();
+  const [marchingRes, returningRes] = await Promise.all([
+    db.from(COLLECTIONS.TRADE_CARAVANS).eq('status', 'MARCHING').get() as any,
+    db.from(COLLECTIONS.TRADE_CARAVANS).eq('status', 'RETURNING').get() as any,
+  ]);
+  const caravans = [...(marchingRes.data ?? []), ...(returningRes.data ?? [])];
+
+  for (const caravan of caravans) {
+    if (caravan.status === 'MARCHING' && new Date(caravan.arrivesAt) <= new Date(now)) {
+      await resolveTradeCaravanArrival(caravan);
+      continue;
+    }
+    if (caravan.status === 'RETURNING' && caravan.returnsAt && new Date(caravan.returnsAt) <= new Date(now)) {
+      await resolveTradeCaravanReturn(caravan);
+    }
+  }
+}
+
+async function resolveTradeCaravanArrival(caravan: any) {
+  const now = new Date().toISOString();
+  const caravanId = caravan.id;
+
+  console.log(`🚚 Trade caravan arrived: ${caravanId}`);
+
+  // Add resources to recipient
+  const recipientRes = await db.from(COLLECTIONS.CITIES).eq('id', caravan.recipientCityId).getFirst() as any;
+  const recipient = recipientRes.data;
+
+  if (recipient) {
+    const newResources = addResources(
+      { gold: recipient.gold, wood: recipient.wood, stone: recipient.stone, food: recipient.food, gems: recipient.gems ?? 0 },
+      caravan.resources
+    );
+
+    await mergeRecordBySelector(COLLECTIONS.CITIES, recipient, {
+      gold: Math.min(recipient.maxGold, newResources.gold),
+      wood: Math.min(recipient.maxWood, newResources.wood),
+      stone: Math.min(recipient.maxStone, newResources.stone),
+      food: Math.min(recipient.maxFood, newResources.food),
+      lastResourceUpdate: now,
+    });
+
+    console.log(`✅ Resources delivered to city ${caravan.recipientCityId}: ${JSON.stringify(caravan.resources)}`);
+  }
+
+  const departure = new Date(caravan.startedAt).getTime();
+  const arrival = new Date(caravan.arrivesAt).getTime();
+  const outboundDurationMs = Math.max(0, arrival - departure);
+  const returnsAt = new Date(new Date(caravan.arrivesAt).getTime() + outboundDurationMs).toISOString();
+
+  // Mark caravan as returning after delivery
+  await mergeRecordByLogicalId(COLLECTIONS.TRADE_CARAVANS, caravanId, {
+    status: 'RETURNING',
+    deliveredAt: now,
+    resolvedAt: now,
+    returnsAt,
+  });
+}
+
+async function resolveTradeCaravanReturn(caravan: any) {
+  const now = new Date().toISOString();
+  await mergeRecordByLogicalId(COLLECTIONS.TRADE_CARAVANS, caravan.id, {
+    status: 'COMPLETED',
+    completedAt: now,
+  });
 }

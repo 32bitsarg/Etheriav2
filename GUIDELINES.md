@@ -47,6 +47,15 @@
 
 ---
 
+### 2.1 Mandatory i18n for Player-Facing Text
+**Any new player-facing text in the game UI must use the i18n system.**
+
+- Add keys in `apps/web/src/i18n/es.json` and `apps/web/src/i18n/en.json`
+- Consume text via `useI18n()` in gameplay UI (`/play`, map, HUD, modals, panels)
+- Internal developer tools (like `/editor`) are exempt unless promoted to player-facing UI
+
+---
+
 ### 3. Grepolis-Style Direction
 
 **Visual Style Decision: Hybrid Sprite + Rich UI**

@@ -2,6 +2,7 @@ import type { BarbarianArchetype, WorldSeasonState, BarbarianCamp } from '@ether
 import { initializeSeasonState } from './seasons.js';
 import { getWorldConfig } from './worldConfig.js';
 import { resolveWorldZone } from './worldZoneConfigData.js';
+import { isBuildableTerrain } from './worldTerrainConfigData.js';
 import {
   LOCAL_BARBARIAN_ZONE_CONFIGS,
   BARBARIAN_ARCHETYPE_CONFIGS,
@@ -104,10 +105,18 @@ export async function findValidSpawnPosition(
   const worldConfig = await getWorldConfig();
   const minDistToCities = zoneConfig.minDistanceToCities;
   const minDistBetweenCamps = zoneConfig.minDistanceBetweenCamps;
+  const halfW = Math.floor(worldConfig.map.width / 2);
+  const halfH = Math.floor(worldConfig.map.height / 2);
+  const edge = Math.max(0, worldConfig.spawn.edgePadding ?? 0);
+  const minX = -halfW + edge;
+  const maxX = halfW - edge;
+  const minY = -halfH + edge;
+  const maxY = halfH - edge;
 
   for (let attempt = 0; attempt < 50; attempt++) {
-    const posX = Math.floor(Math.random() * worldConfig.map.width);
-    const posY = Math.floor(Math.random() * worldConfig.map.height);
+    const posX = Math.floor(minX + Math.random() * Math.max(1, maxX - minX + 1));
+    const posY = Math.floor(minY + Math.random() * Math.max(1, maxY - minY + 1));
+    if (!isBuildableTerrain(posX, posY, worldConfig.map.width, worldConfig.map.height)) continue;
 
     const resolvedZone = resolveWorldZone(posX, posY, worldConfig.map.width, worldConfig.map.height);
     if (resolvedZone.id !== zoneId) continue;
