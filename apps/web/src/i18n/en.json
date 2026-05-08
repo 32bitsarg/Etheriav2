@@ -236,6 +236,7 @@
       "Technical": "Technical"
     },
     "releases": {
+      "0.2.2": "The Market of the Realms",
       "0.2.1": "The Queue Workshop",
       "v0_2_0": "The Living Map",
       "v0_1_1": "The Gateway to Etheria",
@@ -273,6 +274,28 @@
           "Painting plains is now visible in the map editor overlay.",
           "The brush covers grid edges more reliably to avoid hard-to-paint cells.",
           "The editor camera can pan with extra margin so panel-covered map edges can be painted."
+        ]
+      },
+      "0.2.2": {
+        "added": [
+          "[CORE] Technical audit v1: comprehensive report on current game functions and prioritized proposals.",
+          "Expanded domain test coverage for resources, configurable queues, world terrain, and bot decision engine.",
+          "[GAMEPLAY] Unified reports center: all battle, spy, season, and quest notifications in one inbox with unread counter.",
+          "Initial quests: complete missions per city, claim configurable rewards, and receive reports on completion.",
+          "Public market: create and accept trade offers from the Market building with server-validated resource exchange.",
+          "Scouting: send spies to gather intel on cities and barbarian camps with estimated intelligence reports.",
+          "Alliance objectives: contribute resources to shared goals with visible progress and temporary alliance effects.",
+          "Reports now accessible from the messages modal with shared unread badge for mail and reports.",
+          "Market opens from the Market building instead of the sidebar.",
+          "Barbarian camps can be scouted from their modal to generate intel reports without revealing fog.",
+          "Extended dual persistence for MatecitoDB/PostgreSQL with new collections and Prisma models.",
+          "Bots can now trade in the market, contribute to alliance objectives, and scout enemies using real game services.",
+          "Quests now loaded from domain config for easier balancing and future quest additions.",
+          "[WORLD] Season change reports: the system emits notifications on season and phase changes visible in the HUD."
+        ],
+        "fixed": [
+          "[CORE] Passive production no longer reduces resources when lastResourceUpdate is ahead of current time.",
+          "Active queue slots are now properly capped by the configured maximum regardless of environment values."
         ]
       },
       "v0_2_0": {

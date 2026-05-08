@@ -236,6 +236,7 @@
       "Technical": "Técnico"
     },
     "releases": {
+      "0.2.2": "El Mercado de los Reinos",
       "0.2.1": "El Taller de Colas",
       "v0_2_0": "El Mapa Viviente",
       "v0_1_1": "La Puerta de Etheria",
@@ -273,6 +274,28 @@
           "Pintar plains ahora es visible en el overlay del editor de mapa.",
           "El pincel cubre mejor los bordes de la grilla para evitar celdas dificiles de pintar.",
           "La camara del editor permite desplazar el mapa con margen adicional para pintar bordes cubiertos por paneles."
+        ]
+      },
+      "0.2.2": {
+        "added": [
+          "[CORE] Auditoria tecnica v1: reporte completo del estado de funciones actuales y propuestas priorizadas.",
+          "Ampliada la cobertura de tests de dominio para recursos, colas configurables, terreno del mundo y decision engine de bots.",
+          "[GAMEPLAY] Centro unificado de reportes: todas las notificaciones de batalla, espionaje, temporada y misiones en una bandeja con contador de no leidos.",
+          "Misiones iniciales: completa misiones por ciudad, reclama recompensas configurables y recibi reportes al completar.",
+          "Mercado publico: crea y acepta ofertas de intercambio desde el edificio Mercado con movimiento de recursos validado por el servidor.",
+          "Espionaje: envia espias para obtener inteligencia sobre ciudades y campamentos barbaros con reportes estimados.",
+          "Objetivos de alianza: contribui recursos a metas compartidas con progreso visible y efectos temporales de alianza.",
+          "Los reportes ahora se consultan desde el modal de mensajes con badge compartido de no leidos para correo y reportes.",
+          "El mercado se abre desde el edificio Mercado en vez del sidebar.",
+          "Los campamentos barbaros pueden espiarse desde su modal y generan reportes de inteligencia sin revelar niebla.",
+          "Persistencia dual extendida para MatecitoDB/PostgreSQL con nuevas colecciones y modelos Prisma.",
+          "Los bots ahora comercian en el mercado, contribuyen a objetivos de alianza y espian enemigos usando servicios reales.",
+          "Las misiones ahora se cargan desde config de dominio para facilitar el balanceo y nuevas misiones futuras.",
+          "[WORLD] Reportes de cambio de temporada: el sistema emite notificaciones al cambiar estacion o fase visibles en el HUD."
+        ],
+        "fixed": [
+          "[CORE] La produccion pasiva ya no reduce recursos cuando lastResourceUpdate queda por delante del tiempo actual.",
+          "Los slots activos de colas ahora quedan correctamente limitados por el maximo configurado sin importar valores de entorno."
         ]
       },
       "v0_2_0": {

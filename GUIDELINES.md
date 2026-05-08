@@ -12,6 +12,13 @@
 
 **No code is "too small" to document.** If it changes player-facing behavior, document it.
 
+#### Internal vs Public Items
+Some changelog entries are for developer/audit purposes and should not appear on the public-facing changelog page. Mark these with:
+
+1. **In `CHANGELOG.md`**: Append `` `[INTERNAL]` `` to the sub-bullet (e.g., `Agregado reporte tecnico...` `[INTERNAL]`).
+2. **In `changelogData.ts`**: Add the item's key to the `internalItemKeys` array — they get filtered by frontend components (`ChangelogDetailClient` and `LatestVersionSection`).
+3. **Examples of internal entries**: test coverage, technical audits, DB/infra refactors invisible to players, CI/CD changes, config-only restructures.
+
 ---
 
 ### 2. Zero Hardcoded Game Values

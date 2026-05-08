@@ -11,8 +11,16 @@ Each release is named after a legendary era in the world of Etheria.
 
 ## [Unreleased]
 
+### Planned
+
+---
+
+## [0.2.2] - El Mercado de los Reinos - 2026-05-08
+
+> *"El oro corre mas rapido que la sangre, y las noticias mas rapido que el oro. Los reinos que dominan el comercio y la informacion gobiernan Etheria."*
+
 ### Added
-- **[CORE] Auditoria full game v1**
+- **[CORE] Auditoria full game v1** `[INTERNAL]`
   - Agregado reporte tecnico en `docs/audit-gameplay-v1.md` con estado de funciones actuales y propuestas nuevas priorizadas.
   - Ampliada la cobertura de tests de dominio para recursos, colas configurables, terreno del mundo y decision engine de bots.
 - **[GAMEPLAY] Features V1 jugables**
@@ -21,14 +29,14 @@ Each release is named after a legendary era in the world of Etheria.
   - Agregado mercado publico (`market_offers`) con crear/aceptar ofertas, requisito de `MARKET`, tarifa configurable y movimiento server-authoritative de recursos.
   - Agregado scouting con `SPY` sobre objetivos ya seleccionables; genera reportes `SPY_INTEL` con estimaciones sin revelar fog ni modificar visibilidad del mapa.
   - Agregados objetivos vivos de alianza con contribuciones de recursos, progreso visible y efecto temporal al completarse.
-  - Extendida la persistencia dual MatecitoDB/PostgreSQL con colecciones, modelos Prisma y mapping en `postgresCompat`.
+  - Extendida la persistencia dual MatecitoDB/PostgreSQL con colecciones, modelos Prisma y mapping en `postgresCompat`. `[INTERNAL]`
 - **[UI] Reubicacion de gameplay V1**
   - Los reportes ahora se consultan desde el modal de mensajes, compartiendo badge de no leidos con el correo.
   - El mercado se abre desde el edificio `MARKET` en vez del sidebar.
   - Los campamentos barbaros pueden espiarse desde su modal y generan reportes sin revelar niebla.
 - **[BOTS] Personalidades V2**
   - Los bots pueden crear/aceptar ofertas de mercado, contribuir a objetivos de alianza y hacer scouting usando servicios reales.
-  - Las misiones iniciales salen de config de dominio para permitir balance y nuevas misiones futuras.
+  - Las misiones iniciales salen de config de dominio para permitir balance y nuevas misiones futuras. `[INTERNAL]`
 - **[WORLD] Reportes de temporada**
   - El worker de temporada emite reportes de sistema al cambiar estacion o fase, con impacto visible en el HUD.
 
@@ -549,7 +557,10 @@ Each release is named after a legendary era in the world of Etheria.
 | 0.0.2 | **Las Primeras Guerras** | Military & Warfare |
 | 0.0.3 | *La Forja de Armas* | Advanced Units & Gear |
 | 0.1.0 | **La Resistencia del Invierno** | Seasons & Barbarians |
+| 0.1.1 | **La Puerta de Etheria** | Public Web & Landing |
 | 0.2.0 | **El Mapa Viviente** | Live World & Smart Bots |
+| 0.2.1 | **El Taller de Colas** | Queue Workshop |
+| 0.2.2 | **El Mercado de los Reinos** | Market, Reports & Espionage |
 | 0.3.0 | *Las Ruinas Olvidadas* | Exploration & PvE |
 | 0.4.0 | *El Pacto de Sangre* | Diplomacy & Alliances |
 | 0.5.0 | *La Edad de los Héroes* | Heroes & Quests |
@@ -557,6 +568,3 @@ Each release is named after a legendary era in the world of Etheria.
 
 ---
 
-[unreleased]: https://github.com/yourusername/etheria/compare/v0.0.2...HEAD
-[0.0.2]: https://github.com/yourusername/etheria/releases/tag/v0.0.2
-[0.0.1]: https://github.com/yourusername/etheria/releases/tag/v0.0.1
