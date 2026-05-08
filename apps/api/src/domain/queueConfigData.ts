@@ -12,16 +12,17 @@ function readPositiveInt(name: string, fallback: number): number {
 }
 
 export function getCityQueueConfig(): CityQueueConfig {
+  const maxSlots = {
+    construction: readPositiveInt("CITY_QUEUE_CONSTRUCTION_MAX_SLOTS", 3),
+    training: readPositiveInt("CITY_QUEUE_TRAINING_MAX_SLOTS", 3),
+    research: readPositiveInt("CITY_QUEUE_RESEARCH_MAX_SLOTS", 3),
+  };
   return {
-    maxSlots: {
-      construction: readPositiveInt("CITY_QUEUE_CONSTRUCTION_MAX_SLOTS", 3),
-      training: readPositiveInt("CITY_QUEUE_TRAINING_MAX_SLOTS", 3),
-      research: readPositiveInt("CITY_QUEUE_RESEARCH_MAX_SLOTS", 3),
-    },
+    maxSlots,
     activeSlots: {
-      construction: readPositiveInt("CITY_QUEUE_CONSTRUCTION_ACTIVE_SLOTS", 1),
-      training: readPositiveInt("CITY_QUEUE_TRAINING_ACTIVE_SLOTS", 1),
-      research: readPositiveInt("CITY_QUEUE_RESEARCH_ACTIVE_SLOTS", 1),
+      construction: Math.min(maxSlots.construction, readPositiveInt("CITY_QUEUE_CONSTRUCTION_ACTIVE_SLOTS", 1)),
+      training: Math.min(maxSlots.training, readPositiveInt("CITY_QUEUE_TRAINING_ACTIVE_SLOTS", 1)),
+      research: Math.min(maxSlots.research, readPositiveInt("CITY_QUEUE_RESEARCH_ACTIVE_SLOTS", 1)),
     },
   };
 }

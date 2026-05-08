@@ -15,6 +15,9 @@ import {
   attackBarbarianCampAction,
 } from "./cityActions.js";
 import { sendResourcesAction } from "./tradeActions.js";
+import { createMarketOffer, acceptMarketOffer } from "./marketOffers.js";
+import { contributeAllianceObjective, ensureAllianceObjective } from "./allianceObjectives.js";
+import { scoutTarget } from "./scouting.js";
 import { appendBotErrorReport } from "./botErrorReports.js";
 import { generateCityName, generatePlayerName } from "./nameGenerator.js";
 import { createAllianceForUser, joinAlliance } from "./alliances.js";
@@ -116,7 +119,7 @@ async function loadBotSnapshot(bot: { cityId: string; userId: string; state: any
   const protectionCutoff = new Date(now.getTime() - config.newPlayerProtectionHours * 60 * 60 * 1000);
   const globalCooldownCutoff = new Date(now.getTime() - config.globalTargetCooldownMinutes * 60 * 1000);
 
-  const [cityRes, buildingsRes, unitsRes, cityTechsRes, buildQueuesRes, trainingQueuesRes, researchQueuesRes, battlesRes, targetsRes, barbarianCampsRes, recentGlobalBattlesRes, seasonRes, membershipRes, alliancesRes] = await Promise.all([
+  const [cityRes, buildingsRes, unitsRes, cityTechsRes, buildQueuesRes, trainingQueuesRes, researchQueuesRes, battlesRes, targetsRes, barbarianCampsRes, recentGlobalBattlesRes, seasonRes, membershipRes, alliancesRes, marketOffersRes] = await Promise.all([
     db.from(COLLECTIONS.CITIES).eq("id", bot.cityId).getFirst() as any,
     db.from(COLLECTIONS.BUILDINGS).eq("cityId", bot.cityId).get() as any,
     db.from(COLLECTIONS.UNITS).eq("cityId", bot.cityId).get() as any,
@@ -131,6 +134,7 @@ async function loadBotSnapshot(bot: { cityId: string; userId: string; state: any
     db.from(COLLECTIONS.WORLD_SEASON_STATE).getFirst() as any,
     db.from(COLLECTIONS.ALLIANCE_MEMBERS).eq("userId", bot.userId).getFirst() as any,
     db.from(COLLECTIONS.ALLIANCES).limit(100).get() as any,
+    db.from(COLLECTIONS.MARKET_OFFERS).eq("status", "OPEN").limit(100).get() as any,
   ]);
 
   if (!cityRes.data) throw new Error(`Bot city not found: ${bot.cityId}`);
@@ -163,6 +167,8 @@ async function loadBotSnapshot(bot: { cityId: string; userId: string; state: any
   const incomingAttacks = (recentGlobalBattlesRes.data ?? [])
     .filter((b: any) => b.defenderCityId === bot.cityId && new Date(b.startedAt) > globalCooldownCutoff);
 
+  const allianceObjective = membershipRes.data?.allianceId ? await ensureAllianceObjective(membershipRes.data.allianceId) : null;
+
   return {
     city: {
       ...cityRes.data,
@@ -183,6 +189,8 @@ async function loadBotSnapshot(bot: { cityId: string; userId: string; state: any
     activeResearchQueues: researchQueuesRes.data ?? [],
     allianceMembership: membershipRes.data ?? null,
     alliances: alliancesRes.data ?? [],
+    marketOffers: marketOffersRes.data ?? [],
+    allianceObjectives: allianceObjective ? [allianceObjective] : [],
     activeOutgoingBattles,
     targets: filteredTargets,
     barbarianCamps: (barbarianCampsRes.data ?? []).filter((camp: any) => {
@@ -246,6 +254,35 @@ async function executeDecision(bot: { id: string; userId: string; cityId: string
       actor,
     });
   }
+  if (decision.type === "CREATE_MARKET_OFFER") {
+    const result = await createMarketOffer(bot.userId, decision.payload);
+    if ("error" in result) throw new CityActionError(String(result.error), result.status ?? 400, { blockedBy: "market" });
+    return result;
+  }
+  if (decision.type === "ACCEPT_MARKET_OFFER") {
+    const result = await acceptMarketOffer(bot.userId, decision.payload.offerId, decision.payload.cityId);
+    if ("error" in result) throw new CityActionError(String(result.error), result.status ?? 400, { blockedBy: "market" });
+    return result;
+  }
+  if (decision.type === "CONTRIBUTE_ALLIANCE_OBJECTIVE") {
+    const membershipRes = await db.from(COLLECTIONS.ALLIANCE_MEMBERS).eq("userId", bot.userId).getFirst() as any;
+    const allianceId = membershipRes.data?.allianceId;
+    if (!allianceId) throw new CityActionError("No alliance", 404, { blockedBy: "social" });
+    const result = await contributeAllianceObjective({
+      userId: bot.userId,
+      allianceId,
+      objectiveId: decision.payload.objectiveId,
+      cityId: decision.payload.cityId,
+      resources: decision.payload.resources,
+    });
+    if ("error" in result) throw new CityActionError(String(result.error), result.status ?? 400, { blockedBy: "social" });
+    return result;
+  }
+  if (decision.type === "SCOUT_TARGET") {
+    const result = await scoutTarget(bot.userId, decision.payload);
+    if ("error" in result) throw new CityActionError(String(result.error), result.status ?? 400, { blockedBy: "scouting" });
+    return result;
+  }
   if (decision.type === "CREATE_ALLIANCE") {
     const identity = botAllianceIdentity(bot);
     const result = await createAllianceForUser({ userId: bot.userId, ...identity });
@@ -293,6 +330,28 @@ function updateStateAfterDecision(state: any, decision: BotDecision, now: Date) 
     return {
       ...next,
       lastSocialAt: now.toISOString(),
+    };
+  }
+  if (decision.type === "CREATE_MARKET_OFFER" || decision.type === "ACCEPT_MARKET_OFFER") {
+    return {
+      ...next,
+      lastMarketAt: now.toISOString(),
+    };
+  }
+  if (decision.type === "CONTRIBUTE_ALLIANCE_OBJECTIVE") {
+    return {
+      ...next,
+      lastAllianceContributionAt: now.toISOString(),
+    };
+  }
+  if (decision.type === "SCOUT_TARGET") {
+    return {
+      ...next,
+      lastScoutAt: now.toISOString(),
+      scoutedTargets: {
+        ...(current.scoutedTargets ?? {}),
+        [decision.payload.targetId]: now.toISOString(),
+      },
     };
   }
   if (decision.type !== "ATTACK_CITY") return next;

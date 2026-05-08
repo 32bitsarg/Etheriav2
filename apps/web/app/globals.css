@@ -996,14 +996,12 @@ h1, h2, h3, h4, .font-display, .font-serif {
 }
 
 @media (max-width: 860px) {
-  body {
-    overflow: auto;
-  }
+  body { overflow: hidden; }
 
   .village-shell {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
-    min-height: 100vh;
+    grid-template-rows: minmax(0, 1fr);
+    min-height: 100dvh;
   }
 
   .village-sidebar,
@@ -1019,14 +1017,29 @@ h1, h2, h3, h4, .font-display, .font-serif {
     min-height: unset;
   }
 
-  /* Mobile: sidebar becomes a horizontal icon bar */
+  .village-resource-header {
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    top: max(8px, env(safe-area-inset-top));
+  }
+
+  /* Mobile: sidebar becomes the primary bottom nav */
   .grepolis-sidebar {
+    position: fixed;
+    left: 50%;
+    right: auto;
+    top: auto;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
     min-height: unset;
+    max-height: none;
     flex-direction: row;
-    width: 100%;
-    border-right: none;
-    border-bottom: 1px solid rgba(160, 120, 40, 0.22);
+    width: calc(100vw - 16px);
+    max-width: 560px;
+    border-radius: 16px;
+    border: 1px solid rgba(215, 168, 76, 0.22);
     overflow-x: auto;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.48);
   }
 
   .grepolis-sidebar::after {
@@ -1041,8 +1054,9 @@ h1, h2, h3, h4, .font-display, .font-serif {
 
   .grepolis-sidebar__nav {
     flex-direction: row;
-    padding: 4px 4px;
-    gap: 2px;
+    justify-content: space-around;
+    padding: 6px;
+    gap: 4px;
     overflow-x: auto;
     overflow-y: hidden;
     flex: 1;
@@ -1051,46 +1065,44 @@ h1, h2, h3, h4, .font-display, .font-serif {
   .grepolis-nav-item {
     flex-direction: column;
     min-height: unset;
-    min-width: 44px;
+    min-width: 54px;
+    flex: 1 1 0;
     border-bottom: none;
-    border-right: 1px solid rgba(80, 55, 15, 0.22);
-    padding: 4px 2px;
-    gap: 2px;
+    border-right: none;
+    border-radius: 12px;
+    padding: 5px 4px 4px;
+    gap: 3px;
   }
 
-  .grepolis-nav-item.active::after {
-    top: 0;
-    left: 6px;
-    right: 6px;
-    bottom: unset;
-    width: unset;
-    height: 3px;
-    border-radius: 0 0 2px 2px;
-  }
-
-  .grepolis-nav-item__icon-wrap {
-    height: 36px;
-    flex: 0 0 36px;
-  }
-
-  .grepolis-nav-item__icon {
-    width: 32px;
-    height: 32px;
-    font-size: 15px;
-  }
-
-  .grepolis-nav-item__label {
+  .grepolis-nav-item.active::before {
     display: none;
   }
 
+  .grepolis-nav-item__icon-wrap {
+    height: 32px;
+    flex: 0 0 32px;
+  }
 
-  .village-topbar {
-    grid-row: 2;
+  .grepolis-nav-item__icon {
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
+  }
+
+  .grepolis-nav-item__label {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 8px;
+    line-height: 1;
+    white-space: nowrap;
   }
 
   .village-main {
-    grid-row: 3;
-    min-height: 520px;
+    grid-row: 1;
+    min-height: 100dvh;
+    padding-bottom: 86px;
   }
 
   .village-right-panel {
@@ -1126,6 +1138,25 @@ h1, h2, h3, h4, .font-display, .font-serif {
   .panel-span-8,
   .panel-span-12 {
     grid-column: span 1;
+  }
+}
+
+@media (max-width: 860px) and (orientation: landscape) {
+  .grepolis-sidebar {
+    width: min(620px, calc(100vw - 28px));
+    bottom: max(10px, env(safe-area-inset-bottom));
+  }
+
+  .grepolis-sidebar__nav {
+    justify-content: center;
+  }
+
+  .grepolis-nav-item {
+    flex: 0 0 68px;
+  }
+
+  .village-main {
+    padding-bottom: 76px;
   }
 }
 

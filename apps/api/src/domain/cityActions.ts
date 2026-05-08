@@ -25,6 +25,7 @@ import {
   getUnitStats,
 } from "./units.js";
 import { getCityQueueConfig, type CityQueueKind } from "./queueConfigData.js";
+import { advanceQuest } from "./quests.js";
 
 const genId = () => crypto.randomUUID();
 
@@ -214,6 +215,7 @@ export async function createBuildingAction(input: {
     upgradedAt: now,
   });
   await refreshCityStats(input.cityId);
+  await advanceQuest(input.cityId, "BUILD_OR_UPGRADE", 1);
 
   return {
     building: { id: buildingId, type: input.type, level: 1, positionX: input.positionX, positionY: input.positionY },
@@ -278,6 +280,7 @@ export async function upgradeBuildingAction(input: {
     completesAt: schedule.completesAt,
     isComplete: false,
   });
+  await advanceQuest(input.cityId, "BUILD_OR_UPGRADE", 1);
 
   return {
     success: true,
@@ -340,6 +343,7 @@ export async function trainUnitsAction(input: {
     completesAt: schedule.completesAt,
     isComplete: false,
   });
+  await advanceQuest(input.cityId, "TRAIN_UNITS", input.count);
 
   return {
     success: true,
@@ -410,6 +414,7 @@ export async function startResearchAction(input: {
     completesAt: schedule.completesAt,
     isComplete: false,
   });
+  await advanceQuest(input.cityId, "RESEARCH", 1);
 
   return {
     success: true,
@@ -532,6 +537,7 @@ export async function attackBarbarianCampAction(input: {
     arrivesAt,
     units: input.units.map((u) => ({ type: u.type, count: u.count })),
   });
+  await advanceQuest(input.attackerCityId, "ATTACK_BARBARIAN", 1);
 
   for (const unit of input.units) {
     const existing = attackerCity.units.find((u: any) => u.type === unit.type);

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { AllianceMembership, ChatChannel, ChatMessage, City, Building, BuildQueue, MailMessage, ResearchQueue, SendChatMessageRequest, SendMailMessageRequest, TrainingQueue, Unit, Resources, WorldSeasonState, WorldStateResponse, BarbarianCampMapItem, BarbarianCampDetail, WorldMovement } from "@etheria/shared";
+import type { AllianceMembership, ChatChannel, ChatMessage, City, Building, BuildQueue, MailMessage, ResearchQueue, SendChatMessageRequest, SendMailMessageRequest, TrainingQueue, Unit, Resources, WorldSeasonState, WorldStateResponse, BarbarianCampMapItem, BarbarianCampDetail, WorldMovement, GameReport, PlayerQuest, MarketOffer } from "@etheria/shared";
 import type { VillageLayoutData } from "@/lib/villageLayout";
 import type { WorldTerrainMaskData } from "@/lib/worldTerrainMask";
 import villageLayoutJson from "@/data/village-layout.json";
@@ -601,7 +601,8 @@ export function useActiveBattles(cityId: string | null) {
       return data.battles as ActiveBattle[];
     },
     enabled: !!cityId,
-    staleTime: 60_000,
+    staleTime: 15_000,
+    refetchInterval: 15_000,
     retry: 1,
   });
 }
@@ -657,10 +658,186 @@ export function useAllianceMembership() {
         diplomacy: any[];
         events: any[];
         effects: any[];
+        objectives: any[];
+        objectiveContributions: any[];
       };
     },
     enabled: !!matecito.auth.token,
     staleTime: 10_000,
+  });
+}
+
+export function useGameReports(enabled = true) {
+  return useQuery({
+    queryKey: ["game-reports"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/reports`, { headers: getAuthHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to fetch reports");
+      return { reports: data.reports as GameReport[], unreadCount: Number(data.unreadCount ?? 0) };
+    },
+    enabled: enabled && !!matecito.auth.token,
+    staleTime: 10_000,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useMarkGameReportRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (reportId: string) => {
+      const res = await fetch(`${API_BASE}/reports/${reportId}/read`, { method: "POST", headers: getAuthHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to mark report read");
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["game-reports"] }),
+  });
+}
+
+export function usePlayerQuests(cityId: string | null) {
+  return useQuery({
+    queryKey: ["quests", cityId],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/quests?cityId=${cityId}`, { headers: getAuthHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to fetch quests");
+      return data.quests as PlayerQuest[];
+    },
+    enabled: !!cityId && !!matecito.auth.token,
+    staleTime: 10_000,
+  });
+}
+
+export function useClaimQuest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (questId: string) => {
+      const res = await fetch(`${API_BASE}/quests/${questId}/claim`, { method: "POST", headers: getAuthHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to claim quest");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quests"] });
+      queryClient.invalidateQueries({ queryKey: ["city"] });
+      queryClient.invalidateQueries({ queryKey: ["game-reports"] });
+    },
+  });
+}
+
+export function useMarkMapOpened() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (cityId: string) => {
+      const res = await fetch(`${API_BASE}/quests/events/open-map`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ cityId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to update quest");
+      return data;
+    },
+    onSuccess: (_data, cityId) => queryClient.invalidateQueries({ queryKey: ["quests", cityId] }),
+  });
+}
+
+export function useMarketOffers() {
+  return useQuery({
+    queryKey: ["market", "offers"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/market/offers`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to fetch market offers");
+      return data.offers as MarketOffer[];
+    },
+    staleTime: 15_000,
+  });
+}
+
+export function useCreateMarketOffer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { cityId: string; giveResource: string; giveAmount: number; wantResource: string; wantAmount: number }) => {
+      const res = await fetch(`${API_BASE}/market/offers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to create offer");
+      return data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["market", "offers"] });
+      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+      queryClient.invalidateQueries({ queryKey: ["game-reports"] });
+    },
+  });
+}
+
+export function useAcceptMarketOffer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ offerId, cityId }: { offerId: string; cityId: string }) => {
+      const res = await fetch(`${API_BASE}/market/offers/${offerId}/accept`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ cityId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to accept offer");
+      return data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["market", "offers"] });
+      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+      queryClient.invalidateQueries({ queryKey: ["quests", variables.cityId] });
+      queryClient.invalidateQueries({ queryKey: ["game-reports"] });
+    },
+  });
+}
+
+export function useScoutTarget() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { cityId: string; targetType: "CITY" | "BARBARIAN_CAMP"; targetId: string }) => {
+      const res = await fetch(`${API_BASE}/world/scout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to scout");
+      return data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+      queryClient.invalidateQueries({ queryKey: ["game-reports"] });
+    },
+  });
+}
+
+export function useContributeAllianceObjective() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ objectiveId, cityId, resources }: { objectiveId: string; cityId: string; resources: Resources }) => {
+      const res = await fetch(`${API_BASE}/alliances/objectives/${objectiveId}/contribute`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ cityId, resources }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to contribute");
+      return data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["alliance", "me"] });
+      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+      queryClient.invalidateQueries({ queryKey: ["quests", variables.cityId] });
+      queryClient.invalidateQueries({ queryKey: ["game-reports"] });
+    },
   });
 }
 

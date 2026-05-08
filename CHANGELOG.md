@@ -9,6 +9,34 @@ Each release is named after a legendary era in the world of Etheria.
 
 ---
 
+## [Unreleased]
+
+### Added
+- **[CORE] Auditoria full game v1**
+  - Agregado reporte tecnico en `docs/audit-gameplay-v1.md` con estado de funciones actuales y propuestas nuevas priorizadas.
+  - Ampliada la cobertura de tests de dominio para recursos, colas configurables, terreno del mundo y decision engine de bots.
+- **[GAMEPLAY] Features V1 jugables**
+  - Agregado centro unificado de reportes (`game_reports`) con endpoints `GET /reports` y `POST /reports/:id/read`, contador de no leidos y panel en `/play`.
+  - Agregadas misiones iniciales (`player_quests`) con progreso por ciudad, claim de recompensas configuradas y reportes al completar.
+  - Agregado mercado publico (`market_offers`) con crear/aceptar ofertas, requisito de `MARKET`, tarifa configurable y movimiento server-authoritative de recursos.
+  - Agregado scouting con `SPY` sobre objetivos ya seleccionables; genera reportes `SPY_INTEL` con estimaciones sin revelar fog ni modificar visibilidad del mapa.
+  - Agregados objetivos vivos de alianza con contribuciones de recursos, progreso visible y efecto temporal al completarse.
+  - Extendida la persistencia dual MatecitoDB/PostgreSQL con colecciones, modelos Prisma y mapping en `postgresCompat`.
+- **[UI] Reubicacion de gameplay V1**
+  - Los reportes ahora se consultan desde el modal de mensajes, compartiendo badge de no leidos con el correo.
+  - El mercado se abre desde el edificio `MARKET` en vez del sidebar.
+  - Los campamentos barbaros pueden espiarse desde su modal y generan reportes sin revelar niebla.
+- **[BOTS] Personalidades V2**
+  - Los bots pueden crear/aceptar ofertas de mercado, contribuir a objetivos de alianza y hacer scouting usando servicios reales.
+  - Las misiones iniciales salen de config de dominio para permitir balance y nuevas misiones futuras.
+- **[WORLD] Reportes de temporada**
+  - El worker de temporada emite reportes de sistema al cambiar estacion o fase, con impacto visible en el HUD.
+
+### Fixed
+- **[CORE] Robustez de recursos y colas**
+  - La produccion pasiva ya no reduce recursos si `lastResourceUpdate` queda por delante del tiempo actual.
+  - Los slots activos de colas configurables quedan limitados por el maximo de slots aunque el `.env` tenga valores inconsistentes.
+
 ## [0.2.1] - El Taller de Colas - 2026-05-07
 
 ### Added

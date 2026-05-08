@@ -1,12 +1,23 @@
 import { create } from "zustand";
 
 export type ToastType = "success" | "error" | "info" | "warning";
+export type ToastIcon =
+  | "mail"
+  | "report"
+  | "battle"
+  | "barbarian"
+  | "alliance"
+  | "market"
+  | "quest"
+  | "spy"
+  | "season";
 
 export interface Toast {
   id: string;
   type: ToastType;
   title: string;
   message?: string;
+  icon?: ToastIcon;
   duration?: number;
 }
 

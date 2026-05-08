@@ -7,10 +7,11 @@ import { BUILDING_INFO, BUILDING_NAMES, BUILDING_SIZES, MAX_BUILDING_LEVEL, getU
 import { BuildingSprite } from "@/components/village/BuildingIcon";
 import { VillageCanvas } from "@/components/village/VillageCanvas";
 import { ResourceIconSVG } from "@/components/village/ResourceIconSVG";
-import { useAllCities, useAllianceMembership, useBarbarianCamps, useBreakTreaty, useCancelBuildQueue, useCancelResearchQueue, useCancelTrainingQueue, useCityRanking, useCreateAlliance, useDisbandAlliance, useJoinAlliance, useKickAllianceMember, useLeaveAlliance, useMailMessages, useMarkMailRead, useProposePeace, useRenameCity, useResearchTech, useSendMailMessage, useTechs, useTrainUnits, useTransferAllianceLeadership, useUpdateAlliance, useUpdateAllianceMemberRole, useUpgradeBuilding, useVillageLayout, useWorldMap, useWorldMovements, useWorldSeason } from "@/hooks/useCity";
+import { useAcceptMarketOffer, useAllCities, useAllianceMembership, useBarbarianCamps, useBreakTreaty, useCancelBuildQueue, useCancelResearchQueue, useCancelTrainingQueue, useCityRanking, useClaimQuest, useContributeAllianceObjective, useCreateAlliance, useCreateMarketOffer, useDisbandAlliance, useGameReports, useJoinAlliance, useKickAllianceMember, useLeaveAlliance, useMailMessages, useMarkGameReportRead, useMarkMailRead, useMarkMapOpened, useMarketOffers, usePlayerQuests, useProposePeace, useRenameCity, useResearchTech, useScoutTarget, useSendMailMessage, useTechs, useTrainUnits, useTransferAllianceLeadership, useUpdateAlliance, useUpdateAllianceMemberRole, useUpgradeBuilding, useVillageLayout, useWorldMap, useWorldMovements, useWorldSeason } from "@/hooks/useCity";
 import { WorldMapCanvas } from "@/components/worldmap/WorldMapCanvas";
 import { BarbarianAttackAlertBanner } from "@/components/barbarians/BarbarianAttackAlertBanner";
 import { WinterPressureBanner } from "@/components/barbarians/WinterPressureBanner";
+import { BarbarianCampModal } from "@/components/barbarians/BarbarianCampModal";
 import { ResourceBar } from "@/components/ui/ResourceBar";
 import { SettingsModal } from "@/components/village/SettingsModal";
 import { useState, useMemo, useCallback, useEffect, useRef, type ReactNode } from "react";
@@ -31,6 +32,7 @@ export function VillageView() {
   const [upgradingBuildingId, setUpgradingBuildingId] = useState<string | null>(null);
   const [isMailOpen, setIsMailOpen] = useState(false);
   const [isAllianceOpen, setIsAllianceOpen] = useState(false);
+  const [isQuestsOpen, setIsQuestsOpen] = useState(false);
   const [isRankingOpen, setIsRankingOpen] = useState(false);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -59,6 +61,7 @@ export function VillageView() {
   const researchTech = useResearchTech();
   const { data: techOptionsData } = useTechs(cityId);
   const { data: mailData } = useMailMessages(true);
+  const { data: reportsData } = useGameReports(true);
   const { data: allianceData } = useAllianceMembership();
 
   const resources = getLiveResources();
@@ -159,7 +162,7 @@ export function VillageView() {
     <div className="village-shell relative z-10 grid h-screen w-screen overflow-hidden">
       <BarbarianAttackAlertBanner />
       <WinterPressureBanner />
-      <header className="pointer-events-none absolute left-[calc(var(--sidebar-width)+12px)] right-3 top-2 z-50">
+      <header className="village-resource-header pointer-events-none absolute left-[calc(var(--sidebar-width)+12px)] right-3 top-2 z-50">
         <ResourceBar />
       </header>
       <aside className="grepolis-sidebar village-sidebar">
@@ -183,9 +186,13 @@ export function VillageView() {
           <button onClick={() => setIsMailOpen(true)} className="grepolis-nav-item">
             <span className="grepolis-nav-item__icon-wrap">
               <span className="grepolis-nav-item__icon">📜</span>
-              {(mailData?.unreadCount ?? 0) > 0 && <span className="grepolis-nav-item__badge">{mailData?.unreadCount}</span>}
+              {((mailData?.unreadCount ?? 0) + (reportsData?.unreadCount ?? 0)) > 0 && <span className="grepolis-nav-item__badge">{(mailData?.unreadCount ?? 0) + (reportsData?.unreadCount ?? 0)}</span>}
             </span>
             <span className="grepolis-nav-item__label">{t("play.sidebar.mail")}</span>
+          </button>
+          <button onClick={() => setIsQuestsOpen(true)} className="grepolis-nav-item">
+            <span className="grepolis-nav-item__icon-wrap"><span className="grepolis-nav-item__icon">?</span></span>
+            <span className="grepolis-nav-item__label">{t("play.quests.title")}</span>
           </button>
           <button onClick={() => setIsAllianceOpen(true)} className="grepolis-nav-item">
             <span className="grepolis-nav-item__icon-wrap"><span className="grepolis-nav-item__icon">🛡️</span></span>
@@ -199,7 +206,7 @@ export function VillageView() {
         </nav>
       </aside>
 
-      <main className={isFullscreenView ? "absolute top-0 bottom-0 z-10 min-w-0 min-h-0 overflow-hidden" : "village-main col-start-2 row-start-2 min-w-0 min-h-0 overflow-hidden p-2.5"} style={isFullscreenView ? { left: 0, right: 0 } : undefined}>
+      <main className={isFullscreenView ? "village-main absolute top-0 bottom-0 z-10 min-w-0 min-h-0 overflow-hidden" : "village-main col-start-2 row-start-2 min-w-0 min-h-0 overflow-hidden p-2.5"} style={isFullscreenView ? { left: 0, right: 0 } : undefined}>
         {activeView === "pueblo" && (
           <PuebloView
             buildings={uniqueBuildings}
@@ -254,10 +261,12 @@ export function VillageView() {
       />
       )}
       {isMailOpen && <MailModal onClose={() => setIsMailOpen(false)} t={t} />}
+      {isQuestsOpen && <QuestsModal cityId={cityId} onClose={() => setIsQuestsOpen(false)} t={t} />}
       {isAllianceOpen && <AllianceModal onClose={() => setIsAllianceOpen(false)} t={t} />}
       {isRankingOpen && <RankingModal myCityId={cityId} onClose={() => setIsRankingOpen(false)} t={t} />}
       {isRenameOpen && <RenameCityModal cityId={cityId} currentName={cityName} onClose={() => setIsRenameOpen(false)} t={t} />}
       {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
+      <BarbarianCampModal />
     </div>
   );
 }
@@ -486,7 +495,11 @@ function MapaView({ cityName, resources, storage, production, allianceData, onRe
   const [isEntering, setIsEntering] = useState(false);
 
   const myCityId = useGameStore((s) => s.cityId);
+  const setSelectedCamp = useGameStore((s) => s.setSelectedCamp);
+  const setShowCampModal = useGameStore((s) => s.setShowCampModal);
   const addToast = useToastStore((s) => s.addToast);
+  const scoutTarget = useScoutTarget();
+  const markMapOpened = useMarkMapOpened();
   const selectedCity = cities?.find((city) => city.id === selectedCityId) ?? null;
   const isOwnCity = selectedCityId != null && selectedCityId === myCityId;
 
@@ -498,6 +511,10 @@ function MapaView({ cityName, resources, storage, production, allianceData, onRe
       setSelectedCityId(null);
     }, 520);
   };
+
+  useEffect(() => {
+    if (myCityId) markMapOpened.mutate(myCityId);
+  }, [myCityId]);
 
   return (
     <div className="relative h-full overflow-hidden">
@@ -521,6 +538,10 @@ function MapaView({ cityName, resources, storage, production, allianceData, onRe
             const evt = new CustomEvent("etheria:center-my-city");
             window.dispatchEvent(evt);
           }}
+          onSelectCamp={(camp) => {
+            setSelectedCamp(camp as any);
+            setShowCampModal(true);
+          }}
         />
       </div>
       {selectedCity && (
@@ -532,7 +553,16 @@ function MapaView({ cityName, resources, storage, production, allianceData, onRe
           onClose={() => setSelectedCityId(null)}
           onEnter={enterVillage}
           onAttack={() => addToast({ type: "info", title: t("play.battle.title"), message: t("play.battle.selectTroops") })}
-          onSpy={() => addToast({ type: "info", title: t("play.espionage.title"), message: t("play.espionage.pending") })}
+          onSpy={() => {
+            if (!myCityId || !selectedCityId) return;
+            scoutTarget.mutate(
+              { cityId: myCityId, targetType: "CITY", targetId: selectedCityId },
+              {
+                onSuccess: () => addToast({ type: "success", title: t("play.espionage.title"), message: t("play.espionage.reportCreated") }),
+                onError: (error) => addToast({ type: "error", title: t("play.espionage.title"), message: error.message }),
+              }
+            );
+          }}
         />
       )}
     </div>
@@ -617,18 +647,20 @@ function resolveNonOverlappingBuildings<T extends { id: string; type: BuildingTy
 /* ─── Mail Modal ─── */
 function MailModal({ onClose, t }: { onClose: () => void; t: (key: string) => string }) {
   const { data: mailData, isLoading } = useMailMessages();
+  const { data: reportsData, isLoading: reportsLoading } = useGameReports();
   const markRead = useMarkReadMail();
+  const markReportRead = useMarkGameReportRead();
   const sendMail = useSendMailMessage();
   const addToast = useToastStore((s) => s.addToast);
   const { data: allCities } = useAllCities();
   
-  const [tab, setTab] = useState<"inbox" | "sent" | "compose">("inbox");
+  const [tab, setTab] = useState<"inbox" | "sent" | "reports" | "compose">("inbox");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [recipientCityId, setRecipientCityId] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
 
-  const messages = tab === "inbox" ? mailData?.inbox ?? [] : mailData?.sent ?? [];
+  const messages = tab === "inbox" ? mailData?.inbox ?? [] : tab === "sent" ? mailData?.sent ?? [] : [];
   const selected = messages.find((m: any) => m.id === selectedId);
   const recipients = (allCities ?? []).filter((c: any) => c.id !== useGameStore.getState().cityId);
 
@@ -659,13 +691,22 @@ function MailModal({ onClose, t }: { onClose: () => void; t: (key: string) => st
         <aside className="border-r border-white/5 p-4 overflow-y-auto">
           <div className="font-serif text-lg text-etheria-gold-soft mb-4 uppercase tracking-widest">{t("play.mail.title")}</div>
           <div className="flex gap-1 mb-4">
-            {["inbox", "sent", "compose"].map((tId) => (
+            {["inbox", "sent", "reports", "compose"].map((tId) => (
               <button key={tId} onClick={() => setTab(tId as any)} className={`flex-1 text-[10px] py-1.5 rounded-full border transition-colors ${tab === tId ? "border-etheria-gold bg-etheria-gold/10 text-etheria-gold" : "border-white/10 text-white/40 hover:text-white"}`}>
                 {t(`play.mail.${tId}`)}
               </button>
             ))}
           </div>
           <div className="space-y-1.5">
+            {tab === "reports" && (reportsData?.reports ?? []).map((report: any) => (
+              <button key={report.id} onClick={() => !report.readAt && markReportRead.mutate(report.id)} className="w-full rounded-xl border border-transparent p-3 text-left transition-all hover:bg-white/5">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <span className="truncate font-serif text-xs text-white">{report.title}</span>
+                  {!report.readAt && <span className="h-2 w-2 rounded-full bg-etheria-gold" />}
+                </div>
+                <div className="text-[10px] uppercase tracking-widest text-etheria-gold-soft/50">{report.type}</div>
+              </button>
+            ))}
             {tab !== "compose" && messages.map((m: any) => (
               <button key={m.id} onClick={() => setSelectedId(m.id)} className={`w-full text-left p-3 rounded-xl border transition-all ${selectedId === m.id ? "border-etheria-gold/40 bg-etheria-gold/5" : "border-transparent hover:bg-white/5"}`}>
                 <div className="flex items-center justify-between mb-1">
@@ -678,7 +719,31 @@ function MailModal({ onClose, t }: { onClose: () => void; t: (key: string) => st
           </div>
         </aside>
         <main className="p-6 overflow-y-auto">
-          {tab === "compose" ? (
+          {tab === "reports" ? (
+            <div>
+              <div className="mb-4 font-serif text-2xl text-etheria-gold-soft">{t("play.reports.title")}</div>
+              <div className="space-y-3">
+                {reportsLoading && <div className="text-sm text-white/40">{t("play.reports.loading")}</div>}
+                {(reportsData?.reports ?? []).length === 0 && !reportsLoading && <div className="text-sm text-white/40">{t("play.reports.empty")}</div>}
+                {(reportsData?.reports ?? []).map((report: any) => (
+                  <article key={report.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-widest text-etheria-gold-soft/60">{report.type}</div>
+                        <h3 className="mt-1 font-serif text-lg text-white">{report.title}</h3>
+                        <p className="mt-1 text-sm text-white/60">{report.summary}</p>
+                        <div className="mt-2 text-[11px] text-white/35">{new Date(report.createdAt).toLocaleString()}</div>
+                        {report.payload && Object.keys(report.payload).length > 0 && (
+                          <pre className="mt-3 max-h-36 overflow-auto rounded-lg bg-black/35 p-3 text-[11px] text-white/55">{JSON.stringify(report.payload, null, 2)}</pre>
+                        )}
+                      </div>
+                      {!report.readAt && <button onClick={() => markReportRead.mutate(report.id)} className="rounded-lg border border-etheria-gold/40 px-3 py-2 text-xs text-etheria-gold-soft">{t("play.reports.markRead")}</button>}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : tab === "compose" ? (
             <div className="max-w-md mx-auto space-y-4">
                <select value={recipientCityId} onChange={(e) => setRecipientCityId(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-white">
                  <option value="">{t("play.mail.selectRecipient")}</option>
@@ -748,6 +813,8 @@ function BuildingModal({ building, resources, onUpgrade, onTrain, onResearch, is
 
   const showTraining = building.type === "BARRACKS" || building.type === "STABLE";
   const showResearch = building.type === "ACADEMY";
+  const showMarket = building.type === "MARKET";
+  const cityId = useGameStore((s) => s.cityId);
 
   return (
     <div className="fixed inset-0 z-[80] grid place-items-center bg-black/75 backdrop-blur-md p-4" onClick={onClose}>
@@ -798,6 +865,12 @@ function BuildingModal({ building, resources, onUpgrade, onTrain, onResearch, is
             
             {showResearch && (
                <ResearchSection cityTechs={cityTechs} activeResearch={activeResearch} techOptions={techOptions} resources={resources} onResearch={onResearch} t={t} />
+            )}
+
+            {showMarket && (
+              <section className="rounded-3xl border border-white/5 bg-white/5">
+                <MarketPanel cityId={cityId} t={t} />
+              </section>
             )}
           </div>
         </div>
@@ -875,6 +948,115 @@ function RenameCityModal({ cityId, currentName, onClose, t }: any) {
   );
 }
 
+function ReportsModal({ onClose, t }: any) {
+  const { data, isLoading } = useGameReports(true);
+  const markRead = useMarkGameReportRead();
+  return (
+    <div className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="max-h-[84vh] w-full max-w-3xl overflow-hidden rounded-2xl border border-etheria-border bg-[#0b1111]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-white/5 p-5">
+          <h2 className="font-serif text-2xl text-etheria-gold-soft">{t("play.reports.title")}</h2>
+          <button onClick={onClose} className="text-white/45 hover:text-white">{t("play.building.close")}</button>
+        </div>
+        <div className="max-h-[calc(84vh-74px)] space-y-3 overflow-y-auto p-5">
+          {isLoading && <div className="text-sm text-white/45">{t("play.reports.loading")}</div>}
+          {(data?.reports ?? []).length === 0 && !isLoading && <div className="text-sm text-white/45">{t("play.reports.empty")}</div>}
+          {(data?.reports ?? []).map((report) => (
+            <div key={report.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-etheria-gold-soft/60">{report.type}</div>
+                  <div className="font-serif text-lg text-white">{report.title}</div>
+                  <div className="mt-1 text-sm text-white/55">{report.summary}</div>
+                  <div className="mt-2 text-[11px] text-white/35">{new Date(report.createdAt).toLocaleString()}</div>
+                </div>
+                {!report.readAt && <button onClick={() => markRead.mutate(report.id)} className="rounded-lg border border-etheria-gold/40 px-3 py-2 text-xs text-etheria-gold-soft">{t("play.reports.markRead")}</button>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuestsModal({ cityId, onClose, t }: any) {
+  const { data: quests } = usePlayerQuests(cityId);
+  const claim = useClaimQuest();
+  return (
+    <div className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="max-h-[84vh] w-full max-w-3xl overflow-hidden rounded-2xl border border-etheria-border bg-[#0b1111]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-white/5 p-5">
+          <h2 className="font-serif text-2xl text-etheria-gold-soft">{t("play.quests.title")}</h2>
+          <button onClick={onClose} className="text-white/45 hover:text-white">{t("play.building.close")}</button>
+        </div>
+        <div className="grid gap-3 p-5 md:grid-cols-2">
+          {(quests ?? []).map((quest) => (
+            <div key={quest.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+              <div className="font-serif text-lg text-white">{t(quest.titleKey)}</div>
+              <div className="mt-1 text-sm text-white/55">{t(quest.summaryKey)}</div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/40">
+                <div className="h-full bg-etheria-gold" style={{ width: `${Math.min(100, (quest.progress / quest.target) * 100)}%` }} />
+              </div>
+              <div className="mt-2 text-xs text-white/45">{quest.progress}/{quest.target}</div>
+              <button disabled={quest.status !== "CLAIMABLE" || claim.isPending} onClick={() => claim.mutate(quest.id)} className="mt-3 w-full rounded-xl bg-etheria-gold px-4 py-2 text-sm font-bold text-black disabled:opacity-30">{quest.status === "CLAIMED" ? t("play.quests.claimed") : t("play.quests.claim")}</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MarketModal({ cityId, onClose, t }: any) {
+  return (
+    <div className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="max-h-[88vh] w-full max-w-4xl overflow-hidden rounded-2xl border border-etheria-border bg-[#0b1111]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-white/5 p-5">
+          <h2 className="font-serif text-2xl text-etheria-gold-soft">{t("play.market.title")}</h2>
+          <button onClick={onClose} className="text-white/45 hover:text-white">{t("play.building.close")}</button>
+        </div>
+        <MarketPanel cityId={cityId} t={t} />
+      </div>
+    </div>
+  );
+}
+
+function MarketPanel({ cityId, t }: any) {
+  const { data: offers } = useMarketOffers();
+  const createOffer = useCreateMarketOffer();
+  const acceptOffer = useAcceptMarketOffer();
+  const [giveResource, setGiveResource] = useState("wood");
+  const [wantResource, setWantResource] = useState("stone");
+  const [giveAmount, setGiveAmount] = useState(100);
+  const [wantAmount, setWantAmount] = useState(100);
+  const resourceOptions = ["gold", "wood", "stone", "food"];
+  return (
+        <div className="grid max-h-[calc(88vh-74px)] gap-5 overflow-y-auto p-5 lg:grid-cols-[320px_1fr]">
+          <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <h3 className="font-serif text-lg text-white">{t("play.market.create")}</h3>
+            <select value={giveResource} onChange={(e) => setGiveResource(e.target.value)} className="mt-3 w-full rounded-lg border border-white/10 bg-black/35 p-2 text-sm text-white">{resourceOptions.map((r) => <option key={r} value={r}>{t(`play.resources.${r}`)}</option>)}</select>
+            <input type="number" min={1} value={giveAmount} onChange={(e) => setGiveAmount(Number(e.target.value))} className="mt-2 w-full rounded-lg border border-white/10 bg-black/35 p-2 text-sm text-white" />
+            <select value={wantResource} onChange={(e) => setWantResource(e.target.value)} className="mt-3 w-full rounded-lg border border-white/10 bg-black/35 p-2 text-sm text-white">{resourceOptions.map((r) => <option key={r} value={r}>{t(`play.resources.${r}`)}</option>)}</select>
+            <input type="number" min={1} value={wantAmount} onChange={(e) => setWantAmount(Number(e.target.value))} className="mt-2 w-full rounded-lg border border-white/10 bg-black/35 p-2 text-sm text-white" />
+            <button disabled={!cityId || createOffer.isPending} onClick={() => cityId && createOffer.mutate({ cityId, giveResource, giveAmount, wantResource, wantAmount })} className="mt-4 w-full rounded-xl bg-etheria-gold py-3 text-sm font-bold text-black disabled:opacity-30">{t("play.market.publish")}</button>
+          </section>
+          <section className="space-y-3">
+            {(offers ?? []).map((offer) => (
+              <div key={offer.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="text-sm text-white/75">
+                  <span className="text-etheria-gold-soft">{offer.giveAmount} {t(`play.resources.${offer.giveResource}`)}</span>
+                  {" "}{t("play.market.for")}{" "}
+                  <span className="text-etheria-gold-soft">{offer.wantAmount} {t(`play.resources.${offer.wantResource}`)}</span>
+                </div>
+                <button disabled={!cityId || offer.creatorCityId === cityId || acceptOffer.isPending} onClick={() => cityId && acceptOffer.mutate({ offerId: offer.id, cityId })} className="rounded-lg border border-etheria-gold/40 px-3 py-2 text-xs text-etheria-gold-soft disabled:opacity-30">{t("play.market.accept")}</button>
+              </div>
+            ))}
+          </section>
+        </div>
+  );
+}
+
 function AllianceModal({ onClose, t }: any) {
   const { data, isLoading } = useAllianceMembership();
   const createAlliance = useCreateAlliance();
@@ -887,6 +1069,8 @@ function AllianceModal({ onClose, t }: any) {
   const kickMember = useKickAllianceMember();
   const transferLeadership = useTransferAllianceLeadership();
   const updateRole = useUpdateAllianceMemberRole();
+  const contributeObjective = useContributeAllianceObjective();
+  const cityId = useGameStore((s) => s.cityId);
   const addToast = useToastStore((s) => s.addToast);
   const [name, setName] = useState("");
   const [tag, setTag] = useState("");
@@ -1022,6 +1206,21 @@ function AllianceModal({ onClose, t }: any) {
                   <div className="mt-3 space-y-2 text-xs text-white/55">
                     {(data.effects ?? []).map((effect: any) => <div key={effect.id} className="rounded-lg bg-black/25 p-2">{effect.reason ?? effect.type} {Number(effect.value ?? 0) * 100}%</div>)}
                     {(data.effects ?? []).length === 0 && <div>{t("play.alliance.empty")}</div>}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                  <h3 className="font-serif text-lg text-white">{t("play.alliance.objectives")}</h3>
+                  <div className="mt-3 space-y-2 text-xs text-white/55">
+                    {(data.objectives ?? []).map((objective: any) => (
+                      <div key={objective.id} className="rounded-lg bg-black/25 p-3">
+                        <div className="font-serif text-sm text-white">{objective.title}</div>
+                        <div className="mt-1">{objective.summary}</div>
+                        <div className="mt-2 text-white/45">{Object.entries(objective.progress ?? {}).map(([key, value]) => `${t(`play.resources.${key}`)} ${value}/${objective.target?.[key] ?? 0}`).join(" · ")}</div>
+                        <button disabled={!cityId || objective.status !== "ACTIVE" || contributeObjective.isPending} onClick={() => cityId && contributeObjective.mutate({ objectiveId: objective.id, cityId, resources: { gold: 50, wood: 50, stone: 50, food: 50, gems: 0 } })} className="mt-3 rounded-lg border border-etheria-gold/40 px-3 py-2 text-xs text-etheria-gold-soft disabled:opacity-30">{t("play.alliance.contribute")}</button>
+                      </div>
+                    ))}
+                    {(data.objectives ?? []).length === 0 && <div>{t("play.alliance.empty")}</div>}
                   </div>
                 </div>
 

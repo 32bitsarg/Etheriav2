@@ -124,6 +124,7 @@ model City {
   trainingQueues TrainingQueue[]
   researchQueues ResearchQueue[]
   cityTechs      CityTech[]
+  quests         PlayerQuest[]
 
   @@index([userId])
   @@index([posX, posY])
@@ -614,6 +615,10 @@ enum BotActionType {
   ATTACK_CITY
   ATTACK_BARBARIAN
   SEND_RESOURCES
+  CREATE_MARKET_OFFER
+  ACCEPT_MARKET_OFFER
+  CONTRIBUTE_ALLIANCE_OBJECTIVE
+  SCOUT_TARGET
   IDLE
 }
 
@@ -638,4 +643,98 @@ model TradeCaravan {
   @@index([recipientCityId])
   @@index([status, arrivesAt])
   @@map("trade_caravans")
+}
+
+model GameReport {
+  id        String   @id
+  type      String
+  userId    String
+  cityId    String?
+  title     String
+  summary   String
+  payload   Json
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, readAt, createdAt])
+  @@index([cityId, createdAt])
+  @@map("game_reports")
+}
+
+model PlayerQuest {
+  id        String   @id
+  userId    String
+  cityId    String
+  questId   String
+  type      String
+  titleKey  String
+  summaryKey String
+  target    Int
+  progress  Int      @default(0)
+  reward    Json
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  claimedAt DateTime?
+
+  city City @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@unique([cityId, questId])
+  @@index([userId, status])
+  @@map("player_quests")
+}
+
+model MarketOffer {
+  id               String   @id
+  creatorUserId    String
+  creatorCityId    String
+  giveResource     String
+  giveAmount       Int
+  wantResource     String
+  wantAmount       Int
+  feeRate          Float
+  status           String   @default("OPEN")
+  acceptedByUserId String?
+  acceptedByCityId String?
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+  acceptedAt       DateTime?
+
+  @@index([status, expiresAt])
+  @@index([creatorCityId])
+  @@map("market_offers")
+}
+
+model AllianceObjective {
+  id           String   @id
+  allianceId   String
+  title        String
+  summary      String
+  target       Json
+  progress     Json
+  rewardEffect Json
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+  completedAt  DateTime?
+
+  contributions AllianceObjectiveContribution[]
+
+  @@index([allianceId, status])
+  @@map("alliance_objectives")
+}
+
+model AllianceObjectiveContribution {
+  id          String   @id
+  objectiveId String
+  allianceId  String
+  userId      String
+  cityId      String
+  resources   Json
+  createdAt   DateTime @default(now())
+
+  objective AllianceObjective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+
+  @@index([objectiveId, userId])
+  @@map("alliance_objective_contributions")
 }

@@ -15,15 +15,24 @@ import {
   ZONE_WINTER_INTENSITY,
 } from '../domain/winterPressure.js';
 import { AttackBarbarianRequestSchema } from '@etheria/shared';
+import { ScoutTargetRequestSchema } from '@etheria/shared';
+import { requireMatecitoAuth } from '../infrastructure/authMiddleware.js';
 import { calculatePathSpeedMultiplier } from '../domain/worldTerrainConfigData.js';
 import { repairWorldEntityPlacements } from '../domain/worldTerrainRepair.js';
 import { getUnitStats } from '../domain/units.js';
 import { calculateTechBonuses } from '../domain/techs.js';
 import { calculateEffectiveProduction } from '../domain/production.js';
+import { scoutTarget } from '../domain/scouting.js';
 
 const genId = () => crypto.randomUUID();
 
 export const worldRouter = new Hono();
+
+worldRouter.post('/scout', requireMatecitoAuth(), zValidator('json', ScoutTargetRequestSchema), async (c) => {
+  const result = await scoutTarget(c.get('userId'), c.req.valid('json'));
+  if ('error' in result) return c.json({ error: result.error }, result.status as any);
+  return c.json(result);
+});
 
 // ─── GET /world/season ───
 

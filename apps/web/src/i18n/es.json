@@ -705,6 +705,7 @@
       "unread": "sin leer",
       "inbox": "Bandeja",
       "sent": "Enviados",
+      "reports": "Reportes",
       "new": "Nuevo",
       "loading": "Cargando...",
       "empty": "Sin mensajes.",
@@ -745,6 +746,8 @@
       "noDate": "sin fecha",
       "publicHistory": "Historia Pública",
       "activeEffects": "Efectos Activos",
+      "objectives": "Objetivos",
+      "contribute": "Aportar 50 de cada",
       "empty": "No hay registros activos.",
       "leave": "Salir",
       "disband": "Disolver",
@@ -813,9 +816,35 @@
       "cancel": "Cancelar",
       "cancelWithRefund": "Cancelar · reintegro"
     },
+    "reports": {
+      "title": "Reportes",
+      "loading": "Cargando reportes...",
+      "empty": "Sin reportes.",
+      "markRead": "Marcar leido"
+    },
+    "quests": {
+      "title": "Misiones",
+      "claim": "Reclamar",
+      "claimed": "Reclamada",
+      "upgrade": { "title": "Primeras mejoras", "summary": "Construye o mejora un edificio." },
+      "train": { "title": "Guardia inicial", "summary": "Entrena tus primeras unidades." },
+      "research": { "title": "Saber basico", "summary": "Inicia una investigacion." },
+      "map": { "title": "Mirar el mundo", "summary": "Abre el mapa mundial." },
+      "trade": { "title": "Intercambio", "summary": "Envia comercio o acepta una oferta." },
+      "alliance": { "title": "Vida de alianza", "summary": "Usa una accion de alianza." },
+      "barbarian": { "title": "Primer campamento", "summary": "Ataca un campamento barbaro." }
+    },
+    "market": {
+      "title": "Mercado",
+      "create": "Crear oferta",
+      "publish": "Publicar",
+      "accept": "Aceptar",
+      "for": "por"
+    },
     "espionage": {
       "title": "Espionaje",
-      "pending": "Espionaje pendiente de implementar."
+      "pending": "Espionaje pendiente de implementar.",
+      "reportCreated": "Reporte de inteligencia creado sin revelar niebla."
     },
     "building": {
       "close": "Cerrar",
@@ -866,6 +895,14 @@
       "title": "Entrenar",
       "ready": "Listas",
       "train": "Entrenar"
+    },
+    "notifications": {
+      "mailTitle": "Nuevo mensaje",
+      "incomingAttackTitle": "Ataque entrante",
+      "barbarianAttackTitle": "Campamento en marcha",
+      "allianceTitle": "Alianza",
+      "allianceUpdate": "Hay una novedad de alianza.",
+      "arrivesIn": "Llega en"
     },
     "toasts": {
       "upgradeStarted": "Mejora iniciada",

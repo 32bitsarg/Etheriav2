@@ -25,7 +25,7 @@ export function calculateResources(
   lastUpdate: Date,
   now: Date = new Date()
 ): Resources {
-  const hoursElapsed = (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60);
+  const hoursElapsed = Math.max(0, (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60));
 
   return {
     gold: Math.min(caps.maxGold, Math.floor(current.gold + rates.goldPerHour * hoursElapsed)),
@@ -68,10 +68,10 @@ export function addResources(current: Resources, amount: Resources): Resources {
 
 export function clampResources(resources: Resources, caps: StorageCaps): Resources {
   return {
-    gold: Math.min(caps.maxGold, resources.gold),
-    wood: Math.min(caps.maxWood, resources.wood),
-    stone: Math.min(caps.maxStone, resources.stone),
-    food: Math.min(caps.maxFood, resources.food),
-    gems: resources.gems,
+    gold: Math.max(0, Math.min(caps.maxGold, resources.gold)),
+    wood: Math.max(0, Math.min(caps.maxWood, resources.wood)),
+    stone: Math.max(0, Math.min(caps.maxStone, resources.stone)),
+    food: Math.max(0, Math.min(caps.maxFood, resources.food)),
+    gems: Math.max(0, resources.gems),
   };
 }

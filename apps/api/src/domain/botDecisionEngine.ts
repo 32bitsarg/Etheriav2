@@ -6,7 +6,7 @@ import { getUnlockedUnits, getUnitCost } from "./units.js";
 import type { BotProfile, BotSimulationConfig } from "./botConfigData.js";
 import { getCityQueueConfig } from "./queueConfigData.js";
 
-export type BotActionType = "UPGRADE_BUILDING" | "TRAIN_UNITS" | "START_RESEARCH" | "ATTACK_CITY" | "ATTACK_BARBARIAN" | "SEND_RESOURCES" | "IDLE";
+export type BotActionType = "UPGRADE_BUILDING" | "TRAIN_UNITS" | "START_RESEARCH" | "ATTACK_CITY" | "ATTACK_BARBARIAN" | "SEND_RESOURCES" | "CREATE_MARKET_OFFER" | "ACCEPT_MARKET_OFFER" | "CONTRIBUTE_ALLIANCE_OBJECTIVE" | "SCOUT_TARGET" | "IDLE";
 export type BotSocialActionType = "CREATE_ALLIANCE" | "JOIN_ALLIANCE" | "SEND_CHAT" | "SEND_MAIL";
 
 export type BotDecision =
@@ -16,6 +16,10 @@ export type BotDecision =
   | { type: "ATTACK_CITY"; reason: string; payload: { targetCityId: string; units: Array<{ type: UnitType; count: number }> }; score: number }
   | { type: "ATTACK_BARBARIAN"; reason: string; payload: { targetCampId: string; units: Array<{ type: UnitType; count: number }> }; score: number }
   | { type: "SEND_RESOURCES"; reason: string; payload: { recipientCityId: string; resources: Resources }; score: number }
+  | { type: "CREATE_MARKET_OFFER"; reason: string; payload: { cityId: string; giveResource: "gold" | "wood" | "stone" | "food"; giveAmount: number; wantResource: "gold" | "wood" | "stone" | "food"; wantAmount: number }; score: number }
+  | { type: "ACCEPT_MARKET_OFFER"; reason: string; payload: { offerId: string; cityId: string }; score: number }
+  | { type: "CONTRIBUTE_ALLIANCE_OBJECTIVE"; reason: string; payload: { objectiveId: string; cityId: string; resources: Resources }; score: number }
+  | { type: "SCOUT_TARGET"; reason: string; payload: { cityId: string; targetType: "CITY" | "BARBARIAN_CAMP"; targetId: string }; score: number }
   | { type: BotSocialActionType; reason: string; payload: Record<string, any>; score: number }
   | { type: "IDLE"; reason: string; payload: Record<string, never>; score: number };
 
@@ -30,6 +34,8 @@ export type BotSnapshot = {
   activeResearchQueues?: any[];
   allianceMembership?: any | null;
   alliances?: any[];
+  marketOffers?: any[];
+  allianceObjectives?: any[];
   activeOutgoingBattles: any[];
   targets: any[];
   barbarianCamps: any[];
@@ -277,6 +283,80 @@ function chooseTrade(snapshot: BotSnapshot, profile: BotProfile, config: BotSimu
   };
 }
 
+function chooseMarketOffer(snapshot: BotSnapshot, profile: BotProfile, config: BotSimulationConfig): BotDecision | null {
+  if ((profile !== "ECONOMIST" && profile !== "BALANCED") || Math.random() > config.marketActionChance) return null;
+  const market = snapshot.buildings.find((b) => b.type === "MARKET");
+  if (!market) return null;
+  const resources = resourcesOf(snapshot.city);
+  const caps = capsOf(snapshot.city);
+  const resourceKeys = ["gold", "wood", "stone", "food"] as const;
+  const scarce = resourceKeys.find((key) => resources[key] < caps[key] * 0.35);
+  const excess = resourceKeys.find((key) => resources[key] > caps[key] * 0.75 && key !== scarce);
+
+  const acceptable = (snapshot.marketOffers ?? []).find((offer) =>
+    offer.creatorCityId !== snapshot.city.id &&
+    offer.status === "OPEN" &&
+    resources[offer.wantResource as keyof Resources] >= Number(offer.wantAmount ?? 0) &&
+    (!scarce || offer.giveResource === scarce)
+  );
+  if (acceptable) {
+    return {
+      type: "ACCEPT_MARKET_OFFER",
+      reason: `${profile} accepts useful market offer`,
+      payload: { offerId: acceptable.id, cityId: snapshot.city.id },
+      score: config.profileWeights[profile].economy + 1.5,
+    };
+  }
+
+  if (!scarce || !excess) return null;
+  const amount = Math.max(50, Math.floor(resources[excess] * 0.15));
+  return {
+    type: "CREATE_MARKET_OFFER",
+    reason: `${profile} creates market offer`,
+    payload: { cityId: snapshot.city.id, giveResource: excess, giveAmount: amount, wantResource: scarce, wantAmount: amount },
+    score: config.profileWeights[profile].economy + 1,
+  };
+}
+
+function chooseAllianceContribution(snapshot: BotSnapshot, profile: BotProfile, config: BotSimulationConfig): BotDecision | null {
+  if (!snapshot.allianceMembership?.allianceId || Math.random() > config.allianceContributionChance) return null;
+  const objective = (snapshot.allianceObjectives ?? []).find((item) => item.status === "ACTIVE");
+  if (!objective) return null;
+  const resources = resourcesOf(snapshot.city);
+  const contribution: Resources = {
+    gold: Math.min(50, Math.max(0, resources.gold - 100)),
+    wood: Math.min(50, Math.max(0, resources.wood - 100)),
+    stone: Math.min(50, Math.max(0, resources.stone - 100)),
+    food: Math.min(50, Math.max(0, resources.food - 100)),
+    gems: 0,
+  };
+  if (contribution.gold + contribution.wood + contribution.stone + contribution.food <= 0) return null;
+  return {
+    type: "CONTRIBUTE_ALLIANCE_OBJECTIVE",
+    reason: `${profile} contributes to alliance objective`,
+    payload: { objectiveId: objective.id, cityId: snapshot.city.id, resources: contribution },
+    score: profile === "ECONOMIST" ? 3.5 : 1.4,
+  };
+}
+
+function chooseScout(snapshot: BotSnapshot, profile: BotProfile, config: BotSimulationConfig): BotDecision | null {
+  if (Math.random() > config.scoutActionChance) return null;
+  const spies = snapshot.units.find((unit) => unit.type === "SPY")?.count ?? 0;
+  if (spies <= 0) return null;
+  const scouted = snapshot.state?.scoutedTargets ?? {};
+  const cityTarget = snapshot.targets.find((target) => !scouted[target.id]);
+  const campTarget = snapshot.barbarianCamps.find((camp) => !scouted[camp.id]);
+  const preferCity = profile === "MILITARIST" || profile === "TECH_RUSHER";
+  const target = preferCity ? cityTarget ?? campTarget : campTarget ?? cityTarget;
+  if (!target) return null;
+  return {
+    type: "SCOUT_TARGET",
+    reason: `${profile} gathers intel`,
+    payload: { cityId: snapshot.city.id, targetType: target === cityTarget ? "CITY" : "BARBARIAN_CAMP", targetId: target.id },
+    score: profile === "TECH_RUSHER" ? 4 : 1.6,
+  };
+}
+
 function chooseBarbarianHunt(snapshot: BotSnapshot, profile: BotProfile, config: BotSimulationConfig, now: Date): BotDecision | null {
   if (snapshot.barbarianCamps.length === 0 || snapshot.activeOutgoingBattles.length >= config.maxActiveOutgoingBattles) return null;
 
@@ -349,6 +429,9 @@ export function decideBotAction(snapshot: BotSnapshot, profile: BotProfile, conf
     chooseAttack(snapshot, profile, config, now),
     chooseBarbarianHunt(snapshot, profile, config, now),
     chooseResearch(snapshot, profile, config),
+    chooseScout(snapshot, profile, config),
+    chooseMarketOffer(snapshot, profile, config),
+    chooseAllianceContribution(snapshot, profile, config),
     chooseUpgrade(snapshot, profile, config),
     chooseTraining(snapshot, profile, config),
     chooseSocial(snapshot, profile, config),
