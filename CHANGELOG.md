@@ -15,6 +15,43 @@ Each release is named after a legendary era in the world of Etheria.
 
 ---
 
+## [0.2.4] - La Forja de la Guerra - 2026-05-08
+
+> *"Nuevas armas brillan en la forja. Piqueros, ballesteros y catapultas cambian el arte de la guerra. Los espias se mueven en las sombras, y cada ciudad siente el peso de sus decisiones."*
+
+### Added
+- **[UNITS] 3 nuevas unidades + rebalanceo completo**
+  - PIKEMAN: anti-caballeria (Atk 25, Def 20, HP 90, AP 8). Entrenable en Cuartel.
+  - CROSSBOWMAN: ranged pesado (Atk 35, Def 6, HP 50, AP 15). Requiere REINFORCED_BOWS.
+  - CATAPULT: asedio alternativo (Atk 65, Def 5, HP 60, AP 35). Requiere SIEGE_ENGINEERING.
+  - Warrior: Atk 10→18, HP 100→120. Archer: Atk 20→28. Cavalry: balanceado. Siege: Atk 80→60 (ya no domina).
+- **[UNITS] Cuartel ahora entrena todas las unidades** (WARRIOR, PIKEMAN, ARCHER, CROSSBOWMAN, SIEGE, CATAPULT, SPY). Establo solo CAVALRY.
+- **[SPY] Espionaje rebalanceado**
+  - Espiar ciudad: el spy YA NO se consume (vuelve). Si es detectado, se pierde.
+  - Espiar campamento: el spy siempre se pierde (mision peligrosa).
+  - Intel de ciudad mejorado: `"LOW (0-9)"` / `"MEDIUM (25-49)"` con rango numerico.
+  - Deteccion base 15%→10%. SPY_NETWORK ahora da counter-intel (-5% deteccion al espiar).
+  - SPY entrenable desde nivel 1 del Cuartel (sin requerir SPY_NETWORK).
+- **[UI] Panel de Buffs Activos** debajo del SeasonHUD: iconos para cada buff/debuff con tooltip al hover mostrando efecto, fuente (Alianza/Tech/Zona/Winter) y tiempo restante si es temporal.
+- **[UI] Modal de ataque desde el mapa** (AttackCityModal): selector de tropas con +/-1 y +/-10, costo total y boton de enviar.
+- **[UI] Modales de Cuartel y Biblioteca redisenados**: stats de unidad, presets de cantidad, tabs por categoria, bonos activos.
+- **[UI] Reportes de batalla visibles** en el modal de Mensajes (pestana Reports).
+- **[POWER] Sistema de poder mejorado**: techBonuses aplicados a stats de unidades, HP y AP en la formula, ranking muestra columna Alianza y tooltip con breakdown (🏛️/⚔️/📚).
+
+### Changed
+- **[BOTS] Visibilidad de ataques**: cooldowns reducidos (global 120→45min, attack 20-60→10-30min, target 45→25min), distancia max 80→140, bots pueden atacar otros bots.
+- **[BOTS] Overhaul de IA**: defense logic, spy intelligence, trade solo aliados, seasonal adaptation, consecutivas loss recovery, build order aleatorio, mail/chat templates, barb hunt por nivel.
+- **[BALANCE] Velocidades de viaje**: Warrior 60→160, Cavalry 120→280, Trade 100→200, etc. Cap visual de 8 min removido.
+- **[UI] SeasonHUD redisenado**: muestra modificadores de recursos, barra de intensidad, tiempo restante, winter pressure. Traducciones i18n completas.
+
+### Fixed
+- **[i18n] Bug de dot-notation** en keys de version del changelog (`0.2.2` → `v0_2_2`). ~30 keys faltantes agregados.
+- **[i18n] SeasonHUD** completamente traducido (EN/ES).
+- **[UI] ResourceBar** ya no se expande a todo el ancho al lado del SeasonHUD.
+- **[UI] Modal de biblioteca** roto (`ACADEMY` → `LIBRARY`).
+- **[UI] Cuartel** no mostraba unidades entrenadas.
+- **[BOTS] Market accept** incluye fee. Trade solo a aliados.
+
 ## [0.2.3] - El Eco de las Batallas - 2026-05-08
 
 > *"El clamor del acero resuena en los valles. Cada ataque deja su marca, cada espia su sombra, cada estacion su huella. Los reinos que escuchan sobreviven."*
@@ -628,6 +665,7 @@ Each release is named after a legendary era in the world of Etheria.
 | 0.2.1 | **El Taller de Colas** | Queue Workshop |
 | 0.2.2 | **El Mercado de los Reinos** | Market, Reports & Espionage |
 | 0.2.3 | **El Eco de las Batallas** | Audio, Notifications & Bot AI |
+| 0.2.4 | **La Forja de la Guerra** | PvP Balance, Units & Buffs |
 | 0.3.0 | *Las Ruinas Olvidadas* | Exploration & PvE |
 | 0.4.0 | *El Pacto de Sangre* | Diplomacy & Alliances |
 | 0.5.0 | *La Edad de los Héroes* | Heroes & Quests |

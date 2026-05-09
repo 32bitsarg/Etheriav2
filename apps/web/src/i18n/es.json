@@ -271,7 +271,8 @@
       "v0_0_4": "La Diplomacia de los Reinos",
       "v0_0_3": "La Forja de Armas",
       "v0_0_2": "Las Primeras Guerras",
-      "v0_0_1": "La Fundación de Etheria"
+      "v0_0_1": "La Fundación de Etheria",
+      "v0_2_4": "La Forja de la Guerra"
     },
     "items": {
       "v0_2_0": {
@@ -462,6 +463,34 @@
         "changed": [
           "[WORLD] Velocidades de unidades rebalanceadas: Warrior 60→160, Cavalry 120→280, Trade 100→200, etc. Cap visual de viaje removido.",
           "[WORLD] Terrain overlay desactivado en el mapa mundial."
+        ]
+      },
+      "v0_2_4": {
+        "added": [
+          "[UNITS] 3 nuevas unidades + rebalanceo: Piquero, Ballestero, Catapulta. Warrior/Archer mejorados, Siege reducido.",
+          "[UNITS] Cuartel entrena todos los tipos (7 unidades). Establo solo Caballeria.",
+          "[SPY] Espionaje: espiar ciudad el spy vuelve (se pierde si es detectado). Campamento siempre se pierde. Mejor intel con rangos numericos.",
+          "[SPY] Deteccion base 15%→10%. SPY_NETWORK da counter-intel (-5% deteccion). Spy entrenable desde lv1 del Cuartel.",
+          "[UI] Panel de Buffs Activos debajo del SeasonHUD: iconos con tooltips mostrando efecto, fuente y tiempo restante.",
+          "[UI] Modal de ataque desde el mapa: seleccionar tropas con +/-1/+10, ver costo total y enviar ataque.",
+          "[UI] Modales de Cuartel/Biblioteca redisenados: stats de unidad, presets, tabs, bonos activos.",
+          "[UI] Reportes de batalla visibles en el modal de Mensajes.",
+          "[POWER] Sistema de poder: tech bonuses en stats, HP+AP en formula, columna Alianza + tooltip en ranking.",
+          "[BOTS] Overhaul de IA: 20+ mejoras incluyendo defensa, spy intel, trade a aliados, memoria, adaptacion estacional."
+        ],
+        "changed": [
+          "[BOTS] Visibilidad de ataques: cooldowns reducidos (global 45min, attack 10-30min). Bots atacan bots. Distancia max 140.",
+          "[BALANCE] Velocidades de viaje (Warrior 160, Cavalry 280, Trade 200). Cap visual 8min removido.",
+          "[UI] SeasonHUD redisenado: muestra modificadores, barra de intensidad, tiempo restante, winter pressure.",
+          "[UI] Tropas de ataque: 50%→30% (MILITARIST 40%)."
+        ],
+        "fixed": [
+          "[i18n] Bug de dot-notation en keys de changelog (formato v0_2_2). ~30 keys faltantes agregados.",
+          "[i18n] SeasonHUD completamente traducido EN/ES.",
+          "[UI] ResourceBar ya no se expande a todo el ancho.",
+          "[UI] Modal de biblioteca roto (ACADEMY→LIBRARY).",
+          "[UI] Cuartel no mostraba unidades entrenadas.",
+          "[BOTS] Market accept incluye fee. Trade solo a aliados."
         ]
       }
     }

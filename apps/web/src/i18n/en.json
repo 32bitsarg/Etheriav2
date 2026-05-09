@@ -271,7 +271,8 @@
       "v0_0_4": "The Diplomacy of the Realms",
       "v0_0_3": "The Forge of Weapons",
       "v0_0_2": "The First Wars",
-      "v0_0_1": "The Foundation of Etheria"
+      "v0_0_1": "The Foundation of Etheria",
+      "v0_2_4": "The Forge of War"
     },
     "items": {
       "v0_2_2": {
@@ -462,6 +463,34 @@
           "Painting plains is now visible in the map editor overlay.",
           "The brush covers grid edges more reliably.",
           "The editor camera can pan with extra margin for panel-covered edges."
+        ]
+      },
+      "v0_2_4": {
+        "added": [
+          "[UNITS] 3 new units + full rebalance: Pikeman, Crossbowman, Catapult. Warrior/Archer buffed, Siege nerfed.",
+          "[UNITS] Barracks now trains all unit types (7 units). Stable only Cavalry.",
+          "[SPY] Spy rebalance: city scout returns home (lost if detected). Camp scout always lost. Better intel with numeric ranges.",
+          "[SPY] Detection base 15%→10%. SPY_NETWORK gives counter-intel (-5% detection). Spy trainable from lv1 Barracks.",
+          "[UI] Active Buffs Panel below SeasonHUD: icons with hover tooltips showing effect, source, and remaining time.",
+          "[UI] Attack modal from world map: select troops with +/-1/+10, see total cost, send attack directly.",
+          "[UI] Redesigned Barracks/Library modals: unit stats, quantity presets, category tabs, active bonuses.",
+          "[UI] Battle reports now visible in Messages modal under Reports tab.",
+          "[POWER] Power system: tech bonuses apply to unit stats, HP+AP in formula, alliance column + breakdown tooltip in ranking.",
+          "[BOTS] Bot IA overhaul: 20+ improvements including defense, spy intel, trade to allies, seasonal adaptation, memory."
+        ],
+        "changed": [
+          "[BOTS] Attack visibility: cooldowns reduced (global 45min, attack 10-30min). Bots can attack bots. Max distance 140.",
+          "[BALANCE] Travel speeds rebalanced (Warrior 160, Cavalry 280, Trade 200). Visual 8min cap removed.",
+          "[UI] SeasonHUD redesign: shows resource modifiers, intensity bar, remaining time, winter pressure.",
+          "[UI] Attack troops reduced: 50%→30% (MILITARIST 40%)."
+        ],
+        "fixed": [
+          "[i18n] Dot-notation bug in changelog version keys (v0_2_2 format). ~30 missing keys added.",
+          "[i18n] SeasonHUD fully translated EN/ES.",
+          "[UI] ResourceBar no longer stretches full width next to SeasonHUD.",
+          "[UI] Library modal broken (ACADEMY→LIBRARY).",
+          "[UI] Barracks did not show trained units.",
+          "[BOTS] Market accept now includes fee. Trade only to allies."
         ]
       }
     }

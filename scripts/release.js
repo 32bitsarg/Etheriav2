@@ -18,6 +18,7 @@ const VERSION_NAMES = [
   { version: "0.2.1", name: "El Taller de Colas" },
   { version: "0.2.2", name: "El Mercado de los Reinos" },
   { version: "0.2.3", name: "El Eco de las Batallas" },
+  { version: "0.2.4", name: "La Forja de la Guerra" },
   { version: "0.3.0", name: "Las Ruinas Olvidadas" },
   { version: "0.4.0", name: "El Pacto de Sangre" },
   { version: "0.5.0", name: "La Edad de los Héroes" },
