@@ -2,6 +2,12 @@ import type { MiddlewareHandler } from "hono";
 
 export type AuthContext = { userId: string };
 
+function matecitoProjectUrl(path: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_MATECITO_URL;
+  if (!baseUrl) throw new Error("Missing NEXT_PUBLIC_MATECITO_URL");
+  return `${baseUrl.replace(/\/$/, "")}/api/v2/project/${path.replace(/^\//, "")}`;
+}
+
 export function requireMatecitoAuth(): MiddlewareHandler<{ Variables: AuthContext }> {
   return async (c, next) => {
     const header = c.req.header("authorization") ?? "";
@@ -9,18 +15,25 @@ export function requireMatecitoAuth(): MiddlewareHandler<{ Variables: AuthContex
     const token = match?.[1]?.trim() ?? null;
     if (!token) return c.json({ error: "Missing Authorization Bearer token" }, 401);
 
-    const url = process.env.NEXT_PUBLIC_MATECITO_URL!;
-    const serviceKey = process.env.MATECITO_SERVICE_KEY!;
-    const { createClient } = await import("matecitodb");
-    const db = createClient({ url, apiKey: serviceKey, apiVersion: "v2" });
+    const serviceKey = process.env.MATECITO_SERVICE_KEY;
+    if (!serviceKey) throw new Error("Missing MATECITO_SERVICE_KEY");
 
-    db.auth.setSession({ access_token: token });
-    const me = await db.auth.getMe() as any;
-    if (me?.error || !me?.data?.id) {
+    const response = await fetch(matecitoProjectUrl("/auth/me"), {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "x-matecito-key": serviceKey,
+      },
+    });
+
+    if (!response.ok) {
       return c.json({ error: "Invalid session" }, 401);
     }
 
-    c.set("userId", me.data.id);
+    const body = await response.json() as { user?: { id?: string }; id?: string };
+    const userId = body.user?.id ?? body.id;
+    if (!userId) return c.json({ error: "Invalid session" }, 401);
+
+    c.set("userId", userId);
     await next();
   };
 }
