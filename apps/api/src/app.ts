@@ -8,6 +8,7 @@ import { worldRouter } from './routes/world.js';
 import { reportsRouter } from './routes/reports.js';
 import { questsRouter } from './routes/quests.js';
 import { marketRouter } from './routes/market.js';
+import { adminOpsRouter } from './routes/adminOps.js';
 import { loadBuildingConfigs } from './domain/buildings.js';
 import { loadUnitConfigs } from './domain/units.js';
 import { loadTechConfigs } from './domain/techs.js';
@@ -27,7 +28,12 @@ export function createApiApp() {
   const app = new Hono();
   setupMiddleware(app);
 
-  app.use('*', async (_c, next) => {
+  app.use('*', async (c, next) => {
+    if (c.req.path.startsWith('/admin/ops')) {
+      await next();
+      return;
+    }
+
     await ensureGameConfigsLoaded();
     await next();
   });
@@ -41,6 +47,7 @@ export function createApiApp() {
   app.route('/reports', reportsRouter);
   app.route('/quests', questsRouter);
   app.route('/market', marketRouter);
+  app.route('/admin/ops', adminOpsRouter);
 
   return app;
 }
