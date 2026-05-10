@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type Service = "api" | "web" | "caddy";
 type Lines = "100" | "200" | "500";
@@ -87,6 +87,9 @@ export default function MetheriaadmiaPage() {
   const [query, setQuery] = useState("");
   const [severityOnly, setSeverityOnly] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [refreshCount, setRefreshCount] = useState(0);
+  const logsRequestId = useRef(0);
+  const statusRequestId = useRef(0);
 
   const statusText = responseText(status);
   const output = responseText(logs);
@@ -114,19 +117,25 @@ export default function MetheriaadmiaPage() {
 
   async function loadStatus() {
     if (!secret) return;
+    const requestId = ++statusRequestId.current;
     setLoading("status");
     const result = await adminRequest("/status", secret);
+    if (requestId !== statusRequestId.current) return;
     setStatus(result);
     setLastUpdated(new Date().toLocaleTimeString());
+    setRefreshCount((value) => value + 1);
     setLoading(null);
   }
 
   async function loadLogs(service = activeService, nextLines = lines) {
     if (!secret) return;
+    const requestId = ++logsRequestId.current;
     setLoading("logs");
-    const result = await adminRequest(`/logs?service=${service}&lines=${nextLines}`, secret);
+    const result = await adminRequest(`/logs?service=${service}&lines=${nextLines}&t=${Date.now()}`, secret);
+    if (requestId !== logsRequestId.current) return;
     setLogs(result);
     setLastUpdated(new Date().toLocaleTimeString());
+    setRefreshCount((value) => value + 1);
     setLoading(null);
   }
 
@@ -213,7 +222,9 @@ export default function MetheriaadmiaPage() {
             <p className="text-sm text-slate-400">VPS ops: logs, estado, rebuild, restart y deploy controlado</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-slate-500">{lastUpdated ? `Actualizado ${lastUpdated}` : "Sin refrescar"}</span>
+            <span className="text-xs text-slate-500">
+              {lastUpdated ? `Actualizado ${lastUpdated} · #${refreshCount}` : "Sin refrescar"}
+            </span>
             <label className="flex items-center gap-2 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-300">
               <input type="checkbox" checked={autoRefresh} onChange={(event) => setAutoRefresh(event.target.checked)} />
               Auto 5s
@@ -292,10 +303,14 @@ export default function MetheriaadmiaPage() {
                 <button onClick={copyLogs} disabled={!output} className="rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-900 disabled:opacity-40">Copiar</button>
               </div>
             </div>
-            <div className="h-[64vh] overflow-auto bg-black font-mono text-xs leading-relaxed">
-              {loading === "logs" && <div className="p-4 text-slate-400">Cargando logs...</div>}
-              {loading !== "logs" && filteredLines.length === 0 && <div className="p-4 text-slate-500">Sin logs para mostrar.</div>}
-              {loading !== "logs" && filteredLines.map((line, index) => (
+            <div className="relative h-[64vh] overflow-auto bg-black font-mono text-xs leading-relaxed">
+              {loading === "logs" && (
+                <div className="sticky top-0 z-10 border-b border-cyan-400/20 bg-cyan-950/90 px-3 py-2 text-cyan-100">
+                  Actualizando logs...
+                </div>
+              )}
+              {filteredLines.length === 0 && <div className="p-4 text-slate-500">Sin logs para mostrar.</div>}
+              {filteredLines.map((line, index) => (
                 <div key={`${index}-${line}`} className={`whitespace-pre-wrap px-3 py-0.5 ${lineClass(line)}`}>
                   {line || " "}
                 </div>

@@ -57,6 +57,9 @@ export const adminOpsRouter = new Hono();
 adminOpsRouter.use("*", async (c, next) => {
   const denied = requireAdminSecret(c);
   if (denied) return denied;
+  c.header("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  c.header("Pragma", "no-cache");
+  c.header("Expires", "0");
   await next();
 });
 
