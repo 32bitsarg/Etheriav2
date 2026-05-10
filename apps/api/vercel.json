@@ -2,20 +2,8 @@
   "buildCommand": "pnpm --filter @etheria/database db:generate && pnpm --filter @etheria/api build",
   "crons": [
     {
-      "path": "/api/cron/queues",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/cron/season",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/barbarians",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/bots",
-      "schedule": "* * * * *"
+      "path": "/api/cron/daily",
+      "schedule": "0 0 * * *"
     }
   ]
 }
