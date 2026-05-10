@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react";
 import { useGameStore } from "@/stores/gameStore";
 import { formatNumber } from "@/lib/constants";
-import { ResourceIcon } from "@/components/village/ResourceIcon";
+import { ResourceIconSVG } from "@/components/village/ResourceIconSVG";
 
 const RESOURCES = [
-  { key: "gold", label: "Oro", prodKey: "goldPerHour" },
-  { key: "wood", label: "Madera", prodKey: "woodPerHour" },
-  { key: "stone", label: "Piedra", prodKey: "stonePerHour" },
-  { key: "food", label: "Cereal", prodKey: "foodPerHour" },
+  { key: "gold", prodKey: "goldPerHour", storageKey: "maxGold" },
+  { key: "wood", prodKey: "woodPerHour", storageKey: "maxWood" },
+  { key: "stone", prodKey: "stonePerHour", storageKey: "maxStone" },
+  { key: "food", prodKey: "foodPerHour", storageKey: "maxFood" },
 ] as const;
 
 export function ResourceBar() {
@@ -39,40 +39,28 @@ export function ResourceBar() {
   }, []);
 
   return (
-    <div className="pointer-events-auto">
-      <div className="mx-auto w-[min(980px,calc(100vw-132px))] rounded-xl border border-white/10 bg-black/35 px-2 py-1.5 backdrop-blur-md shadow-[0_10px_28px_rgba(0,0,0,.35)]">
-        <div className="flex items-center gap-2">
-          {RESOURCES.map(({ key, prodKey }) => {
-            const value = liveResources[key as keyof typeof liveResources] ?? 0;
-            const prod = production[prodKey as keyof typeof production] ?? 0;
-            const max = storage[`max${key.charAt(0).toUpperCase() + key.slice(1)}` as keyof typeof storage] ?? 0;
-            const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
+    <div className="resource-bar-shell pointer-events-auto">
+      <div className="flex items-center gap-4">
+        {RESOURCES.map(({ key, prodKey, storageKey }) => {
+          const value = liveResources[key as keyof typeof liveResources] ?? 0;
+          const prod = production[prodKey as keyof typeof production] ?? 0;
+          const max = storage[storageKey as keyof typeof storage] ?? 0;
 
-            return (
-              <div key={key} className="flex items-center gap-1.5 min-w-0 flex-1">
-                <ResourceIcon type={key} size={16} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-1 leading-none">
-                    <span className="text-[11px] font-semibold text-etheria-text truncate">{formatNumber(Math.floor(value))}</span>
-                    <span className="text-[9px] text-etheria-text-dim">+{prod}/h</span>
-                  </div>
-                  <div className="mt-1 h-[2px] rounded-full bg-black/45 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-1000 ${
-                        key === "gold" ? "bg-etheria-gold" : key === "wood" ? "bg-etheria-wood" : key === "stone" ? "bg-etheria-stone" : "bg-etheria-food"
-                      }`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          return (
+            <div key={key} className="flex items-center gap-1.5 shrink-0">
+              <ResourceIconSVG type={key as any} size={14} />
+              <span className="text-[11px] font-semibold text-white tabular-nums">
+                {formatNumber(Math.floor(value))}
+              </span>
+              <span className="text-[9px] text-white/25">/ {formatNumber(max)}</span>
+              <span className="text-[9px] text-etheria-success">+{prod}/h</span>
+            </div>
+          );
+        })}
 
-          <div className="ml-1 flex items-center gap-1.5 border-l border-white/10 pl-2 shrink-0">
-            <ResourceIcon type="gems" size={16} />
-            <span className="text-[11px] font-semibold text-etheria-gems">{formatNumber(Math.floor(liveResources.gems))}</span>
-          </div>
+        <div className="flex items-center gap-1.5 border-l border-white/10 pl-3 shrink-0">
+          <ResourceIconSVG type="gems" size={14} />
+          <span className="text-[11px] font-semibold text-etheria-gems">{formatNumber(Math.floor(liveResources.gems))}</span>
         </div>
       </div>
     </div>

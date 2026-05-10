@@ -2,7 +2,7 @@
 node_modules/
 .pnp/
 .pnp.js
-
+.docs/
 # Environment and secrets
 .env
 .env.*
@@ -15,7 +15,7 @@ node_modules/
 *.crt
 *.p12
 *.pfx
-
+docs/
 # Build outputs and generated files
 .next/
 out/

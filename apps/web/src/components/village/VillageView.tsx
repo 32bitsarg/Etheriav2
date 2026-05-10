@@ -8,7 +8,7 @@ import { BUILDING_INFO, BUILDING_NAMES, BUILDING_SIZES, MAX_BUILDING_LEVEL, getU
 import { BuildingSprite } from "@/components/village/BuildingIcon";
 import { VillageCanvas } from "@/components/village/VillageCanvas";
 import { ResourceIconSVG } from "@/components/village/ResourceIconSVG";
-import { useAcceptMarketOffer, useActiveBattles, useAllCities, useAllianceMembership, useAttackCity, useBarbarianCamps, useBattleReports, useBreakTreaty, useCancelBuildQueue, useCancelResearchQueue, useCancelTrainingQueue, useCityRanking, useClaimQuest, useContributeAllianceObjective, useCreateAlliance, useCreateMarketOffer, useDisbandAlliance, useGameReports, useJoinAlliance, useKickAllianceMember, useLeaveAlliance, useMailMessages, useMarkGameReportRead, useMarkMailRead, useMarkMapOpened, useMarketOffers, usePlayerQuests, useProposePeace, useRenameCity, useResearchTech, useScoutTarget, useSendMailMessage, useTechs, useTrainUnits, useTransferAllianceLeadership, useUpdateAlliance, useUpdateAllianceMemberRole, useUpgradeBuilding, useVillageLayout, useWorldMap, useWorldMovements, useWorldSeason } from "@/hooks/useCity";
+import { useAcceptMarketOffer, useActiveBattles, useAllCities, useAllianceMembership, useAttackCity, useBarbarianAttackAlerts, useBarbarianCamps, useBattleReports, useBreakTreaty, useCancelBuildQueue, useCancelResearchQueue, useCancelTrainingQueue, useCityRanking, useClaimQuest, useContributeAllianceObjective, useCreateAlliance, useCreateMarketOffer, useDisbandAlliance, useGameReports, useJoinAlliance, useKickAllianceMember, useLeaveAlliance, useMailMessages, useMarkGameReportRead, useMarkMailRead, useMarkMapOpened, useMarkReportRead, useMarketOffers, usePlayerQuests, useProposePeace, useRenameCity, useResearchTech, useScoutTarget, useSendMailMessage, useTechs, useTrainUnits, useTransferAllianceLeadership, useUpdateAlliance, useUpdateAllianceMemberRole, useUpgradeBuilding, useVillageLayout, useWorldMap, useWorldMovements, useWorldSeason } from "@/hooks/useCity";
 import { WorldMapCanvas } from "@/components/worldmap/WorldMapCanvas";
 import { BarbarianAttackAlertBanner } from "@/components/barbarians/BarbarianAttackAlertBanner";
 import { WinterPressureBanner } from "@/components/barbarians/WinterPressureBanner";
@@ -72,11 +72,14 @@ export function VillageView() {
   const { data: techOptionsData } = useTechs(cityId);
   const { data: mailData } = useMailMessages(true);
   const { data: reportsData } = useGameReports(true);
+  const { data: battleReportsData } = useBattleReports(cityId);
   const { data: allianceData } = useAllianceMembership();
   const { data: activeBattles } = useActiveBattles(cityId);
+  const { data: barbarianAlerts } = useBarbarianAttackAlerts(cityId);
   const { data: worldMoves } = useWorldMovements();
 
   const myBattles = activeBattles ?? [];
+  const unreadBattleReports = (battleReportsData ?? []).filter((report) => !report.read).length;
   const myName = useGameStore((s) => s.name);
   const myTradeMoves = (worldMoves ?? []).filter(
     (m) => m.type === "TRADE" && (m.from.name === myName || m.to.name === myName)
@@ -107,6 +110,7 @@ export function VillageView() {
   }, [buildings]);
 
   const selectedBuilding = uniqueBuildings.find((b) => b.id === selectedBuildingId);
+  const isModalOpen = !!selectedBuilding || isMailOpen || isAllianceOpen || isQuestsOpen || isRankingOpen || isRenameOpen || isSettingsOpen;
 
   const handleUpgrade = useCallback((id: string, type: string, currentLevel: number) => {
     if (!cityId) return;
@@ -180,21 +184,22 @@ export function VillageView() {
     <div className="village-shell relative z-10 grid h-screen w-screen overflow-hidden">
       <BarbarianAttackAlertBanner />
       <WinterPressureBanner />
-      <header className="village-resource-header pointer-events-none absolute left-[calc(var(--sidebar-width)+12px)] right-3 top-2 z-50">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-3">
-            <SeasonHUD />
-            <ResourceBar />
-          </div>
-          <div className="self-start">
-            <ActiveBuffsPanel />
-          </div>
+
+      {/* Top Bar — full width, grid row 1 */}
+      <header className="village-topbar pointer-events-auto col-span-3 row-start-1 flex items-center gap-3 border-b border-amber-200/15 backdrop-blur-md px-4 z-50 h-12">
+        <div className="flex items-center gap-2 shrink-0">
+          <SeasonHUD />
+          <ActiveBuffsPanel />
+        </div>
+        <span className="flex-1 text-center font-serif text-sm text-etheria-gold-soft uppercase tracking-wider">
+          {cityName || t("play.sidebar.village")}
+        </span>
+        <div className="shrink-0">
+          <ResourceBar />
         </div>
       </header>
+
       <aside className="grepolis-sidebar village-sidebar">
-        <div className="grepolis-sidebar__header">
-          <span className="grepolis-sidebar__city-name">{cityName || t("play.sidebar.village")}</span>
-        </div>
         <nav className="grepolis-sidebar__nav relative pb-2">
           {VIEWS.map((v) => (
             <button key={v.id} onClick={() => { setActiveView(v.id); setSelectedBuildingId(null); }} className={`grepolis-nav-item ${activeView === v.id ? "active" : ""}`}>
@@ -212,7 +217,7 @@ export function VillageView() {
           <button onClick={() => setIsMailOpen(true)} className="grepolis-nav-item">
             <span className="grepolis-nav-item__icon-wrap">
               <span className="grepolis-nav-item__icon">📜</span>
-              {((mailData?.unreadCount ?? 0) + (reportsData?.unreadCount ?? 0)) > 0 && <span className="grepolis-nav-item__badge">{(mailData?.unreadCount ?? 0) + (reportsData?.unreadCount ?? 0)}</span>}
+              {((mailData?.unreadCount ?? 0) + (reportsData?.unreadCount ?? 0) + unreadBattleReports) > 0 && <span className="grepolis-nav-item__badge">{(mailData?.unreadCount ?? 0) + (reportsData?.unreadCount ?? 0) + unreadBattleReports}</span>}
             </span>
             <span className="grepolis-nav-item__label">{t("play.sidebar.mail")}</span>
           </button>
@@ -232,7 +237,8 @@ export function VillageView() {
         </nav>
       </aside>
 
-      <main className={isFullscreenView ? "village-main absolute top-0 bottom-0 z-10 min-w-0 min-h-0 overflow-hidden" : "village-main col-start-2 row-start-2 min-w-0 min-h-0 overflow-hidden p-2.5"} style={isFullscreenView ? { left: 0, right: 0 } : undefined}>
+      {/* Main Content — absolute full-width behind sidebars */}
+      <main className={`absolute top-[var(--topbar-height)] left-0 right-0 bottom-0 z-10 min-w-0 min-h-0 overflow-hidden ${isModalOpen ? "pointer-events-none" : ""}`}>
         {activeView === "pueblo" && (
           <PuebloView
             buildings={uniqueBuildings}
@@ -244,6 +250,7 @@ export function VillageView() {
             production={production}
             onRename={() => setIsRenameOpen(true)}
             pendingUpgradeBuildingIds={pendingUpgradeBuildingIds}
+            interactionsDisabled={isModalOpen}
             t={t}
           />
         )}
@@ -261,11 +268,13 @@ export function VillageView() {
         )}
       </main>
 
+      {/* Right QueueRail — grid col 3 */}
       <QueueRail
         buildQueues={buildQueues}
         trainingQueues={trainingQueues}
         researchQueues={researchQueue.length > 0 ? researchQueue : activeResearch ? [activeResearch] : []}
         battles={myBattles}
+        barbarianAlerts={barbarianAlerts ?? []}
         tradeMoves={myTradeMoves}
         cityName={myName}
         t={t}
@@ -300,11 +309,12 @@ export function VillageView() {
   );
 }
 
-function QueueRail({ buildQueues, trainingQueues, researchQueues, battles, tradeMoves, cityName, t }: {
+function QueueRail({ buildQueues, trainingQueues, researchQueues, battles, barbarianAlerts, tradeMoves, cityName, t }: {
   buildQueues: any[];
   trainingQueues: any[];
   researchQueues: any[];
   battles: any[];
+  barbarianAlerts: any[];
   tradeMoves: any[];
   cityName: string;
   t: (key: string) => string;
@@ -314,7 +324,10 @@ function QueueRail({ buildQueues, trainingQueues, researchQueues, battles, trade
   const cancelTrainingQueue = useCancelTrainingQueue();
   const cancelResearchQueue = useCancelResearchQueue();
   const addToast = useToastStore((s) => s.addToast);
-  const hasQueues = buildQueues.length > 0 || trainingQueues.length > 0 || researchQueues.length > 0 || battles.length > 0 || tradeMoves.length > 0;
+  const incomingBattles = battles.filter((battle: any) => battle.defenderCityId === cityId && battle.status === "MARCHING");
+  const incomingBarbarianAttacks = barbarianAlerts.filter((alert: any) => !alert.read && new Date(alert.arrivesAt) > new Date());
+  const marchBattles = battles.filter((battle: any) => !(battle.defenderCityId === cityId && battle.status === "MARCHING"));
+  const hasQueues = buildQueues.length > 0 || trainingQueues.length > 0 || researchQueues.length > 0 || incomingBattles.length > 0 || incomingBarbarianAttacks.length > 0 || marchBattles.length > 0 || tradeMoves.length > 0;
 
   const showCancelResult = (title: string, data?: any) => {
     const refundText = Object.entries(data?.refund ?? {})
@@ -330,11 +343,11 @@ function QueueRail({ buildQueues, trainingQueues, researchQueues, battles, trade
   };
 
   return (
-    <aside className="pointer-events-auto absolute right-3 top-[76px] z-40 flex max-h-[calc(100vh-98px)] w-[260px] flex-col overflow-hidden rounded-lg border border-amber-300/20 bg-[#071025]/70 shadow-[0_14px_38px_rgba(0,0,0,0.38)] backdrop-blur-md max-lg:right-2 max-lg:w-[232px] max-md:hidden">
-      <div className="border-b border-amber-200/15 px-3 py-2">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200/85">{t("play.queues.title")}</div>
+    <aside className="queue-rail-sidebar pointer-events-auto absolute right-2 top-[var(--topbar-height)] z-40 flex max-h-[60vh] w-[150px] flex-col overflow-hidden rounded-bl-lg border-l border-b border-amber-200/15 shadow-[0_14px_38px_rgba(0,0,0,0.38)] backdrop-blur-md max-md:hidden">
+      <div className="border-b border-amber-200/15 px-2.5 py-1.5">
+        <div className="text-[9px] font-semibold uppercase tracking-[0.16em] text-amber-200/85">{t("play.queues.title")}</div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-2.5 py-2">
+      <div className="overflow-y-auto px-2.5 py-2">
         {!hasQueues && (
           <div className="rounded-md border border-white/8 bg-black/20 px-3 py-2 text-[11px] text-white/55">
             {t("play.queues.empty")}
@@ -350,6 +363,7 @@ function QueueRail({ buildQueues, trainingQueues, researchQueues, battles, trade
                 icon={<BuildingSprite type={queue.buildingType as BuildingType} level={queue.targetLevel} size={30} />}
                 title={name}
                 subtitle={`${t("play.building.level")} ${queue.targetLevel}`}
+                startedAt={queue.startedAt}
                 completesAt={queue.completesAt}
                 cancelLabel={t("play.dock.cancel")}
                 isCancelling={cancelBuildQueue.variables?.queueId === queue.id}
@@ -381,6 +395,7 @@ function QueueRail({ buildQueues, trainingQueues, researchQueues, battles, trade
                 icon={icon}
                 title={info ? t(info.nameKey) : queue.unitType}
                 subtitle={`x${queue.count}`}
+                startedAt={queue.startedAt}
                 completesAt={queue.completesAt}
                 cancelLabel={t("play.dock.cancel")}
                 isCancelling={cancelTrainingQueue.variables?.queueId === queue.id}
@@ -411,6 +426,7 @@ function QueueRail({ buildQueues, trainingQueues, researchQueues, battles, trade
                 icon={icon}
                 title={t(TECH_INFO[queue.techId]?.nameKey ?? queue.techId)}
                 subtitle={`${t("play.building.level")} ${queue.targetLevel}`}
+                startedAt={queue.startedAt}
                 completesAt={queue.completesAt}
                 cancelLabel={t("play.dock.cancel")}
                 isCancelling={cancelResearchQueue.variables?.queueId === queue.id}
@@ -429,8 +445,38 @@ function QueueRail({ buildQueues, trainingQueues, researchQueues, battles, trade
           })}
         </QueueSection>
 
+        <QueueSection title={t("play.queues.incomingAttacks")} emptyText={t("play.queues.noIncomingAttacks")}>
+          {incomingBattles.map((battle: any) => {
+            const subLines = [t("play.queues.arrivesToVillage")];
+            if (battle.units && Array.isArray(battle.units)) {
+              const comp = battle.units.map((u: any) => `${u.count}${marchIcon(u.type)}`).join(" ");
+              subLines.push(comp);
+            }
+            return (
+              <QueueRailItem
+                key={battle.id}
+                icon={<span className="text-lg leading-none">!</span>}
+                title={t("play.queues.incomingAttack")}
+                subtitle={subLines.join(" · ")}
+                completesAt={battle.arrivesAt}
+                tone="danger"
+              />
+            );
+          })}
+          {incomingBarbarianAttacks.map((alert: any) => (
+            <QueueRailItem
+              key={alert.id}
+              icon={<span className="text-lg leading-none">!</span>}
+              title={t("play.notifications.barbarianAttackTitle")}
+              subtitle={alert.campName}
+              completesAt={alert.arrivesAt}
+              tone="danger"
+            />
+          ))}
+        </QueueSection>
+
         <QueueSection title={t("play.queues.marches")} emptyText={t("play.queues.noMarches")}>
-          {battles.map((battle: any) => {
+          {marchBattles.map((battle: any) => {
             const isOutgoing = battle.attackerCityId === cityId;
             const isMarching = battle.status === "MARCHING";
             const isReturning = battle.status === "RETURNING";
@@ -484,43 +530,53 @@ function QueueSection({ title, emptyText, children }: { title: string; emptyText
   const isEmpty = Array.isArray(items) ? items.length === 0 : !items;
 
   return (
-    <section className="mb-3 last:mb-0">
-      <div className="mb-1.5 flex items-center justify-between gap-2">
-        <h3 className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-100/75">{title}</h3>
+    <section className="mb-2 last:mb-0">
+      <div className="mb-1 flex items-center justify-between gap-1">
+        <h3 className="truncate text-[9px] font-semibold uppercase tracking-[0.12em] text-amber-100/65">{title}</h3>
       </div>
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         {isEmpty ? (
-          <div className="rounded-md border border-white/8 bg-black/18 px-2.5 py-2 text-[10px] text-white/40">{emptyText}</div>
+          <div className="rounded-md border border-white/8 bg-black/18 px-2 py-1.5 text-[9px] text-white/35">{emptyText}</div>
         ) : items}
       </div>
     </section>
   );
 }
 
-function QueueRailItem({ icon, title, subtitle, completesAt, cancelLabel, isCancelling, onCancel }: {
+function QueueRailItem({ icon, title, subtitle, startedAt, completesAt, cancelLabel, isCancelling, onCancel, tone = "default" }: {
   icon: ReactNode;
   title: string;
   subtitle: string;
+  startedAt?: string;
   completesAt: string;
   cancelLabel?: string;
   isCancelling?: boolean;
   onCancel?: () => void;
+  tone?: "default" | "danger";
 }) {
+  const toneClass = tone === "danger"
+    ? "border-rose-300/35 bg-rose-950/35 shadow-[0_0_18px_rgba(244,63,94,0.16)]"
+    : "border-white/8 bg-black/24";
+  const iconClass = tone === "danger"
+    ? "bg-rose-500/18 text-rose-100"
+    : "bg-white/6";
+  const titleClass = tone === "danger" ? "text-rose-100" : "text-white/78";
+
   return (
-    <div className="grid min-h-12 grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-white/8 bg-black/24 px-2 py-1.5">
-      <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded bg-white/6">{icon}</div>
+    <div className={`grid min-h-9 grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-1.5 rounded-md border px-1.5 py-1 ${toneClass}`}>
+      <div className={`flex h-7 w-7 items-center justify-center overflow-hidden rounded ${iconClass}`}>{icon}</div>
       <div className="min-w-0">
-        <div className="truncate text-[11px] font-semibold text-white/82">{title}</div>
-        <div className="truncate text-[10px] text-white/42">{subtitle}</div>
+        <div className={`truncate text-[10px] font-semibold ${titleClass}`}>{title}</div>
+        <div className="truncate text-[9px] text-white/38">{subtitle}</div>
       </div>
-      <div className="flex items-center gap-1.5 text-[10px] text-amber-100/78">
-        <CountdownSmall completesAt={completesAt} />
+      <div className="flex items-center gap-1 text-[9px] text-amber-100/70">
+        <CountdownSmall startedAt={startedAt} completesAt={completesAt} />
         {onCancel ? (
           <button
             type="button"
             onClick={onCancel}
             disabled={isCancelling}
-            className="grid h-5 w-5 place-items-center rounded border border-rose-300/20 bg-rose-950/30 text-[12px] leading-none text-rose-100/80 transition hover:border-rose-200/45 hover:bg-rose-800/40 disabled:opacity-45"
+            className="grid h-4 w-4 place-items-center rounded border border-rose-300/20 bg-rose-950/30 text-[10px] leading-none text-rose-100/80 transition hover:border-rose-200/45 hover:bg-rose-800/40 disabled:opacity-45"
             aria-label={cancelLabel}
             title={cancelLabel}
           >
@@ -532,7 +588,7 @@ function QueueRailItem({ icon, title, subtitle, completesAt, cancelLabel, isCanc
   );
 }
 
-function PuebloView({ buildings, selectedBuildingId, onSelectBuilding, cityName, resources, storage, production, onRename, pendingUpgradeBuildingIds, t }: {
+function PuebloView({ buildings, selectedBuildingId, onSelectBuilding, cityName, resources, storage, production, onRename, pendingUpgradeBuildingIds, interactionsDisabled, t }: {
   buildings: any[];
   selectedBuildingId: string | null;
   onSelectBuilding: (id: string) => void;
@@ -542,6 +598,7 @@ function PuebloView({ buildings, selectedBuildingId, onSelectBuilding, cityName,
   production: { goldPerHour: number; woodPerHour: number; stonePerHour: number; foodPerHour: number };
   onRename: () => void;
   pendingUpgradeBuildingIds: string[];
+  interactionsDisabled: boolean;
   t: (key: string) => string;
 }) {
   const { data: layout } = useVillageLayout();
@@ -559,6 +616,7 @@ function PuebloView({ buildings, selectedBuildingId, onSelectBuilding, cityName,
         selectedBuildingId={selectedBuildingId}
         onSelectBuilding={onSelectBuilding}
         queues={pendingUpgradeBuildingIds.map(id => ({ buildingId: id }))}
+        interactionsDisabled={interactionsDisabled}
       />
     </div>
   );
@@ -847,6 +905,7 @@ function MailModal({ onClose, t }: { onClose: () => void; t: (key: string) => st
   const { data: battleReportsData } = useBattleReports(cityId);
   const markRead = useMarkReadMail();
   const markReportRead = useMarkGameReportRead();
+  const markBattleReportRead = useMarkReportRead();
   const sendMail = useSendMailMessage();
   const addToast = useToastStore((s) => s.addToast);
   const { data: allCities } = useAllCities();
@@ -862,6 +921,11 @@ function MailModal({ onClose, t }: { onClose: () => void; t: (key: string) => st
   const messages = tab === "inbox" ? mailData?.inbox ?? [] : tab === "sent" ? mailData?.sent ?? [] : [];
   const selected = messages.find((m: any) => m.id === selectedId);
   const recipients = (allCities ?? []).filter((c: any) => c.id !== useGameStore.getState().cityId);
+
+  const markBattleReport = (reportId: string) => {
+    if (!cityId) return;
+    markBattleReportRead.mutate({ cityId, reportId });
+  };
 
   useEffect(() => {
     if (tab !== "inbox" || !selected || selected.readAt) return;
@@ -884,8 +948,8 @@ function MailModal({ onClose, t }: { onClose: () => void; t: (key: string) => st
   };
 
   return (
-    <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/62 px-4 backdrop-blur-[4px]" onClick={onClose}>
-      <div className="relative grid h-[min(640px,calc(100vh-36px))] w-full max-w-[920px] overflow-hidden rounded-[30px] border border-etheria-border bg-[#0b1111] shadow-[0_28px_90px_rgba(0,0,0,.58)] lg:grid-cols-[310px_1fr]" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/62 px-4 backdrop-blur-[4px]" onClick={onClose} onPointerDown={(e) => e.stopPropagation()}>
+      <div className="relative grid h-[min(640px,calc(100vh-36px))] w-full max-w-[920px] overflow-hidden rounded-[30px] border border-etheria-border bg-[#0b1111] shadow-[0_28px_90px_rgba(0,0,0,.58)] lg:grid-cols-[310px_1fr]" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
         <button onClick={onClose} className="absolute right-5 top-5 z-10 text-etheria-gold-soft">✕</button>
         <aside className="border-r border-white/5 p-4 overflow-y-auto">
           <div className="font-serif text-lg text-etheria-gold-soft mb-4 uppercase tracking-widest">{t("play.mail.title")}</div>
@@ -908,7 +972,7 @@ function MailModal({ onClose, t }: { onClose: () => void; t: (key: string) => st
                 </button>
               ))}
               {battleReports.map((report: any) => (
-                <button key={`br-${report.id}`} className={`w-full rounded-xl border p-3 text-left transition-all ${report.read ? "border-transparent hover:bg-white/5" : "border-etheria-gold/20 bg-etheria-gold/5 hover:bg-etheria-gold/10"}`}>
+                <button key={`br-${report.id}`} onClick={() => !report.read && markBattleReport(report.id)} className={`w-full rounded-xl border p-3 text-left transition-all ${report.read ? "border-transparent hover:bg-white/5" : "border-etheria-gold/20 bg-etheria-gold/5 hover:bg-etheria-gold/10"}`}>
                   <div className="mb-1 flex items-center justify-between gap-2">
                     <span className="truncate font-serif text-xs text-white">
                       {report.status === "VICTORY" ? t("play.battle.victory") : t("play.battle.defeat")} vs {report.defenderName ?? report.attackerName}
@@ -954,7 +1018,7 @@ function MailModal({ onClose, t }: { onClose: () => void; t: (key: string) => st
                   </article>
                 ))}
                 {battleReports.map((report: any) => (
-                  <article key={`brd-${report.id}`} className="rounded-xl border border-etheria-gold/15 bg-etheria-gold/[0.02] p-4">
+                  <article key={`brd-${report.id}`} onClick={() => !report.read && markBattleReport(report.id)} className="rounded-xl border border-etheria-gold/15 bg-etheria-gold/[0.02] p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="text-[10px] uppercase tracking-widest text-etheria-gold-soft/60">{t("play.battle.title")}</div>
@@ -1073,8 +1137,8 @@ function BuildingModal({ building, resources, onUpgrade, onTrain, onResearch, is
   }
 
   return (
-    <div className="fixed inset-0 z-[80] grid place-items-center bg-black/75 backdrop-blur-md p-4" onClick={onClose}>
-      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-[40px] border border-etheria-border bg-[#0b1111] shadow-[0_0_100px_rgba(0,0,0,0.5)] flex flex-col md:flex-row" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-black/75 backdrop-blur-md p-4" onClick={onClose} onPointerDownCapture={(e) => e.stopPropagation()}>
+      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-[40px] border border-etheria-border bg-[#0b1111] shadow-[0_0_100px_rgba(0,0,0,0.5)] flex flex-col md:flex-row" onClick={(e) => e.stopPropagation()} onPointerDownCapture={(e) => e.stopPropagation()}>
         <button onClick={onClose} className="absolute right-6 top-6 z-10 text-white/40 hover:text-white">✕</button>
         
         {/* Left Side: Visuals */}
@@ -1995,10 +2059,15 @@ function AllianceModal({ onClose, t }: any) {
 }
 
 /* ─── Countdown ─── */
-function CountdownSmall({ completesAt }: { completesAt: string }) {
+function CountdownSmall({ startedAt, completesAt }: { startedAt?: string; completesAt: string }) {
+  const { t } = useI18n();
   const [time, setTime] = useState("");
   useEffect(() => {
     const update = () => {
+      if (startedAt && new Date(startedAt).getTime() > Date.now()) {
+        setTime(t("play.queues.waiting"));
+        return;
+      }
       const diff = Math.max(0, new Date(completesAt).getTime() - Date.now());
       const h = Math.floor(diff / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
@@ -2008,6 +2077,6 @@ function CountdownSmall({ completesAt }: { completesAt: string }) {
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, [completesAt]);
+  }, [completesAt, startedAt, t]);
   return <span className="font-mono">{time}</span>;
 }

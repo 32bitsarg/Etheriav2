@@ -74,7 +74,7 @@ export function ActiveBuffsPanel() {
   if (buffs.length === 0) return null;
 
   return (
-    <div className="pointer-events-auto flex items-center gap-2 rounded-xl border border-white/10 bg-black/50 backdrop-blur-md px-3 py-2">
+    <div className="pointer-events-auto flex items-center gap-1.5">
       {buffs.map((buff) => (
         <BuffIcon key={buff.id} buff={buff} />
       ))}

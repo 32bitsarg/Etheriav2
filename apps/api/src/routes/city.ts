@@ -119,6 +119,81 @@ function calculateCancellationRefund(cost: { gold: number; wood: number; stone: 
   };
 }
 
+function scheduleSequentialQueueAfterCancellation(
+  pendingQueues: any[],
+  durationForQueue: (queue: any) => number,
+  now: Date
+) {
+  const sorted = sortPendingQueues(pendingQueues);
+  let cursorMs = now.getTime();
+  return sorted.map((queue, index) => {
+    const currentStartedAt = new Date(queue.startedAt ?? 0).getTime();
+    const currentCompletesAt = new Date(queue.completesAt ?? 0).getTime();
+    if (index === 0 && currentStartedAt <= now.getTime() && currentCompletesAt > now.getTime()) {
+      cursorMs = currentCompletesAt;
+      return {
+        queue,
+        startedAt: new Date(currentStartedAt).toISOString(),
+        completesAt: new Date(currentCompletesAt).toISOString(),
+      };
+    }
+
+    const startedAt = new Date(cursorMs);
+    const completesAt = new Date(cursorMs + durationForQueue(queue) * 1000);
+    cursorMs = completesAt.getTime();
+    return {
+      queue,
+      startedAt: startedAt.toISOString(),
+      completesAt: completesAt.toISOString(),
+    };
+  });
+}
+
+async function rescheduleBuildQueues(cityId: string, now: Date) {
+  const queuesRes = await db.from(COLLECTIONS.BUILD_QUEUES)
+    .eq("cityId", cityId)
+    .eq("isComplete", false)
+    .get() as any;
+  const schedules = scheduleSequentialQueueAfterCancellation(
+    queuesRes.data ?? [],
+    (queue) => getBuildingTime(queue.buildingType as BuildingType, Number(queue.targetLevel ?? 1)),
+    now
+  );
+  await Promise.all(schedules.map(({ queue, startedAt, completesAt }) =>
+    mergeRecordBySelector(COLLECTIONS.BUILD_QUEUES, queue, { startedAt, completesAt })
+  ));
+}
+
+async function rescheduleTrainingQueues(cityId: string, now: Date) {
+  const queuesRes = await db.from(COLLECTIONS.TRAINING_QUEUES)
+    .eq("cityId", cityId)
+    .eq("isComplete", false)
+    .get() as any;
+  const schedules = scheduleSequentialQueueAfterCancellation(
+    queuesRes.data ?? [],
+    (queue) => getTrainingTime(queue.unitType as UnitType, Number(queue.count ?? 1)),
+    now
+  );
+  await Promise.all(schedules.map(({ queue, startedAt, completesAt }) =>
+    mergeRecordBySelector(COLLECTIONS.TRAINING_QUEUES, queue, { startedAt, completesAt })
+  ));
+}
+
+async function rescheduleResearchQueues(cityId: string, now: Date) {
+  const queuesRes = await db.from(COLLECTIONS.RESEARCH_QUEUES)
+    .eq("cityId", cityId)
+    .eq("isComplete", false)
+    .get() as any;
+  const schedules = scheduleSequentialQueueAfterCancellation(
+    queuesRes.data ?? [],
+    (queue) => getResearchTime(queue.techId, Number(queue.targetLevel ?? 1)),
+    now
+  );
+  await Promise.all(schedules.map(({ queue, startedAt, completesAt }) =>
+    mergeRecordBySelector(COLLECTIONS.RESEARCH_QUEUES, queue, { startedAt, completesAt })
+  ));
+}
+
 function actionErrorResponse(c: any, error: unknown) {
   if (error instanceof CityActionError) {
     return c.json({ error: error.message, ...error.details }, error.status as any);
@@ -615,6 +690,7 @@ cityRouter.post("/:id/build-queues/:queueId/cancel", async (c) => {
   });
 
   await deleteRecordBySelector(COLLECTIONS.BUILD_QUEUES, queue);
+  await rescheduleBuildQueues(cityId, new Date(nowIso));
 
   return c.json({
     success: true,
@@ -672,6 +748,7 @@ cityRouter.post("/:id/training-queues/:queueId/cancel", async (c) => {
     lastResourceUpdate: nowIso,
   });
   await deleteRecordBySelector(COLLECTIONS.TRAINING_QUEUES, queue);
+  await rescheduleTrainingQueues(cityId, new Date(nowIso));
 
   return c.json({ success: true, queueId, refund, resources: nextResources });
 });
@@ -861,6 +938,7 @@ cityRouter.post("/:id/research-queues/:queueId/cancel", async (c) => {
     lastResourceUpdate: nowIso,
   });
   await deleteRecordBySelector(COLLECTIONS.RESEARCH_QUEUES, queue);
+  await rescheduleResearchQueues(cityId, new Date(nowIso));
 
   return c.json({ success: true, queueId, refund, resources: nextResources });
 });

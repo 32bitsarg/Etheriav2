@@ -16,17 +16,21 @@ export function startBarbarianSpawnWorker(): void {
     if (workerTickRunning) return;
     workerTickRunning = true;
     try {
-      await processBarbarianSpawns();
-
-      escalationTick++;
-      if (escalationTick >= ESCALATION_CHECK_INTERVAL) {
-        await processCampEscalation();
-        escalationTick = 0;
-      }
+      await processBarbarianSpawnTick();
     } catch (err) {
       console.error('Barbarian spawn worker error:', err);
     } finally {
       workerTickRunning = false;
     }
   }, SPAWN_INTERVAL_MS);
+}
+
+export async function processBarbarianSpawnTick(): Promise<void> {
+  await processBarbarianSpawns();
+
+  escalationTick++;
+  if (escalationTick >= ESCALATION_CHECK_INTERVAL) {
+    await processCampEscalation();
+    escalationTick = 0;
+  }
 }

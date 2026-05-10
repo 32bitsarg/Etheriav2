@@ -51,24 +51,28 @@ export function startQueueWorker(): void {
     if (workerTickRunning) return;
     workerTickRunning = true;
     try {
-      await processBuildQueues();
-      await processTrainingQueues();
-      await processResearchQueues();
-      await processResourceTicks();
-      await processBattles();
-      await processBattleReturns();
-      await processBarbarianBattles();
-      await processBarbarianReturns();
-      await processBarbarianAttacks();
-      await resolveBarbarianAttackArrivals();
-      await processBarbarianAttackReturns();
-      await processTradeCaravans();
+      await processQueueWorkerTick();
     } catch (err) {
       console.error('Queue worker error:', err);
     } finally {
       workerTickRunning = false;
     }
   }, 5000);
+}
+
+export async function processQueueWorkerTick() {
+  await processBuildQueues();
+  await processTrainingQueues();
+  await processResearchQueues();
+  await processResourceTicks();
+  await processBattles();
+  await processBattleReturns();
+  await processBarbarianBattles();
+  await processBarbarianReturns();
+  await processBarbarianAttacks();
+  await resolveBarbarianAttackArrivals();
+  await processBarbarianAttackReturns();
+  await processTradeCaravans();
 }
 
 // ─── Build Queues ───

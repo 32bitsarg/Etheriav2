@@ -5,10 +5,18 @@ import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
 
 export function setupMiddleware(app: Hono) {
+  const allowedOrigins = [
+    "http://localhost:3000",
+    ...(process.env.WEB_ORIGIN ?? "")
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+  ];
+
   app.use(logger());
   app.use(
     cors({
-      origin: ["http://localhost:3000"],
+      origin: allowedOrigins,
       allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       allowHeaders: ["Content-Type", "Authorization"],
       credentials: true,
