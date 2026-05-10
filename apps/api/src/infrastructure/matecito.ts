@@ -3,7 +3,6 @@ if (!process.env.NEXT_PUBLIC_MATECITO_URL) {
   dotenv.config({ path: '../../.env' });
 }
 
-import { createClient } from 'matecitodb';
 import { postgresDb } from './postgresCompat.js';
 
 const url = process.env.NEXT_PUBLIC_MATECITO_URL!;
@@ -14,9 +13,11 @@ if (!usePostgres && (!url || !serviceKey)) {
   throw new Error('Missing matecito credentials. Check your .env file.');
 }
 
-export const db = usePostgres
-  ? postgresDb as any
-  : createClient({ url, apiKey: serviceKey, apiVersion: 'v2' });
+if (!usePostgres) {
+  throw new Error('Matecito runtime is disabled on the Node API build. Set DB_PROVIDER=postgres.');
+}
+
+export const db = postgresDb as any;
 
 // Collections
 export const COLLECTIONS = {

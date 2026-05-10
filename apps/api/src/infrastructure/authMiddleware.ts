@@ -1,5 +1,4 @@
 import type { MiddlewareHandler } from "hono";
-import { createClient } from "matecitodb";
 
 export type AuthContext = { userId: string };
 
@@ -12,6 +11,7 @@ export function requireMatecitoAuth(): MiddlewareHandler<{ Variables: AuthContex
 
     const url = process.env.NEXT_PUBLIC_MATECITO_URL!;
     const serviceKey = process.env.MATECITO_SERVICE_KEY!;
+    const { createClient } = await import("matecitodb");
     const db = createClient({ url, apiKey: serviceKey, apiVersion: "v2" });
 
     db.auth.setSession({ access_token: token });
@@ -24,4 +24,3 @@ export function requireMatecitoAuth(): MiddlewareHandler<{ Variables: AuthContex
     await next();
   };
 }
-
