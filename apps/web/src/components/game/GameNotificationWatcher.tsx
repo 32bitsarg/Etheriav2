@@ -7,6 +7,7 @@ import {
   useActiveBattles,
   useAllianceMembership,
   useBarbarianAttackAlerts,
+  useBattleReports,
   useGameReports,
   useMailMessages,
 } from "@/hooks/useCity";
@@ -61,18 +62,21 @@ export function GameNotificationWatcher() {
 
   const mailData = useMailMessages(true);
   const reportsData = useGameReports(true);
+  const battleReports = useBattleReports(cityId);
   const barbarianAlerts = useBarbarianAttackAlerts(cityId);
   const activeBattles = useActiveBattles(cityId);
   const allianceData = useAllianceMembership();
 
   const seenMail = useRef(new Set<string>());
   const seenReports = useRef(new Set<string>());
+  const seenBattleReports = useRef(new Set<string>());
   const seenBarbarianAlerts = useRef(new Set<string>());
   const seenIncomingBattles = useRef(new Set<string>());
   const seenAllianceEvents = useRef(new Set<string>());
 
   const mailReady = useRef(false);
   const reportsReady = useRef(false);
+  const battleReportsReady = useRef(false);
   const barbarianReady = useRef(false);
   const battlesReady = useRef(false);
   const allianceReady = useRef(false);
@@ -112,6 +116,28 @@ export function GameNotificationWatcher() {
       });
     });
   }, [addToast, reportsData.data?.reports]);
+
+  useEffect(() => {
+    if (!battleReports.data) return;
+    const unread = battleReports.data?.filter((report) => !report.read) ?? [];
+    if (rememberInitial(unread.map((report) => report.id), seenBattleReports, battleReportsReady)) return;
+
+    unread.forEach((report) => {
+      if (seenBattleReports.current.has(report.id)) return;
+      seenBattleReports.current.add(report.id);
+      const lost = Object.entries(report.defenderLosses ?? {})
+        .filter(([, count]) => Number(count) > 0)
+        .map(([type, count]) => `${count} ${type}`)
+        .join(", ");
+      addToast({
+        type: report.status === "VICTORY" ? "success" : "warning",
+        icon: report.isBarbarianAttack ? "barbarian" : "battle",
+        title: report.status === "VICTORY" ? t("play.battle.victory") : t("play.battle.defeat"),
+        message: lost ? `${t("play.battle.defenderLosses")}: ${lost}` : `${report.attackerName ?? t("play.battle.title")}`,
+        duration: 10000,
+      });
+    });
+  }, [addToast, battleReports.data, t]);
 
   useEffect(() => {
     if (!barbarianAlerts.data) return;

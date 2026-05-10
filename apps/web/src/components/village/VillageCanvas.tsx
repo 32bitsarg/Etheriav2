@@ -26,6 +26,7 @@ export function VillageCanvas({
   onEditorAnchorChange,
   onEditorCameraChange,
   editorCenterVersion = 0,
+  interactionsDisabled = false,
 }: {
   layout: VillageLayoutData;
   buildings: StageBuilding[];
@@ -37,6 +38,7 @@ export function VillageCanvas({
   onEditorAnchorChange?: (payload: { buildingId: string; tileKey: string; anchor: VillageLayoutAnchor }) => void;
   onEditorCameraChange?: (camera: { x: number; y: number; zoom: number }) => void;
   editorCenterVersion?: number;
+  interactionsDisabled?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<any>(null);
@@ -180,6 +182,11 @@ export function VillageCanvas({
     const scene = gameRef.current?.scene.getScene("VillageScene") as any;
     scene?.centerEditorCamera?.();
   }, [editorCenterVersion, editorMode]);
+
+  useEffect(() => {
+    const scene = gameRef.current?.scene.getScene("VillageScene") as any;
+    if (scene?.input) scene.input.enabled = !interactionsDisabled;
+  }, [interactionsDisabled]);
 
   return <div ref={containerRef} className="relative h-full w-full overflow-hidden bg-[#101c18]" />;
 }

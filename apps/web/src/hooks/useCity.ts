@@ -546,6 +546,7 @@ export interface BattleReport {
   loot?: Resources;
   read: boolean;
   createdAt: string;
+  isBarbarianAttack?: boolean;
 }
 
 export function useBattleReports(cityId: string | null) {

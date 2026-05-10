@@ -263,7 +263,7 @@ export function createVillageScene(Phaser: typeof import("phaser")) {
       this.refreshAmbientEffects(textureKey, data);
       if (!data.editorMode) this.clampCamera();
       this.updateDebugText(data);
-      if (data.editorMode) this.renderBuildings(data);
+      this.renderBuildings(data);
       this.renderEditorGuides(data);
     }
 

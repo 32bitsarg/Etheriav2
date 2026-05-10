@@ -18,44 +18,51 @@ export interface ChangelogRelease {
 export const changelogReleases: ChangelogRelease[] = [
   {
     version: "0.2.4",
-    nameKey: "changelog.releases.v0_2_4",
+    nameKey: "changelog.releases.0.2.4",
     date: "2026-05-08",
     sections: [
       {
         heading: "Added",
         itemKeys: [
-          "changelog.items.v0_2_4.added.0",
-          "changelog.items.v0_2_4.added.1",
-          "changelog.items.v0_2_4.added.2",
-          "changelog.items.v0_2_4.added.3",
-          "changelog.items.v0_2_4.added.4",
-          "changelog.items.v0_2_4.added.5",
-          "changelog.items.v0_2_4.added.6",
-          "changelog.items.v0_2_4.added.7",
-          "changelog.items.v0_2_4.added.8",
-          "changelog.items.v0_2_4.added.9",
+          "changelog.items.0.2.4.added.0",
+          "changelog.items.0.2.4.added.1",
+          "changelog.items.0.2.4.added.2",
+          "changelog.items.0.2.4.added.3",
+          "changelog.items.0.2.4.added.4",
+          "changelog.items.0.2.4.added.5",
+          "changelog.items.0.2.4.added.6",
+          "changelog.items.0.2.4.added.7",
+          "changelog.items.0.2.4.added.8",
+          "changelog.items.0.2.4.added.9",
+          "changelog.items.0.2.4.added.10",
+          "changelog.items.0.2.4.added.11",
+          "changelog.items.0.2.4.added.12",
+          "changelog.items.0.2.4.added.13",
+          "changelog.items.0.2.4.added.14",
+          "changelog.items.0.2.4.added.15",
+          "changelog.items.0.2.4.added.16"
         ],
       },
       {
         heading: "Changed",
         itemKeys: [
-          "changelog.items.v0_2_4.changed.0",
-          "changelog.items.v0_2_4.changed.1",
-          "changelog.items.v0_2_4.changed.2",
-          "changelog.items.v0_2_4.changed.3",
+          "changelog.items.0.2.4.changed.0",
+          "changelog.items.0.2.4.changed.1",
+          "changelog.items.0.2.4.changed.2",
+          "changelog.items.0.2.4.changed.3"
         ],
       },
       {
         heading: "Fixed",
         itemKeys: [
-          "changelog.items.v0_2_4.fixed.0",
-          "changelog.items.v0_2_4.fixed.1",
-          "changelog.items.v0_2_4.fixed.2",
-          "changelog.items.v0_2_4.fixed.3",
-          "changelog.items.v0_2_4.fixed.4",
-          "changelog.items.v0_2_4.fixed.5",
+          "changelog.items.0.2.4.fixed.0",
+          "changelog.items.0.2.4.fixed.1",
+          "changelog.items.0.2.4.fixed.2",
+          "changelog.items.0.2.4.fixed.3",
+          "changelog.items.0.2.4.fixed.4",
+          "changelog.items.0.2.4.fixed.5"
         ],
-      },
+      }
     ],
   },
   {

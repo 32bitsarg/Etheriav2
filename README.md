@@ -119,6 +119,8 @@ pnpm db:pg:push             # Prisma push para soporte PostgreSQL legado
 pnpm db:pg:studio           # Prisma Studio legado
 ```
 
+Para deploy con Vercel + Supabase Postgres, ver `docs/vercel-supabase-deploy.md` y `docs/vercel-deploy.md`.
+
 Para correr servicios por separado:
 
 ```bash

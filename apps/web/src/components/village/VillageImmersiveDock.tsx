@@ -201,6 +201,7 @@ function QueueStack({ emptyText, items, onCancelItem, cancellingItemId }: { empt
 function QueueCard({ item, onCancel, isCancelling }: { item: QueueItem; onCancel?: (item: QueueItem) => void; isCancelling?: boolean }) {
   const { t } = useI18n();
   const { remaining, progress } = useCountdown(item.completesAt);
+  const isWaiting = new Date(item.startedAt).getTime() > Date.now();
   const seconds = remaining() ?? 0;
   const refund = item.refundableCost
     ? Object.entries(item.refundableCost)
@@ -216,7 +217,7 @@ function QueueCard({ item, onCancel, isCancelling }: { item: QueueItem; onCancel
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <div className="font-mono text-[9px] leading-none text-etheria-text">{formatTime(seconds)}</div>
+          <div className="font-mono text-[9px] leading-none text-etheria-text">{isWaiting ? t("play.queues.waiting") : formatTime(seconds)}</div>
           {onCancel ? (
             <button
               type="button"
@@ -231,7 +232,7 @@ function QueueCard({ item, onCancel, isCancelling }: { item: QueueItem; onCancel
           ) : null}
         </div>
         <div className="village-queue-card__track mt-1">
-          <div className="village-queue-card__fill" style={{ width: `${progress(item.startedAt)}%` }} />
+          <div className="village-queue-card__fill" style={{ width: `${isWaiting ? 0 : progress(item.startedAt)}%` }} />
         </div>
       </div>
     </div>

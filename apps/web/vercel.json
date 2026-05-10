@@ -1,0 +1,4 @@
+{
+  "buildCommand": "pnpm --filter @etheria/web build",
+  "outputDirectory": ".next"
+}

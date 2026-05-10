@@ -585,6 +585,11 @@
       "noConstruction": "Sin construcciones.",
       "noTraining": "Sin entrenamiento.",
       "noResearch": "Sin investigaciones.",
+      "incomingAttacks": "Ataques entrantes",
+      "noIncomingAttacks": "Sin ataques entrantes.",
+      "incomingAttack": "Ataque entrante",
+      "arrivesToVillage": "Llega a tu aldea",
+      "waiting": "En espera",
       "marches": "Marchas",
       "noMarches": "Sin marchas activas.",
       "marchingTo": "Marchando al objetivo",
@@ -1159,7 +1164,8 @@
         "mountain": "Montaña",
         "forest": "Bosque",
         "plains": "Llanura"
-      }
+      },
+      "title": "Buffs"
     }
   }
 }

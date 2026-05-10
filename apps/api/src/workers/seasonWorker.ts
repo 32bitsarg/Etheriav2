@@ -20,7 +20,7 @@ export function startSeasonWorker(): void {
   }, 30000);
 }
 
-async function processSeasonTicks(): Promise<void> {
+export async function processSeasonTicks(): Promise<void> {
   let state = await getSeasonState();
 
   if (!state) {
