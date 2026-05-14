@@ -5,7 +5,7 @@ APP_DIR="/opt/etheria/app"
 
 case "${1:-}" in
   status)
-    systemctl --no-pager status etheria-api etheria-web caddy
+    systemctl --no-pager status etheria-api etheria-worker etheria-web caddy
     ;;
   logs-api)
     journalctl -u etheria-api -n "${2:-200}" --no-pager
@@ -16,11 +16,17 @@ case "${1:-}" in
   logs-caddy)
     journalctl -u caddy -n "${2:-200}" --no-pager
     ;;
+  logs-worker)
+    journalctl -u etheria-worker -n "${2:-200}" --no-pager
+    ;;
   restart-api)
     systemctl restart etheria-api
     ;;
   restart-web)
     systemctl restart etheria-web
+    ;;
+  restart-worker)
+    systemctl restart etheria-worker
     ;;
   rebuild-api)
     sudo -u etheria bash -lc "cd ${APP_DIR} && set -a && source /opt/etheria/api.env && set +a && pnpm --filter @etheria/api build"

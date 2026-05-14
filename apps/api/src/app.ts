@@ -29,6 +29,18 @@ export function createApiApp() {
   setupMiddleware(app);
 
   app.use('*', async (c, next) => {
+    const start = performance.now();
+    await next();
+    const durationMs = Math.round(performance.now() - start);
+    c.header('Server-Timing', `app;dur=${durationMs}`);
+    c.header('X-Response-Time', `${durationMs}ms`);
+    if (c.req.path !== '/health' && durationMs >= 500) {
+      const level = durationMs >= 1500 ? 'warn' : 'info';
+      console[level](`[perf] ${c.req.method} ${c.req.path} ${c.res.status} ${durationMs}ms`);
+    }
+  });
+
+  app.use('*', async (c, next) => {
     if (c.req.path.startsWith('/admin/ops')) {
       await next();
       return;

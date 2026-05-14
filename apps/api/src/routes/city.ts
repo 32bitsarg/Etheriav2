@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
+import { prisma } from "@etheria/database";
 import { db, COLLECTIONS } from "../infrastructure/matecito.js";
 import {
   deleteRecordByLogicalId,
@@ -65,6 +66,8 @@ const citySnapshotCache = new Map<string, { data: any; cachedAt: number }>();
 const CITY_SNAPSHOT_TTL_MS = 15_000;
 const WORLD_MAP_CITY_LIMIT = Number(process.env.WORLD_MAP_CITY_LIMIT ?? 200);
 const RANKING_CITY_LIMIT = Number(process.env.RANKING_CITY_LIMIT ?? 100);
+const SEASON_STATE_CACHE_TTL_MS = 15_000;
+let seasonStateCache: { data: any; cachedAt: number } | null = null;
 
 function sortPendingQueues<T extends { startedAt?: string; completesAt?: string }>(queues: T[]): T[] {
   return [...queues].sort((a, b) => {
@@ -72,6 +75,138 @@ function sortPendingQueues<T extends { startedAt?: string; completesAt?: string 
     if (completesDiff !== 0) return completesDiff;
     return new Date(a.startedAt ?? 0).getTime() - new Date(b.startedAt ?? 0).getTime();
   });
+}
+
+function serializeRecord<T>(record: T): T {
+  if (!record || typeof record !== "object") return record;
+  if (record instanceof Date) return record.toISOString() as T;
+  if (Array.isArray(record)) return record.map((item) => serializeRecord(item)) as T;
+  return Object.fromEntries(
+    Object.entries(record as Record<string, unknown>).map(([key, value]) => [key, serializeRecord(value)])
+  ) as T;
+}
+
+async function getCachedSeasonStateDirect() {
+  if (seasonStateCache && Date.now() - seasonStateCache.cachedAt <= SEASON_STATE_CACHE_TTL_MS) {
+    return seasonStateCache.data;
+  }
+  const state = await prisma.worldSeasonState.findFirst();
+  const data = serializeRecord(state);
+  seasonStateCache = { data, cachedAt: Date.now() };
+  return data;
+}
+
+async function getAllianceMembershipForUserDirect(userId: string) {
+  const membership = await prisma.allianceMember.findUnique({ where: { userId } });
+  if (!membership) return null;
+  const alliance = await prisma.alliance.findUnique({ where: { id: membership.allianceId } });
+  return serializeRecord({ ...membership, alliance });
+}
+
+async function getPlayInitialSnapshot(cityId: string) {
+  const startedAt = performance.now();
+  const city = await prisma.city.findUnique({
+    where: { id: cityId },
+    include: {
+      buildings: true,
+      units: true,
+      buildQueues: { where: { isComplete: false }, orderBy: [{ completesAt: "asc" }, { startedAt: "asc" }] },
+      trainingQueues: { where: { isComplete: false }, orderBy: [{ completesAt: "asc" }, { startedAt: "asc" }] },
+      researchQueues: { where: { isComplete: false }, orderBy: [{ completesAt: "asc" }, { startedAt: "asc" }] },
+      cityTechs: true,
+    },
+  });
+  if (!city) return null;
+
+  const buildings = normalizeLegacyDefenseBuildings(serializeRecord(city.buildings));
+  const stats = calculateCityStats(buildings);
+  const cityTechs = serializeRecord(city.cityTechs);
+  const techBonuses = calculateTechBonuses(cityTechs.map((tech: any) => ({ techId: tech.techId, level: tech.level })));
+  const [allianceMembership, seasonState, activeBattles, battleReports, gameReportsCount, unreadMailCount, barbarianAlerts] = await Promise.all([
+    getAllianceMembershipForUserDirect(city.userId),
+    getCachedSeasonStateDirect(),
+    prisma.battle.findMany({
+      where: {
+        OR: [{ attackerCityId: cityId }, { defenderCityId: cityId }],
+        status: { in: ["MARCHING", "RETURNING"] as any },
+      },
+      orderBy: { arrivesAt: "asc" },
+      take: 20,
+    }),
+    prisma.battleReport.findMany({
+      where: { cityId },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    }),
+    prisma.gameReport.count({ where: { userId: city.userId, readAt: null } as any }).catch(() => 0),
+    prisma.mailMessage.count({ where: { recipientUserId: city.userId, readAt: null } }).catch(() => 0),
+    prisma.barbarianAttackAlert.findMany({
+      where: { cityId, read: false },
+      orderBy: { arrivesAt: "asc" },
+      take: 10,
+    }).catch(() => []),
+  ]);
+
+  const activeAllianceEffects = allianceMembership?.allianceId
+    ? await prisma.allianceEffect.findMany({
+        where: {
+          allianceId: allianceMembership.allianceId,
+          expiresAt: { gt: new Date() },
+        },
+      })
+    : [];
+  const effective = await calculateEffectiveProduction(stats.production, {
+    techBonuses,
+    allianceEffects: serializeRecord(activeAllianceEffects),
+    seasonState,
+    cityPosX: city.posX ?? 0,
+    cityPosY: city.posY ?? 0,
+  });
+  const resourceSnapshotAt = new Date();
+  const resources = calculateResources(
+    { gold: city.gold, wood: city.wood, stone: city.stone, food: city.food, gems: city.gems },
+    effective.production,
+    stats.storage,
+    new Date(city.lastResourceUpdate ?? city.createdAt),
+    resourceSnapshotAt
+  );
+  const researchQueue = serializeRecord(city.researchQueues);
+
+  const snapshot = {
+    ...serializeRecord(city),
+    lastResourceUpdate: resourceSnapshotAt.toISOString(),
+    buildings,
+    units: serializeRecord(city.units),
+    buildQueues: serializeRecord(city.buildQueues),
+    trainingQueues: serializeRecord(city.trainingQueues),
+    cityTechs,
+    researchQueue,
+    activeResearch: researchQueue[0] ?? null,
+    allianceMembership,
+    resources,
+    ...stats,
+    production: effective.production,
+    seasonModifiers: effective.totalMultiplier,
+    techBonuses,
+    allianceEffects: serializeRecord(activeAllianceEffects),
+  };
+
+  citySnapshotCache.set(cityId, { data: snapshot, cachedAt: Date.now() });
+  const durationMs = Math.round(performance.now() - startedAt);
+  if (durationMs >= 500) console.warn(`[perf] play-initial snapshot ${cityId} ${durationMs}ms`);
+
+  return {
+    city: snapshot,
+    activeBattles: serializeRecord(activeBattles),
+    battleReports: serializeRecord(battleReports),
+    unreadCounts: {
+      mail: unreadMailCount,
+      gameReports: gameReportsCount,
+      battleReports: battleReports.filter((report) => !report.read).length,
+    },
+    barbarianAlerts: serializeRecord(barbarianAlerts),
+    seasonState,
+  };
 }
 
 async function sleep(ms: number) {
@@ -614,6 +749,13 @@ cityRouter.get("/world-map", async (c) => {
 cityRouter.get("/world/movements", async (c) => {
   const movements = await getActiveMovements();
   return c.json({ movements });
+});
+
+cityRouter.get("/:id/play-initial", async (c) => {
+  const id = c.req.param("id");
+  const snapshot = await getPlayInitialSnapshot(id);
+  if (!snapshot) return c.json({ error: "City not found" }, 404);
+  return c.json(snapshot);
 });
 
 // Get city

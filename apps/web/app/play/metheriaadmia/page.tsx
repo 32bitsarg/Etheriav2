@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
-type Service = "api" | "web" | "caddy";
+type Service = "api" | "web" | "worker" | "caddy";
 type Lines = "100" | "200" | "500";
 type ServiceState = "running" | "failed" | "unknown";
 type AdminResponse = {
@@ -13,7 +13,8 @@ type AdminResponse = {
 };
 
 const SERVICES: { id: Service; label: string; description: string }[] = [
-  { id: "api", label: "API", description: "Hono + workers" },
+  { id: "api", label: "API", description: "Hono HTTP" },
+  { id: "worker", label: "Worker", description: "Colas y bots" },
   { id: "web", label: "Web", description: "Next.js" },
   { id: "caddy", label: "Caddy", description: "Reverse proxy" },
 ];
@@ -49,7 +50,7 @@ function responseText(response: AdminResponse | null) {
 }
 
 function serviceState(statusText: string, service: Service): ServiceState {
-  const unit = service === "api" ? "etheria-api" : service === "web" ? "etheria-web" : "caddy";
+  const unit = service === "api" ? "etheria-api" : service === "web" ? "etheria-web" : service === "worker" ? "etheria-worker" : "caddy";
   const index = statusText.indexOf(`${unit}.service`);
   if (index < 0) return "unknown";
   const slice = statusText.slice(index, index + 900);
@@ -162,7 +163,7 @@ export default function MetheriaadmiaPage() {
     setSecret(value);
   }
 
-  async function runAction(action: "restart" | "rebuild", service: "api" | "web") {
+  async function runAction(action: "restart" | "rebuild", service: "api" | "web" | "worker") {
     const label = action === "restart" ? "reiniciar" : "rebuild";
     if (!window.confirm(`Confirmar ${label} ${service}?`)) return;
     setLoading(`${action}-${service}`);
@@ -242,7 +243,7 @@ export default function MetheriaadmiaPage() {
           </div>
         </header>
 
-        <section className="grid gap-3 md:grid-cols-3">
+        <section className="grid gap-3 md:grid-cols-4">
           {SERVICES.map((service) => {
             const state = serviceState(statusText, service.id);
             return (
@@ -324,6 +325,7 @@ export default function MetheriaadmiaPage() {
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <button onClick={() => runAction("restart", "api")} className="rounded-md border border-amber-400/40 px-3 py-2 text-sm text-amber-200 hover:bg-amber-950/40">Restart API</button>
                 <button onClick={() => runAction("restart", "web")} className="rounded-md border border-amber-400/40 px-3 py-2 text-sm text-amber-200 hover:bg-amber-950/40">Restart Web</button>
+                <button onClick={() => runAction("restart", "worker")} className="rounded-md border border-amber-400/40 px-3 py-2 text-sm text-amber-200 hover:bg-amber-950/40">Restart Worker</button>
                 <button onClick={() => runAction("rebuild", "api")} className="rounded-md border border-cyan-400/40 px-3 py-2 text-sm text-cyan-200 hover:bg-cyan-950/40">Rebuild API</button>
                 <button onClick={() => runAction("rebuild", "web")} className="rounded-md border border-cyan-400/40 px-3 py-2 text-sm text-cyan-200 hover:bg-cyan-950/40">Rebuild Web</button>
               </div>

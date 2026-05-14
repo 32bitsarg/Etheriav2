@@ -70,13 +70,13 @@ export function VillageView() {
   const trainUnits = useTrainUnits();
   const researchTech = useResearchTech();
   const { data: techOptionsData } = useTechs(cityId);
-  const { data: mailData } = useMailMessages(true);
-  const { data: reportsData } = useGameReports(true);
+  const { data: mailData } = useMailMessages(isMailOpen);
+  const { data: reportsData } = useGameReports(isMailOpen);
   const { data: battleReportsData } = useBattleReports(cityId);
-  const { data: allianceData } = useAllianceMembership();
+  const { data: allianceData } = useAllianceMembership(isAllianceOpen || activeView === "mapa");
   const { data: activeBattles } = useActiveBattles(cityId);
   const { data: barbarianAlerts } = useBarbarianAttackAlerts(cityId);
-  const { data: worldMoves } = useWorldMovements();
+  const { data: worldMoves } = useWorldMovements(activeView === "mapa");
 
   const myBattles = activeBattles ?? [];
   const unreadBattleReports = (battleReportsData ?? []).filter((report) => !report.read).length;
@@ -607,6 +607,17 @@ function PuebloView({ buildings, selectedBuildingId, onSelectBuilding, cityName,
     displayName: t(BUILDING_NAMES[building.type as BuildingType] ?? building.type),
   })), [buildings, t]);
   const activeLayout: VillageLayoutData = normalizeVillageLayout(layout);
+
+  if (placedBuildings.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center bg-etheria-bg">
+        <div className="text-center">
+          <h2 className="text-xl font-display font-bold text-etheria-gold">Cargando aldea...</h2>
+          <p className="mt-2 text-sm text-etheria-text-muted">Preparando edificios</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative h-full overflow-hidden">

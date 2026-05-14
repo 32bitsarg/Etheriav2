@@ -45,6 +45,37 @@ async function fetchCity(cityId: string): Promise<City & {
   return res.json();
 }
 
+export interface PlayInitialData {
+  city: Awaited<ReturnType<typeof fetchCity>>;
+  activeBattles: ActiveBattle[];
+  battleReports: BattleReport[];
+  unreadCounts: {
+    mail: number;
+    gameReports: number;
+    battleReports: number;
+  };
+  barbarianAlerts: BarbarianAttackAlert[];
+  seasonState: WorldSeasonState | null;
+}
+
+export function usePlayInitial(cityId: string | null) {
+  return useQuery({
+    queryKey: ["play-initial", cityId],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/city/${cityId}/play-initial`, { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to fetch play initial");
+      return data as PlayInitialData;
+    },
+    enabled: !!cityId,
+    staleTime: 15_000,
+    retry: (failureCount, error: any) => {
+      if (error?.status === 404) return false;
+      return failureCount < 1;
+    },
+  });
+}
+
 export function useCity(cityId: string | null) {
   return useQuery({
     queryKey: ["city", cityId],
@@ -421,7 +452,7 @@ export function useWorldMap() {
   });
 }
 
-export function useWorldMovements() {
+export function useWorldMovements(enabled = true) {
   return useQuery({
     queryKey: ["world", "movements"],
     queryFn: async () => {
@@ -431,7 +462,8 @@ export function useWorldMovements() {
       return data.movements as WorldMovement[];
     },
     staleTime: 5000,
-    refetchInterval: 10000,
+    enabled,
+    refetchInterval: enabled ? 10000 : false,
   });
 }
 
@@ -642,7 +674,7 @@ export function useTechs(cityId: string | null) {
   });
 }
 
-export function useAllianceMembership() {
+export function useAllianceMembership(enabled = true) {
   return useQuery({
     queryKey: ["alliance", "me"],
     queryFn: async () => {
@@ -663,7 +695,7 @@ export function useAllianceMembership() {
         objectiveContributions: any[];
       };
     },
-    enabled: !!matecito.auth.token,
+    enabled: enabled && !!matecito.auth.token,
     staleTime: 10_000,
   });
 }

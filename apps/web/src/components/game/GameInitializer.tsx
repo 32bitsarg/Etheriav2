@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCity, useCreateCity } from "@/hooks/useCity";
+import { useCreateCity, usePlayInitial } from "@/hooks/useCity";
 import { useGameStore } from "@/stores/gameStore";
 import { getCityId, setCityId } from "@/lib/guestAuth";
 import { useRouter, usePathname } from "next/navigation";
@@ -86,7 +86,8 @@ export function GameInitializer() {
 
   const cityId = localCityId;
   const effectiveCityId = auth.isLoggedIn ? (bootstrapResolved ? cityId : null) : cityId;
-  const { data: cityData, isLoading, error } = useCity(effectiveCityId);
+  const { data: playInitialData, isLoading, error } = usePlayInitial(effectiveCityId);
+  const cityData = playInitialData?.city;
   const createCity = useCreateCity();
   const setCity = useGameStore((s) => s.setCity);
 
@@ -104,8 +105,9 @@ export function GameInitializer() {
   useEffect(() => {
     if (cityData) {
       setCity(mapCityToStore(cityData));
+      queryClient.setQueryData(["city", cityData.id], cityData);
     }
-  }, [cityData, setCity]);
+  }, [cityData, queryClient, setCity]);
 
   // Require Matecito auth for the main game.
   useEffect(() => {
@@ -150,6 +152,7 @@ export function GameInitializer() {
         localStorage.removeItem("etheria_pending_city_name");
         setCity(mapCityToStore(data.city));
         queryClient.setQueryData(["city", data.city.id], data.city);
+        queryClient.invalidateQueries({ queryKey: ["play-initial", data.city.id] });
       } catch {
         // If bootstrap fails, let the normal error UI show up via useCity.
       } finally {

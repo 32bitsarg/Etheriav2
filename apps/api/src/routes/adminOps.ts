@@ -19,6 +19,10 @@ const SERVICE_ACTIONS = {
   caddy: {
     logs: "logs-caddy",
   },
+  worker: {
+    logs: "logs-worker",
+    restart: "restart-worker",
+  },
 } as const;
 
 const LOG_LINES = new Set(["100", "200", "500"]);
@@ -49,7 +53,7 @@ async function runAdminHelper(action: string, args: string[] = []) {
 }
 
 function isOpsService(value: string): value is OpsService {
-  return value === "api" || value === "web" || value === "caddy";
+  return value === "api" || value === "web" || value === "caddy" || value === "worker";
 }
 
 export const adminOpsRouter = new Hono();
@@ -89,7 +93,7 @@ adminOpsRouter.get("/logs", async (c) => {
 });
 
 const ActionBodySchema = z.object({
-  service: z.enum(["api", "web"]),
+  service: z.enum(["api", "web", "worker"]),
 });
 
 adminOpsRouter.post("/restart", async (c) => {
@@ -109,6 +113,7 @@ adminOpsRouter.post("/rebuild", async (c) => {
   if (!body.success) return c.json({ error: "Invalid service" }, 400);
 
   try {
+    if (body.data.service === "worker") return c.json({ error: "Worker rebuild is not supported" }, 400);
     const result = await runAdminHelper(SERVICE_ACTIONS[body.data.service].rebuild);
     return c.json({ ok: true, service: body.data.service, ...result });
   } catch (error) {
