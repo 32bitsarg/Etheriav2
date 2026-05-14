@@ -46,6 +46,7 @@ export function VillageView() {
   const [isRankingOpen, setIsRankingOpen] = useState(false);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [runtimePollingEnabled, setRuntimePollingEnabled] = useState(false);
   const upgradeLockRef = useRef<string | null>(null);
   const cityName = useGameStore((s) => s.name);
   const cityId = useGameStore((s) => s.cityId);
@@ -69,14 +70,19 @@ export function VillageView() {
   const upgradeBuilding = useUpgradeBuilding();
   const trainUnits = useTrainUnits();
   const researchTech = useResearchTech();
-  const { data: techOptionsData } = useTechs(cityId);
+  const { data: techOptionsData } = useTechs(cityId, false);
   const { data: mailData } = useMailMessages(isMailOpen);
   const { data: reportsData } = useGameReports(isMailOpen);
-  const { data: battleReportsData } = useBattleReports(cityId);
+  const { data: battleReportsData } = useBattleReports(cityId, runtimePollingEnabled || isMailOpen);
   const { data: allianceData } = useAllianceMembership(isAllianceOpen || activeView === "mapa");
-  const { data: activeBattles } = useActiveBattles(cityId);
-  const { data: barbarianAlerts } = useBarbarianAttackAlerts(cityId);
+  const { data: activeBattles } = useActiveBattles(cityId, runtimePollingEnabled);
+  const { data: barbarianAlerts } = useBarbarianAttackAlerts(cityId, runtimePollingEnabled);
   const { data: worldMoves } = useWorldMovements(activeView === "mapa");
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setRuntimePollingEnabled(true), 12_000);
+    return () => window.clearTimeout(id);
+  }, []);
 
   const myBattles = activeBattles ?? [];
   const unreadBattleReports = (battleReportsData ?? []).filter((report) => !report.read).length;

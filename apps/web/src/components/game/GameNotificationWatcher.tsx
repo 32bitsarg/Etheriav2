@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type MutableRefObject } from "react";
+import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import type { GameReportType } from "@etheria/shared";
 import { useI18n } from "@/i18n";
 import {
@@ -62,12 +62,13 @@ export function GameNotificationWatcher() {
   const cityId = useGameStore((s) => s.cityId);
   const addToast = useToastStore((s) => s.addToast);
   const enabled = auth.ready && auth.isLoggedIn && !!cityId;
+  const [pollingEnabled, setPollingEnabled] = useState(false);
 
   const mailData = useMailMessages(false);
   const reportsData = useGameReports(false);
-  const battleReports = useBattleReports(enabled ? cityId : null);
-  const barbarianAlerts = useBarbarianAttackAlerts(enabled ? cityId : null);
-  const activeBattles = useActiveBattles(enabled ? cityId : null);
+  const battleReports = useBattleReports(enabled ? cityId : null, pollingEnabled);
+  const barbarianAlerts = useBarbarianAttackAlerts(enabled ? cityId : null, pollingEnabled);
+  const activeBattles = useActiveBattles(enabled ? cityId : null, pollingEnabled);
   const allianceData = useAllianceMembership(false);
 
   const seenMail = useRef(new Set<string>());
@@ -83,6 +84,12 @@ export function GameNotificationWatcher() {
   const barbarianReady = useRef(false);
   const battlesReady = useRef(false);
   const allianceReady = useRef(false);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const id = window.setTimeout(() => setPollingEnabled(true), 12_000);
+    return () => window.clearTimeout(id);
+  }, [enabled]);
 
   useEffect(() => {
     if (!mailData.data) return;

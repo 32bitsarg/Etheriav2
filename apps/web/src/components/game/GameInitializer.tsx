@@ -91,6 +91,12 @@ export function GameInitializer() {
   const cityData = playInitialData?.city;
   const createCity = useCreateCity();
   const setCity = useGameStore((s) => s.setCity);
+  const setActiveBattles = useGameStore((s) => s.setActiveBattles);
+  const setBattleReports = useGameStore((s) => s.setBattleReports);
+  const setBarbarianAlerts = useGameStore((s) => s.setBarbarianAlerts);
+  const setUnreadCounts = useGameStore((s) => s.setUnreadCounts);
+  const setSeasonState = useGameStore((s) => s.setSeasonState);
+  const setPlayInitialLoadedAt = useGameStore((s) => s.setPlayInitialLoadedAt);
 
   useEffect(() => {
     setMounted(true);
@@ -104,11 +110,38 @@ export function GameInitializer() {
 
   // Map city data to store when loaded
   useEffect(() => {
-    if (cityData) {
-      setCity(mapCityToStore(cityData));
-      queryClient.setQueryData(["city", cityData.id], cityData);
+    if (!playInitialData?.city) return;
+
+    const city = playInitialData.city;
+    setCity(mapCityToStore(city));
+    setActiveBattles(playInitialData.activeBattles ?? []);
+    setBattleReports(playInitialData.battleReports ?? []);
+    setBarbarianAlerts(playInitialData.barbarianAlerts ?? []);
+    setUnreadCounts(playInitialData.unreadCounts ?? {});
+    setSeasonState(playInitialData.seasonState ?? null);
+    setPlayInitialLoadedAt(playInitialData.serverTime ?? new Date().toISOString());
+
+    queryClient.setQueryData(["city", city.id], city);
+    queryClient.setQueryData(["battles", "active", city.id], playInitialData.activeBattles ?? []);
+    queryClient.setQueryData(["battles", "reports", city.id], playInitialData.battleReports ?? []);
+    queryClient.setQueryData(["barbarian", "attack-alerts", city.id], playInitialData.barbarianAlerts ?? []);
+    if (playInitialData.techs) {
+      queryClient.setQueryData(["techs", city.id], playInitialData.techs);
     }
-  }, [cityData, queryClient, setCity]);
+    if (playInitialData.seasonState) {
+      queryClient.setQueryData(["world", "season"], { season: playInitialData.seasonState });
+    }
+  }, [
+    playInitialData,
+    queryClient,
+    setActiveBattles,
+    setBarbarianAlerts,
+    setBattleReports,
+    setCity,
+    setPlayInitialLoadedAt,
+    setSeasonState,
+    setUnreadCounts,
+  ]);
 
   // Require Matecito auth for the main game.
   useEffect(() => {

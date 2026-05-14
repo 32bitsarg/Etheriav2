@@ -22,9 +22,16 @@ const ARCHETYPE_COLORS: Record<string, string> = {
 
 export function BarbarianAttackAlertBanner() {
   const cityId = useGameStore((s) => s.cityId);
-  const { data: alerts, isLoading } = useBarbarianAttackAlerts(cityId);
+  const storeAlerts = useGameStore((s) => s.barbarianAlerts);
+  const [pollingEnabled, setPollingEnabled] = useState(false);
+  const { data: alerts } = useBarbarianAttackAlerts(cityId, pollingEnabled);
   const markRead = useMarkBarbarianAlertRead();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setPollingEnabled(true), 12_000);
+    return () => window.clearTimeout(id);
+  }, []);
 
   // Sync alerts to game store
   useEffect(() => {
@@ -33,10 +40,12 @@ export function BarbarianAttackAlertBanner() {
     }
   }, [alerts]);
 
-  if (!alerts || alerts.length === 0) return null;
+  const visibleAlerts = alerts ?? storeAlerts;
+
+  if (!visibleAlerts || visibleAlerts.length === 0) return null;
 
   // Only show unread and not dismissed alerts
-  const activeAlerts = alerts.filter(
+  const activeAlerts = visibleAlerts.filter(
     (a) => !a.read && !dismissed.has(a.id) && new Date(a.arrivesAt) > new Date()
   );
 

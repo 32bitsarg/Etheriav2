@@ -103,6 +103,37 @@ async function getAllianceMembershipForUserDirect(userId: string) {
   return serializeRecord({ ...membership, alliance });
 }
 
+function buildTechResponse(cityTechRows: Array<{ techId: string; level: number }>, researchQueueRows: any[]) {
+  const cityTechs = cityTechRows.map((tech) => ({ techId: tech.techId, level: tech.level }));
+  const researchQueue = sortPendingQueues(serializeRecord(researchQueueRows));
+  const activeResearch = researchQueue[0] ?? null;
+  const queueConfig = getCityQueueConfig();
+  const researchSlotsFull = researchQueue.length >= queueConfig.maxSlots.research;
+
+  const techs = getAllTechConfigs().map((cfg) => {
+    const unlocked = cityTechs.find((tech) => tech.techId === cfg.techId);
+    const currentLevel = unlocked?.level ?? 0;
+    const pendingSameTech = researchQueue.filter((queue: any) => queue.techId === cfg.techId).length;
+    const targetLevel = currentLevel + pendingSameTech + 1;
+    const check = researchSlotsFull
+      ? { allowed: false, reason: "Research queue full" }
+      : canResearch(cfg.techId, currentLevel + 1, cityTechs as any, null);
+    const nextCost = currentLevel < cfg.maxLevel ? getResearchCost(cfg.techId, currentLevel + 1) : null;
+    const nextTime = currentLevel < cfg.maxLevel ? getResearchTime(cfg.techId, currentLevel + 1) : null;
+
+    return {
+      ...cfg,
+      currentLevel,
+      canResearch: check.allowed && targetLevel <= cfg.maxLevel,
+      researchBlockedReason: check.reason,
+      nextLevelCost: nextCost,
+      nextLevelTime: nextTime,
+    };
+  });
+
+  return { techs, activeResearch, researchQueue };
+}
+
 async function getPlayInitialSnapshot(cityId: string) {
   const startedAt = performance.now();
   const city = await prisma.city.findUnique({
@@ -197,6 +228,7 @@ async function getPlayInitialSnapshot(cityId: string) {
 
   return {
     city: snapshot,
+    techs: buildTechResponse(cityTechs, city.researchQueues),
     activeBattles: serializeRecord(activeBattles),
     battleReports: serializeRecord(battleReports),
     unreadCounts: {
@@ -206,6 +238,13 @@ async function getPlayInitialSnapshot(cityId: string) {
     },
     barbarianAlerts: serializeRecord(barbarianAlerts),
     seasonState,
+    serverTime: new Date().toISOString(),
+    cacheHints: {
+      seasonPollMs: 60_000,
+      battlePollMs: 15_000,
+      reportsPollMs: 60_000,
+      worldMovementsPollMs: 10_000,
+    },
   };
 }
 
@@ -953,21 +992,19 @@ cityRouter.get("/:id/queue", async (c) => {
 
 cityRouter.get("/:id/battles/reports", async (c) => {
   const cityId = c.req.param("id");
-  const reportsRes = await db.from(COLLECTIONS.BATTLE_REPORTS)
-    .eq("cityId", cityId)
-    .get() as any;
+  const reports = await prisma.battleReport.findMany({
+    where: { cityId },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+  });
 
-  const reports = (reportsRes.data ?? []).sort(
-    (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
-
-  return c.json({ reports });
+  return c.json({ reports: serializeRecord(reports) });
 });
 
 cityRouter.post("/:id/battles/reports/:reportId/read", async (c) => {
   const reportId = c.req.param("reportId");
 
-  await mergeRecordByLogicalId(COLLECTIONS.BATTLE_REPORTS, reportId, { read: true });
+  await prisma.battleReport.update({ where: { id: reportId }, data: { read: true } });
 
   return c.json({ success: true });
 });
@@ -977,22 +1014,16 @@ cityRouter.post("/:id/battles/reports/:reportId/read", async (c) => {
 cityRouter.get("/:id/battles/active", async (c) => {
   const cityId = c.req.param("id");
 
-  const [attackingRes, defendingRes] = await Promise.all([
-    db.from(COLLECTIONS.BATTLES).eq("attackerCityId", cityId).get() as any,
-    db.from(COLLECTIONS.BATTLES).eq("defenderCityId", cityId).get() as any,
-  ]);
+  const active = await prisma.battle.findMany({
+    where: {
+      OR: [{ attackerCityId: cityId }, { defenderCityId: cityId }],
+      status: { in: ["MARCHING", "RETURNING"] as any },
+    },
+    orderBy: [{ arrivesAt: "asc" }],
+    take: 20,
+  });
 
-  const allBattles = [
-    ...(attackingRes.data ?? []),
-    ...(defendingRes.data ?? []),
-  ];
-
-  // Only include non-completed battles
-  const active = allBattles.filter(
-    (b: any) => b.status === "MARCHING" || b.status === "RETURNING"
-  );
-
-  return c.json({ battles: active });
+  return c.json({ battles: serializeRecord(active) });
 });
 
 // ─── Tech / Research ───
@@ -1000,40 +1031,15 @@ cityRouter.get("/:id/battles/active", async (c) => {
 cityRouter.get("/:id/techs", async (c) => {
   const cityId = c.req.param("id");
 
-  const [cityTechsRes, researchQueueRes] = await Promise.all([
-    db.from(COLLECTIONS.CITY_TECHS).eq("cityId", cityId).get() as any,
-    db.from(COLLECTIONS.RESEARCH_QUEUES).eq("cityId", cityId).eq("isComplete", false).get() as any,
+  const [cityTechs, researchQueue] = await Promise.all([
+    prisma.cityTech.findMany({ where: { cityId } }),
+    prisma.researchQueue.findMany({
+      where: { cityId, isComplete: false },
+      orderBy: [{ completesAt: "asc" }, { startedAt: "asc" }],
+    }),
   ]);
 
-  const cityTechs = (cityTechsRes.data ?? []).map((t: any) => ({ techId: t.techId, level: t.level }));
-  const researchQueue = sortPendingQueues(researchQueueRes.data ?? []);
-  const activeResearch = researchQueue[0] ?? null;
-  const queueConfig = getCityQueueConfig();
-  const researchSlotsFull = researchQueue.length >= queueConfig.maxSlots.research;
-
-  const allConfigs = getAllTechConfigs();
-  const techs = allConfigs.map((cfg) => {
-    const unlocked = cityTechs.find((t: any) => t.techId === cfg.techId);
-    const currentLevel = unlocked?.level ?? 0;
-    const pendingSameTech = researchQueue.filter((queue: any) => queue.techId === cfg.techId).length;
-    const targetLevel = currentLevel + pendingSameTech + 1;
-    const check = researchSlotsFull
-      ? { allowed: false, reason: "Research queue full" }
-      : canResearch(cfg.techId, currentLevel + 1, cityTechs, null);
-    const nextCost = currentLevel < cfg.maxLevel ? getResearchCost(cfg.techId, currentLevel + 1) : null;
-    const nextTime = currentLevel < cfg.maxLevel ? getResearchTime(cfg.techId, currentLevel + 1) : null;
-
-    return {
-      ...cfg,
-      currentLevel,
-      canResearch: check.allowed && targetLevel <= cfg.maxLevel,
-      researchBlockedReason: check.reason,
-      nextLevelCost: nextCost,
-      nextLevelTime: nextTime,
-    };
-  });
-
-  return c.json({ techs, activeResearch, researchQueue });
+  return c.json(buildTechResponse(cityTechs, researchQueue));
 });
 
 cityRouter.post("/:id/research", zValidator("json", StartResearchRequestSchema), async (c) => {

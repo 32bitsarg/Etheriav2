@@ -2,6 +2,7 @@
 
 import { useWorldSeason } from "@/hooks/useCity";
 import { useI18n } from "@/i18n";
+import { useGameStore } from "@/stores/gameStore";
 
 const SEASON_ASSETS: Record<string, { icon: string; bg: string; accent: string }> = {
   SPRING: {
@@ -71,10 +72,12 @@ function formatTimeRemaining(endsAt: string): string {
 
 export function SeasonHUD() {
   const { t } = useI18n();
-  const { data, isLoading } = useWorldSeason();
-  if (isLoading || !data?.season) return null;
+  const cachedSeasonState = useGameStore((s) => s.seasonState);
+  const { data, isLoading } = useWorldSeason(!cachedSeasonState);
+  const seasonData = data?.season ?? cachedSeasonState;
+  if ((isLoading && !cachedSeasonState) || !seasonData) return null;
 
-  const { currentSeason, phase, intensity, endsAt } = data.season;
+  const { currentSeason, phase, intensity, endsAt } = seasonData;
   const intensityPct = Math.round(intensity * 100);
   const modifiers = SEASON_MODIFIERS[currentSeason] ?? [];
   const asset = SEASON_ASSETS[currentSeason];

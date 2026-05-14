@@ -11,6 +11,15 @@ type AdminResponse = {
   stderr?: string;
   error?: string;
 };
+type PerfSnapshot = AdminResponse & {
+  requests?: {
+    total: number;
+    recent: Array<{ id: number; timestamp: string; method: string; path: string; status: number; durationMs: number }>;
+    slow: Array<{ id: number; timestamp: string; method: string; path: string; status: number; durationMs: number }>;
+    byPath: Array<{ key: string; count: number; errors: number; unauthorized: number; p50: number; p95: number; max: number }>;
+  };
+  workers?: Array<{ name: string; lastStartedAt: string | null; lastFinishedAt: string | null; lastDurationMs: number | null; lastError: string | null; runs: number }>;
+};
 
 const SERVICES: { id: Service; label: string; description: string }[] = [
   { id: "api", label: "API", description: "Hono HTTP" },
@@ -82,6 +91,7 @@ export default function MetheriaadmiaPage() {
   const [lines, setLines] = useState<Lines>("200");
   const [status, setStatus] = useState<AdminResponse | null>(null);
   const [logs, setLogs] = useState<AdminResponse | null>(null);
+  const [perf, setPerf] = useState<PerfSnapshot | null>(null);
   const [lastAction, setLastAction] = useState<AdminResponse | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
@@ -91,6 +101,7 @@ export default function MetheriaadmiaPage() {
   const [refreshCount, setRefreshCount] = useState(0);
   const logsRequestId = useRef(0);
   const statusRequestId = useRef(0);
+  const perfRequestId = useRef(0);
 
   const statusText = responseText(status);
   const output = responseText(logs);
@@ -140,10 +151,19 @@ export default function MetheriaadmiaPage() {
     setLoading(null);
   }
 
+  async function loadPerf() {
+    if (!secret) return;
+    const requestId = ++perfRequestId.current;
+    const result = await adminRequest(`/perf?t=${Date.now()}`, secret) as PerfSnapshot;
+    if (requestId !== perfRequestId.current) return;
+    setPerf(result);
+  }
+
   useEffect(() => {
     if (!secret) return;
     loadStatus();
     loadLogs();
+    loadPerf();
   }, [secret]);
 
   useEffect(() => {
@@ -151,6 +171,7 @@ export default function MetheriaadmiaPage() {
     const id = window.setInterval(() => {
       loadStatus();
       loadLogs();
+      loadPerf();
     }, 5000);
     return () => window.clearInterval(id);
   }, [secret, autoRefresh, activeService, lines]);
@@ -230,7 +251,7 @@ export default function MetheriaadmiaPage() {
               <input type="checkbox" checked={autoRefresh} onChange={(event) => setAutoRefresh(event.target.checked)} />
               Auto 5s
             </label>
-            <button onClick={() => { loadStatus(); loadLogs(); }} className="rounded-md border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900">Refrescar</button>
+            <button onClick={() => { loadStatus(); loadLogs(); loadPerf(); }} className="rounded-md border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900">Refrescar</button>
             <button
               onClick={() => {
                 window.sessionStorage.removeItem(STORAGE_KEY);
@@ -320,6 +341,49 @@ export default function MetheriaadmiaPage() {
           </div>
 
           <aside className="flex flex-col gap-4">
+            <section className="rounded-lg border border-slate-800 bg-[#0c171b] p-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-300">Perf</h2>
+                <span className="text-xs text-slate-500">{perf?.requests?.total ?? 0} req</span>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="rounded-md border border-slate-800 bg-slate-950 p-2">
+                  <div className="text-slate-500">Slow</div>
+                  <div className="text-lg font-semibold text-amber-200">{perf?.requests?.slow?.length ?? 0}</div>
+                </div>
+                <div className="rounded-md border border-slate-800 bg-slate-950 p-2">
+                  <div className="text-slate-500">500</div>
+                  <div className="text-lg font-semibold text-rose-200">{perf?.requests?.byPath?.reduce((sum, item) => sum + item.errors, 0) ?? 0}</div>
+                </div>
+                <div className="rounded-md border border-slate-800 bg-slate-950 p-2">
+                  <div className="text-slate-500">401</div>
+                  <div className="text-lg font-semibold text-cyan-200">{perf?.requests?.byPath?.reduce((sum, item) => sum + item.unauthorized, 0) ?? 0}</div>
+                </div>
+              </div>
+              <div className="mt-3 max-h-52 overflow-auto rounded-md bg-black text-xs">
+                {(perf?.requests?.byPath ?? []).slice(0, 8).map((item) => (
+                  <div key={item.key} className="border-b border-slate-900 px-3 py-2">
+                    <div className="truncate text-slate-200">{item.key}</div>
+                    <div className="mt-1 text-slate-500">p95 {item.p95}ms · max {item.max}ms · {item.count} req</div>
+                  </div>
+                ))}
+                {!perf?.requests?.byPath?.length && <div className="p-3 text-slate-500">Sin metricas todavia.</div>}
+              </div>
+              <div className="mt-3 max-h-40 overflow-auto rounded-md bg-black text-xs">
+                {(perf?.workers ?? []).map((worker) => (
+                  <div key={worker.name} className="border-b border-slate-900 px-3 py-2">
+                    <div className="flex justify-between gap-2 text-slate-200">
+                      <span>{worker.name}</span>
+                      <span>{worker.lastDurationMs ?? 0}ms</span>
+                    </div>
+                    <div className={worker.lastError ? "mt-1 text-rose-300" : "mt-1 text-slate-500"}>
+                      {worker.lastError ?? `runs ${worker.runs}, last ${worker.lastFinishedAt ?? "n/a"}`}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
             <section className="rounded-lg border border-slate-800 bg-[#0c171b] p-4">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-300">Acciones</h2>
               <div className="mt-3 grid grid-cols-2 gap-2">

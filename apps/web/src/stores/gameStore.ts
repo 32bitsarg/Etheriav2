@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { AllianceMembership, Resources, BuildingType, Building, BuildQueue, ResearchQueue, TrainingQueue, Unit, TechBonuses, UnitType, BarbarianCampMapItem } from "@etheria/shared";
+import type { AllianceMembership, Resources, BuildingType, Building, BuildQueue, ResearchQueue, TrainingQueue, Unit, TechBonuses, UnitType, BarbarianCampMapItem, WorldSeasonState } from "@etheria/shared";
 
 export interface BarbarianAttackAlert {
   id: string;
@@ -11,6 +11,39 @@ export interface BarbarianAttackAlert {
   arrivesAt: string;
   warnedAt: string;
   read: boolean;
+}
+
+export interface RuntimeUnreadCounts {
+  mail: number;
+  gameReports: number;
+  battleReports: number;
+}
+
+export interface RuntimeBattleReport {
+  id: string;
+  battleId: string;
+  cityId: string;
+  attackerCityId: string;
+  defenderCityId: string;
+  attackerName?: string;
+  defenderName?: string;
+  status: "VICTORY" | "DEFEAT";
+  attackerLosses: Record<string, number>;
+  defenderLosses: Record<string, number>;
+  loot?: Resources;
+  read: boolean;
+  createdAt: string;
+  isBarbarianAttack?: boolean;
+}
+
+export interface RuntimeActiveBattle {
+  id: string;
+  attackerCityId: string;
+  defenderCityId: string;
+  status: "MARCHING" | "RETURNING";
+  arrivesAt: string;
+  returnsAt?: string;
+  units: { type: string; count: number }[];
 }
 
 export interface CityState {
@@ -76,6 +109,18 @@ interface GameState extends CityState {
   barbarianAlerts: BarbarianAttackAlert[];
   setBarbarianAlerts: (alerts: BarbarianAttackAlert[]) => void;
   markAlertRead: (alertId: string) => void;
+
+  // Runtime data hydrated from play-initial
+  activeBattles: RuntimeActiveBattle[];
+  setActiveBattles: (battles: RuntimeActiveBattle[]) => void;
+  battleReports: RuntimeBattleReport[];
+  setBattleReports: (reports: RuntimeBattleReport[]) => void;
+  unreadCounts: RuntimeUnreadCounts;
+  setUnreadCounts: (counts: Partial<RuntimeUnreadCounts>) => void;
+  seasonState: WorldSeasonState | null;
+  setSeasonState: (seasonState: WorldSeasonState | null) => void;
+  playInitialLoadedAt: string | null;
+  setPlayInitialLoadedAt: (loadedAt: string | null) => void;
 
   // City data
   setCity: (city: Partial<CityState>) => void;
@@ -157,6 +202,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       a.id === alertId ? { ...a, read: true } : a
     ),
   })),
+
+  activeBattles: [],
+  setActiveBattles: (activeBattles) => set({ activeBattles }),
+  battleReports: [],
+  setBattleReports: (battleReports) => set({ battleReports }),
+  unreadCounts: { mail: 0, gameReports: 0, battleReports: 0 },
+  setUnreadCounts: (counts) => set((state) => ({ unreadCounts: { ...state.unreadCounts, ...counts } })),
+  seasonState: null,
+  setSeasonState: (seasonState) => set({ seasonState }),
+  playInitialLoadedAt: null,
+  setPlayInitialLoadedAt: (playInitialLoadedAt) => set({ playInitialLoadedAt }),
 
   setCity: (city) => set((state) => ({ ...state, ...city, isLoading: false })),
 

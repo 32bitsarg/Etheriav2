@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { Hono } from "hono";
 import { z } from "zod";
+import { getPerfSnapshot } from "../infrastructure/perfMetrics.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -90,6 +91,10 @@ adminOpsRouter.get("/logs", async (c) => {
   } catch (error) {
     return c.json({ ok: false, error: error instanceof Error ? error.message : "Logs failed" }, 500);
   }
+});
+
+adminOpsRouter.get("/perf", (c) => {
+  return c.json({ ok: true, ...getPerfSnapshot() });
 });
 
 const ActionBodySchema = z.object({

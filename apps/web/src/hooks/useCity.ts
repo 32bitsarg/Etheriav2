@@ -9,6 +9,23 @@ import { matecito } from "@/lib/matecitoClient";
 const API_BASE = "/api";
 const pendingUpgradeKeys = new Set<string>();
 
+function updatePlayInitialCity(queryClient: ReturnType<typeof useQueryClient>, cityId: string, updater: (city: any) => any) {
+  queryClient.setQueryData(["play-initial", cityId], (current: any) => {
+    if (!current?.city) return current;
+    return { ...current, city: updater(current.city) };
+  });
+}
+
+function setRuntimeCityData(queryClient: ReturnType<typeof useQueryClient>, cityId: string, updater: (city: any) => any) {
+  queryClient.setQueryData(["city", cityId], (current: any) => (current ? updater(current) : current));
+  updatePlayInitialCity(queryClient, cityId, updater);
+}
+
+function invalidateCityRuntime(queryClient: ReturnType<typeof useQueryClient>, cityId: string) {
+  queryClient.invalidateQueries({ queryKey: ["city", cityId] });
+  queryClient.invalidateQueries({ queryKey: ["play-initial", cityId] });
+}
+
 function shouldRetryAuthQuery(failureCount: number, error: any) {
   if (error?.status === 401) return false;
   return failureCount < 1;
@@ -52,6 +69,11 @@ async function fetchCity(cityId: string): Promise<City & {
 
 export interface PlayInitialData {
   city: Awaited<ReturnType<typeof fetchCity>>;
+  techs?: {
+    techs: TechData[];
+    activeResearch: { techId: string; targetLevel: number; startedAt: string; completesAt: string } | null;
+    researchQueue: ResearchQueue[];
+  };
   activeBattles: ActiveBattle[];
   battleReports: BattleReport[];
   unreadCounts: {
@@ -61,6 +83,13 @@ export interface PlayInitialData {
   };
   barbarianAlerts: BarbarianAttackAlert[];
   seasonState: WorldSeasonState | null;
+  serverTime?: string;
+  cacheHints?: {
+    seasonPollMs: number;
+    battlePollMs: number;
+    reportsPollMs: number;
+    worldMovementsPollMs: number;
+  };
 }
 
 export function usePlayInitial(cityId: string | null) {
@@ -69,7 +98,11 @@ export function usePlayInitial(cityId: string | null) {
     queryFn: async () => {
       const res = await fetch(`${API_BASE}/city/${cityId}/play-initial`, { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed to fetch play initial");
+      if (!res.ok) {
+        const error = new Error(data.error || "Failed to fetch play initial") as Error & { status?: number };
+        error.status = res.status;
+        throw error;
+      }
       return data as PlayInitialData;
     },
     enabled: !!cityId,
@@ -140,18 +173,18 @@ export function useBuildBuilding() {
     },
     onSuccess: (data, variables) => {
       if (data?.queue) {
-        queryClient.setQueryData(["city", variables.cityId], (current: any) => {
+        setRuntimeCityData(queryClient, variables.cityId, (current: any) => {
           if (!current) return current;
-          const nextQueues = [...(current.trainingQueues ?? []), data.queue]
+          const nextQueues = [...(current.buildQueues ?? []), data.queue]
             .sort((a: any, b: any) => new Date(a.completesAt ?? 0).getTime() - new Date(b.completesAt ?? 0).getTime());
           return {
             ...current,
-            trainingQueues: nextQueues,
+            buildQueues: nextQueues,
             ...(data.resources ? { resources: data.resources, lastResourceUpdate: new Date().toISOString() } : {}),
           };
         });
       }
-      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+      invalidateCityRuntime(queryClient, variables.cityId);
     },
   });
 }
@@ -189,7 +222,7 @@ export function useUpgradeBuilding() {
     },
     onSuccess: (data, variables) => {
       if (data?.queue) {
-        queryClient.setQueryData(["city", variables.cityId], (current: any) => {
+        setRuntimeCityData(queryClient, variables.cityId, (current: any) => {
           if (!current) return current;
           const nextQueues = [...(current.buildQueues ?? []).filter((queue: any) => queue.buildingId !== data.queue.buildingId), data.queue];
           nextQueues.sort((a, b) => new Date(a.completesAt).getTime() - new Date(b.completesAt).getTime());
@@ -200,7 +233,7 @@ export function useUpgradeBuilding() {
           };
         });
       }
-      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+      invalidateCityRuntime(queryClient, variables.cityId);
     },
   });
 }
@@ -227,7 +260,7 @@ export function useCancelBuildQueue() {
       return res.json();
     },
     onSuccess: (data, variables) => {
-      queryClient.setQueryData(["city", variables.cityId], (current: any) => {
+      setRuntimeCityData(queryClient, variables.cityId, (current: any) => {
         if (!current) return current;
         return {
           ...current,
@@ -235,7 +268,7 @@ export function useCancelBuildQueue() {
           ...(data.resources ? { resources: data.resources, lastResourceUpdate: new Date().toISOString() } : {}),
         };
       });
-      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+      invalidateCityRuntime(queryClient, variables.cityId);
     },
   });
 }
@@ -262,7 +295,7 @@ function useCancelQueue(endpoint: "training-queues" | "research-queues", queryFi
       return res.json();
     },
     onSuccess: (data, variables) => {
-      queryClient.setQueryData(["city", variables.cityId], (current: any) => {
+      setRuntimeCityData(queryClient, variables.cityId, (current: any) => {
         if (!current) return current;
         const next = {
           ...current,
@@ -274,7 +307,7 @@ function useCancelQueue(endpoint: "training-queues" | "research-queues", queryFi
         }
         return next;
       });
-      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+      invalidateCityRuntime(queryClient, variables.cityId);
       if (queryField === "researchQueue") {
         queryClient.invalidateQueries({ queryKey: ["techs", variables.cityId] });
       }
@@ -315,7 +348,7 @@ export function useTrainUnits() {
       return res.json();
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+      invalidateCityRuntime(queryClient, variables.cityId);
     },
   });
 }
@@ -355,7 +388,7 @@ export function useRenameCity() {
       return res.json();
     },
     onSuccess: (_data, vars) => {
-      queryClient.invalidateQueries({ queryKey: ["city", vars.cityId] });
+      invalidateCityRuntime(queryClient, vars.cityId);
       queryClient.invalidateQueries({ queryKey: ["cities", "all"] });
       queryClient.invalidateQueries({ queryKey: ["cities", "ranking"] });
     },
@@ -563,7 +596,7 @@ export function useAttackCity() {
       return res.json();
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+      invalidateCityRuntime(queryClient, variables.cityId);
       queryClient.invalidateQueries({ queryKey: ["battles", "active", variables.cityId] });
     },
   });
@@ -586,7 +619,7 @@ export interface BattleReport {
   isBarbarianAttack?: boolean;
 }
 
-export function useBattleReports(cityId: string | null) {
+export function useBattleReports(cityId: string | null, enabled = true) {
   return useQuery({
     queryKey: ["battles", "reports", cityId],
     queryFn: async () => {
@@ -595,7 +628,7 @@ export function useBattleReports(cityId: string | null) {
       const data = await res.json();
       return data.reports as BattleReport[];
     },
-    enabled: !!cityId,
+    enabled: !!cityId && enabled,
     staleTime: 60_000,
     retry: 1,
   });
@@ -629,7 +662,7 @@ export interface ActiveBattle {
   units: { type: string; count: number }[];
 }
 
-export function useActiveBattles(cityId: string | null) {
+export function useActiveBattles(cityId: string | null, enabled = true) {
   return useQuery({
     queryKey: ["battles", "active", cityId],
     queryFn: async () => {
@@ -638,7 +671,7 @@ export function useActiveBattles(cityId: string | null) {
       const data = await res.json();
       return data.battles as ActiveBattle[];
     },
-    enabled: !!cityId,
+    enabled: !!cityId && enabled,
     staleTime: 15_000,
     refetchInterval: 15_000,
     retry: 1,
@@ -661,7 +694,7 @@ export interface TechData {
   nextLevelTime: number | null;
 }
 
-export function useTechs(cityId: string | null) {
+export function useTechs(cityId: string | null, enabled = true) {
   return useQuery({
     queryKey: ["techs", cityId],
     queryFn: async () => {
@@ -671,9 +704,10 @@ export function useTechs(cityId: string | null) {
       return {
         techs: data.techs as TechData[],
         activeResearch: data.activeResearch as { techId: string; targetLevel: number; completesAt: string } | null,
+        researchQueue: data.researchQueue as ResearchQueue[],
       };
     },
-    enabled: !!cityId,
+    enabled: !!cityId && enabled,
     staleTime: 60_000,
     retry: 1,
   });
@@ -725,7 +759,7 @@ export function useGameReports(enabled = true) {
     },
     enabled: enabled && !!matecito.auth.token,
     staleTime: 10_000,
-    refetchInterval: 30_000,
+    refetchInterval: enabled ? 60_000 : false,
     retry: shouldRetryAuthQuery,
   });
 }
@@ -819,7 +853,7 @@ export function useCreateMarketOffer() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["market", "offers"] });
-      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+      invalidateCityRuntime(queryClient, variables.cityId);
       queryClient.invalidateQueries({ queryKey: ["game-reports"] });
     },
   });
@@ -840,7 +874,7 @@ export function useAcceptMarketOffer() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["market", "offers"] });
-      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+      invalidateCityRuntime(queryClient, variables.cityId);
       queryClient.invalidateQueries({ queryKey: ["quests", variables.cityId] });
       queryClient.invalidateQueries({ queryKey: ["game-reports"] });
     },
@@ -861,7 +895,7 @@ export function useScoutTarget() {
       return data;
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+      invalidateCityRuntime(queryClient, variables.cityId);
       queryClient.invalidateQueries({ queryKey: ["game-reports"] });
     },
   });
@@ -882,7 +916,7 @@ export function useContributeAllianceObjective() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["alliance", "me"] });
-      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+      invalidateCityRuntime(queryClient, variables.cityId);
       queryClient.invalidateQueries({ queryKey: ["quests", variables.cityId] });
       queryClient.invalidateQueries({ queryKey: ["game-reports"] });
     },
@@ -1168,7 +1202,7 @@ export function useResearchTech() {
     },
     onSuccess: (data, variables) => {
       if (data?.queue) {
-        queryClient.setQueryData(["city", variables.cityId], (current: any) => {
+        setRuntimeCityData(queryClient, variables.cityId, (current: any) => {
           if (!current) return current;
           const nextQueue = [...(current.researchQueue ?? []), data.queue]
             .sort((a: any, b: any) => new Date(a.completesAt ?? 0).getTime() - new Date(b.completesAt ?? 0).getTime());
@@ -1181,14 +1215,14 @@ export function useResearchTech() {
         });
       }
       queryClient.invalidateQueries({ queryKey: ["techs", variables.cityId] });
-      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+      invalidateCityRuntime(queryClient, variables.cityId);
     },
   });
 }
 
 // ─── World Season Hooks ───
 
-export function useWorldSeason() {
+export function useWorldSeason(enabled = true) {
   return useQuery({
     queryKey: ["world", "season"],
     queryFn: async () => {
@@ -1198,7 +1232,8 @@ export function useWorldSeason() {
       return data as { season: WorldSeasonState };
     },
     staleTime: 15_000,
-    refetchInterval: 30_000,
+    enabled,
+    refetchInterval: enabled ? 60_000 : false,
   });
 }
 
@@ -1281,7 +1316,7 @@ export function useAttackBarbarianCamp() {
       }>;
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["city", variables.cityId] });
+      invalidateCityRuntime(queryClient, variables.cityId);
       queryClient.invalidateQueries({ queryKey: ["world", "barbarians"] });
     },
   });
@@ -1299,7 +1334,7 @@ export interface BarbarianAttackAlert {
   read: boolean;
 }
 
-export function useBarbarianAttackAlerts(cityId: string | null) {
+export function useBarbarianAttackAlerts(cityId: string | null, enabled = true) {
   return useQuery({
     queryKey: ["barbarian", "attack-alerts", cityId],
     queryFn: async () => {
@@ -1309,7 +1344,7 @@ export function useBarbarianAttackAlerts(cityId: string | null) {
       const data = await res.json();
       return data.alerts as BarbarianAttackAlert[];
     },
-    enabled: !!cityId,
+    enabled: !!cityId && enabled,
     staleTime: 15_000,
     refetchInterval: 30_000,
   });
@@ -1354,7 +1389,7 @@ export interface WinterPressureData {
   } | null;
 }
 
-export function useWinterPressure(cityId: string | null) {
+export function useWinterPressure(cityId: string | null, enabled = true) {
   return useQuery({
     queryKey: ["world", "winter-pressure", cityId],
     queryFn: async () => {
@@ -1364,7 +1399,7 @@ export function useWinterPressure(cityId: string | null) {
       const data = await res.json();
       return data as WinterPressureData;
     },
-    enabled: !!cityId,
+    enabled: !!cityId && enabled,
     staleTime: 15_000,
     refetchInterval: 30_000,
   });

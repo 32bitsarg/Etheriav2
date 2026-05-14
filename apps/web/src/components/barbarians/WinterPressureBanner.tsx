@@ -22,7 +22,8 @@ function formatHours(hours: number): string {
 
 export function WinterPressureBanner() {
   const cityId = useGameStore((s) => s.cityId);
-  const { data, isLoading } = useWinterPressure(cityId);
+  const seasonState = useGameStore((s) => s.seasonState);
+  const { data, isLoading } = useWinterPressure(cityId, seasonState?.currentSeason === "WINTER");
   const [collapsed, setCollapsed] = useState(false);
 
   if (isLoading || !data) return null;

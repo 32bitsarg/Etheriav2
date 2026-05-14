@@ -1,19 +1,30 @@
 import { Hono } from "hono";
+import { prisma } from "@etheria/database";
 import { requireMatecitoAuth } from "../infrastructure/authMiddleware.js";
-import { listGameReports, markGameReportRead } from "../domain/reports.js";
 
 const reportsRouter = new Hono();
 
 reportsRouter.get("/", requireMatecitoAuth(), async (c) => {
   const userId = c.get("userId");
   const type = c.req.query("type") ?? null;
-  const reports = await listGameReports(userId, type);
-  return c.json({ reports, unreadCount: reports.filter((report: any) => !report.readAt).length });
+  const where = { userId, ...(type ? { type } : {}) };
+  const [reports, unreadCount] = await Promise.all([
+    prisma.gameReport.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+    prisma.gameReport.count({ where: { ...where, readAt: null } }),
+  ]);
+  return c.json({ reports, unreadCount });
 });
 
 reportsRouter.post("/:id/read", requireMatecitoAuth(), async (c) => {
-  const ok = await markGameReportRead(c.get("userId"), c.req.param("id"));
-  if (!ok) return c.json({ error: "Report not found" }, 404);
+  const result = await prisma.gameReport.updateMany({
+    where: { id: c.req.param("id"), userId: c.get("userId") },
+    data: { readAt: new Date() },
+  });
+  if (result.count === 0) return c.json({ error: "Report not found" }, 404);
   return c.json({ success: true });
 });
 

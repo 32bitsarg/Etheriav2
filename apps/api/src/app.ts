@@ -12,6 +12,7 @@ import { adminOpsRouter } from './routes/adminOps.js';
 import { loadBuildingConfigs } from './domain/buildings.js';
 import { loadUnitConfigs } from './domain/units.js';
 import { loadTechConfigs } from './domain/techs.js';
+import { recordRequestMetric } from './infrastructure/perfMetrics.js';
 
 let configPromise: Promise<void> | null = null;
 
@@ -34,6 +35,14 @@ export function createApiApp() {
     const durationMs = Math.round(performance.now() - start);
     c.header('Server-Timing', `app;dur=${durationMs}`);
     c.header('X-Response-Time', `${durationMs}ms`);
+    if (c.req.path !== '/health' && !c.req.path.startsWith('/admin/ops/logs')) {
+      recordRequestMetric({
+        method: c.req.method,
+        path: c.req.path,
+        status: c.res.status,
+        durationMs,
+      });
+    }
     if (c.req.path !== '/health' && durationMs >= 500) {
       const level = durationMs >= 1500 ? 'warn' : 'info';
       console[level](`[perf] ${c.req.method} ${c.req.path} ${c.res.status} ${durationMs}ms`);

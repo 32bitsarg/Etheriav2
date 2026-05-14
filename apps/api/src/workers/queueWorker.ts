@@ -1,4 +1,5 @@
 import { db, COLLECTIONS } from '../infrastructure/matecito.js';
+import { prisma } from '@etheria/database';
 import {
   deleteRecordBySelector,
   getRecordByLogicalId,
@@ -27,9 +28,17 @@ import {
   ZONE_WINTER_INTENSITY,
 } from '../domain/winterPressure.js';
 import type { UnitType, Season } from '@etheria/shared';
+import { finishWorkerMetric, startWorkerMetric } from '../infrastructure/perfMetrics.js';
 
 let workerRunning = false;
 let workerTickRunning = false;
+let lastResourceTickAt = 0;
+const QUEUE_WORKER_INTERVAL_MS = Number(process.env.QUEUE_WORKER_INTERVAL_MS ?? 5000);
+const RESOURCE_TICK_INTERVAL_MS = Number(process.env.RESOURCE_TICK_INTERVAL_MS ?? 60000);
+const RESOURCE_TICK_MIN_ELAPSED_MS = Number(process.env.RESOURCE_TICK_MIN_ELAPSED_MS ?? 60000);
+const RESOURCE_TICK_BATCH_SIZE = Number(process.env.RESOURCE_TICK_BATCH_SIZE ?? 100);
+const QUEUE_DUE_BATCH_SIZE = Number(process.env.QUEUE_DUE_BATCH_SIZE ?? 100);
+const BATTLE_DUE_BATCH_SIZE = Number(process.env.BATTLE_DUE_BATCH_SIZE ?? 100);
 
 async function getActiveAllianceEffects(userId?: string) {
   if (!userId) return [];
@@ -50,21 +59,27 @@ export function startQueueWorker(): void {
   setInterval(async () => {
     if (workerTickRunning) return;
     workerTickRunning = true;
+    const metricStart = startWorkerMetric('queue');
     try {
       await processQueueWorkerTick();
+      finishWorkerMetric('queue', metricStart);
     } catch (err) {
+      finishWorkerMetric('queue', metricStart, err);
       console.error('Queue worker error:', err);
     } finally {
       workerTickRunning = false;
     }
-  }, 5000);
+  }, QUEUE_WORKER_INTERVAL_MS);
 }
 
 export async function processQueueWorkerTick() {
   await processBuildQueues();
   await processTrainingQueues();
   await processResearchQueues();
-  await processResourceTicks();
+  if (Date.now() - lastResourceTickAt >= RESOURCE_TICK_INTERVAL_MS) {
+    lastResourceTickAt = Date.now();
+    await processResourceTicks();
+  }
   await processBattles();
   await processBattleReturns();
   await processBarbarianBattles();
@@ -78,19 +93,22 @@ export async function processQueueWorkerTick() {
 // ─── Build Queues ───
 
 async function processBuildQueues() {
-  const now = new Date().toISOString();
-  const initialQueues = await db.from(COLLECTIONS.BUILD_QUEUES)
-    .eq('isComplete', false)
-    .get() as any;
+  const nowDate = new Date();
+  const now = nowDate.toISOString();
+  const initialQueues = {
+    data: await prisma.buildQueue.findMany({
+      where: { isComplete: false, completesAt: { lte: nowDate } },
+      orderBy: [{ completesAt: 'asc' }, { startedAt: 'asc' }],
+      take: QUEUE_DUE_BATCH_SIZE,
+    }),
+  };
 
   const cityIds = new Set<string>((initialQueues.data ?? []).map((queue: any) => queue.cityId));
   for (const cityId of cityIds) {
     await cleanupDuplicateBuildings(cityId);
   }
 
-  const queues = await db.from(COLLECTIONS.BUILD_QUEUES)
-    .eq('isComplete', false)
-    .get() as any;
+  const queues = initialQueues;
 
   const byBuilding = new Map<string, any[]>();
   for (const queue of queues.data ?? []) {
@@ -203,13 +221,17 @@ async function cleanupDuplicateBuildings(cityId: string) {
 // ─── Training Queues ───
 
 async function processTrainingQueues() {
-  const now = new Date().toISOString();
-  const queues = await db.from(COLLECTIONS.TRAINING_QUEUES)
-    .eq('isComplete', false)
-    .get() as any;
+  const nowDate = new Date();
+  const queues = {
+    data: await prisma.trainingQueue.findMany({
+      where: { isComplete: false, completesAt: { lte: nowDate } },
+      orderBy: [{ completesAt: 'asc' }, { startedAt: 'asc' }],
+      take: QUEUE_DUE_BATCH_SIZE,
+    }),
+  };
 
   for (const queue of queues.data ?? []) {
-    if (new Date(queue.completesAt) <= new Date(now)) {
+    if (new Date(queue.completesAt) <= nowDate) {
       const existing = await db.from(COLLECTIONS.UNITS)
         .eq('cityId', queue.cityId)
         .eq('type', queue.unitType)
@@ -239,12 +261,25 @@ async function processTrainingQueues() {
 async function processResourceTicks() {
   const cities = await db.from(COLLECTIONS.CITIES).get() as any;
   const now = new Date();
+  const eligibleCities = (cities.data ?? [])
+    .filter((city: any) => {
+      const lastUpdate = new Date(city.lastResourceUpdate ?? city.createdAt).getTime();
+      return now.getTime() - lastUpdate >= RESOURCE_TICK_MIN_ELAPSED_MS;
+    })
+    .sort((a: any, b: any) =>
+      new Date(a.lastResourceUpdate ?? a.createdAt).getTime() -
+      new Date(b.lastResourceUpdate ?? b.createdAt).getTime()
+    )
+    .slice(0, RESOURCE_TICK_BATCH_SIZE);
+
+  if (eligibleCities.length === 0) return;
+
   const seasonState = await getSeasonState();
   const worldConfig = await getWorldConfig();
   const isWinter = seasonState?.currentSeason === 'WINTER';
 
   // Preload alliance effects to avoid N+1 queries per city
-  const userIds = new Set((cities.data ?? []).map((city: any) => city.userId).filter(Boolean));
+  const userIds = new Set(eligibleCities.map((city: any) => city.userId).filter(Boolean));
   const allianceEffectsByUserId = new Map<string, any[]>();
   if (userIds.size > 0) {
     const membershipsRes = await db.from(COLLECTIONS.ALLIANCE_MEMBERS).get() as any;
@@ -270,7 +305,7 @@ async function processResourceTicks() {
     }
   }
 
-  for (const city of cities.data ?? []) {
+  for (const city of eligibleCities) {
     const lastUpdate = new Date(city.lastResourceUpdate ?? city.createdAt);
     const hoursElapsed = (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60);
 
@@ -374,13 +409,17 @@ async function processResourceTicks() {
 // ─── Battle Resolution ───
 
 async function processBattles() {
-  const now = new Date().toISOString();
-  const battles = await db.from(COLLECTIONS.BATTLES)
-    .eq('status', 'MARCHING')
-    .get() as any;
+  const nowDate = new Date();
+  const battles = {
+    data: await prisma.battle.findMany({
+      where: { status: 'MARCHING', arrivesAt: { lte: nowDate } },
+      orderBy: { arrivesAt: 'asc' },
+      take: BATTLE_DUE_BATCH_SIZE,
+    }),
+  };
 
   for (const battle of battles.data ?? []) {
-    if (new Date(battle.arrivesAt) <= new Date(now)) {
+    if (new Date(battle.arrivesAt) <= nowDate) {
       await resolveAndProcessBattle(battle);
     }
   }
@@ -570,13 +609,17 @@ async function resolveAndProcessBattle(battle: any) {
 // ─── Battle Returns ───
 
 async function processBattleReturns() {
-  const now = new Date().toISOString();
-  const battles = await db.from(COLLECTIONS.BATTLES)
-    .eq('status', 'RETURNING')
-    .get() as any;
+  const nowDate = new Date();
+  const battles = {
+    data: await prisma.battle.findMany({
+      where: { status: 'RETURNING', returnsAt: { lte: nowDate } },
+      orderBy: { returnsAt: 'asc' },
+      take: BATTLE_DUE_BATCH_SIZE,
+    }),
+  };
 
   for (const battle of battles.data ?? []) {
-    if (battle.returnsAt && new Date(battle.returnsAt) <= new Date(now)) {
+    if (battle.returnsAt && new Date(battle.returnsAt) <= nowDate) {
       await processBattleReturn(battle);
     }
   }
@@ -647,13 +690,17 @@ async function processBattleReturn(battle: any) {
 // ─── Barbarian Battle Resolution ───
 
 async function processBarbarianBattles() {
-  const now = new Date().toISOString();
-  const battles = await db.from(COLLECTIONS.BARBARIAN_BATTLES)
-    .eq('status', 'MARCHING')
-    .get() as any;
+  const nowDate = new Date();
+  const battles = {
+    data: await prisma.barbarianBattle.findMany({
+      where: { status: 'MARCHING', arrivesAt: { lte: nowDate } },
+      orderBy: { arrivesAt: 'asc' },
+      take: BATTLE_DUE_BATCH_SIZE,
+    }),
+  };
 
   for (const battle of battles.data ?? []) {
-    if (new Date(battle.arrivesAt) <= new Date(now)) {
+    if (new Date(battle.arrivesAt) <= nowDate) {
       await resolveAndProcessBarbarianBattle(battle);
     }
   }
@@ -758,13 +805,17 @@ async function resolveAndProcessBarbarianBattle(battle: any) {
 // ─── Barbarian Battle Returns ───
 
 async function processBarbarianReturns() {
-  const now = new Date().toISOString();
-  const battles = await db.from(COLLECTIONS.BARBARIAN_BATTLES)
-    .eq('status', 'RETURNING')
-    .get() as any;
+  const nowDate = new Date();
+  const battles = {
+    data: await prisma.barbarianBattle.findMany({
+      where: { status: 'RETURNING', returnsAt: { lte: nowDate } },
+      orderBy: { returnsAt: 'asc' },
+      take: BATTLE_DUE_BATCH_SIZE,
+    }),
+  };
 
   for (const battle of battles.data ?? []) {
-    if (battle.returnsAt && new Date(battle.returnsAt) <= new Date(now)) {
+    if (battle.returnsAt && new Date(battle.returnsAt) <= nowDate) {
       await processBarbarianReturn(battle);
     }
   }
@@ -847,13 +898,18 @@ async function processBarbarianReturn(battle: any) {
 // ─── Research Queues ───
 
 async function processResearchQueues() {
-  const now = new Date().toISOString();
-  const queues = await db.from(COLLECTIONS.RESEARCH_QUEUES)
-    .eq('isComplete', false)
-    .get() as any;
+  const nowDate = new Date();
+  const now = nowDate.toISOString();
+  const queues = {
+    data: await prisma.researchQueue.findMany({
+      where: { isComplete: false, completesAt: { lte: nowDate } },
+      orderBy: [{ completesAt: 'asc' }, { startedAt: 'asc' }],
+      take: QUEUE_DUE_BATCH_SIZE,
+    }),
+  };
 
   for (const queue of queues.data ?? []) {
-    if (new Date(queue.completesAt) <= new Date(now)) {
+    if (new Date(queue.completesAt) <= nowDate) {
       const cityId = queue.cityId;
       const techId = queue.techId;
       const targetLevel = queue.targetLevel;
@@ -899,13 +955,17 @@ async function processResearchQueues() {
 // ─── Barbarian Attack Resolution (Barbarian → Player) ───
 
 async function resolveBarbarianAttackArrivals() {
-  const now = new Date().toISOString();
-  const attacks = await db.from(COLLECTIONS.BARBARIAN_ATTACKS)
-    .eq('status', 'MARCHING')
-    .get() as any;
+  const nowDate = new Date();
+  const attacks = {
+    data: await prisma.barbarianAttack.findMany({
+      where: { status: 'MARCHING', arrivesAt: { lte: nowDate } },
+      orderBy: { arrivesAt: 'asc' },
+      take: BATTLE_DUE_BATCH_SIZE,
+    }),
+  };
 
   for (const attack of attacks.data ?? []) {
-    if (new Date(attack.arrivesAt) <= new Date(now)) {
+    if (new Date(attack.arrivesAt) <= nowDate) {
       await resolveBarbarianAttack(attack);
     }
   }
@@ -1070,13 +1130,17 @@ async function resolveBarbarianAttack(attack: any) {
 // ─── Barbarian Attack Returns ───
 
 async function processBarbarianAttackReturns() {
-  const now = new Date().toISOString();
-  const attacks = await db.from(COLLECTIONS.BARBARIAN_ATTACKS)
-    .eq('status', 'RETURNING')
-    .get() as any;
+  const nowDate = new Date();
+  const attacks = {
+    data: await prisma.barbarianAttack.findMany({
+      where: { status: 'RETURNING', returnsAt: { lte: nowDate } },
+      orderBy: { returnsAt: 'asc' },
+      take: BATTLE_DUE_BATCH_SIZE,
+    }),
+  };
 
   for (const attack of attacks.data ?? []) {
-    if (attack.returnsAt && new Date(attack.returnsAt) <= new Date(now)) {
+    if (attack.returnsAt && new Date(attack.returnsAt) <= nowDate) {
       await processBarbarianAttackReturn(attack);
     }
   }

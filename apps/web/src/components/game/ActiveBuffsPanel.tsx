@@ -43,9 +43,11 @@ export function ActiveBuffsPanel() {
   const posY = useGameStore((s) => s.posY);
   const cityId = useGameStore((s) => s.cityId);
   const allianceMembership = useGameStore((s) => s.allianceMembership);
+  const cachedSeasonState = useGameStore((s) => s.seasonState);
 
-  const { data: seasonData } = useWorldSeason();
-  const { data: winterData } = useWinterPressure(cityId);
+  const { data: seasonData } = useWorldSeason(false);
+  const season = seasonData?.season ?? cachedSeasonState;
+  const { data: winterData } = useWinterPressure(cityId, season?.currentSeason === "WINTER");
 
   const buffs = useMemo(() => {
     const result: ActiveBuff[] = [];
@@ -56,7 +58,7 @@ export function ActiveBuffsPanel() {
       result.push(...getTechBuffs(techBonuses, t));
     }
 
-    if (seasonData?.season) {
+    if (season) {
       // Season modifiers are already shown in SeasonHUD - skip duplicated info
     }
 
@@ -69,7 +71,7 @@ export function ActiveBuffsPanel() {
     }
 
     return result;
-  }, [techBonuses, allianceMembership, seasonData, winterData, posX, posY, t]);
+  }, [techBonuses, allianceMembership, season, winterData, posX, posY, t]);
 
   if (buffs.length === 0) return null;
 
