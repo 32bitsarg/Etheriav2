@@ -7,6 +7,7 @@ import { useGameStore } from "@/stores/gameStore";
 import { getCityId, setCityId } from "@/lib/guestAuth";
 import { useRouter, usePathname } from "next/navigation";
 import { useMatecitoAuth } from "@/hooks/useMatecitoAuth";
+import { clearGuestSession } from "@/lib/guestAuth";
 
 function getDefaultTechBonuses() {
   return {
@@ -145,7 +146,11 @@ export function GameInitializer() {
           body: JSON.stringify({ cityName: pendingCityName, email: auth.user?.email ?? null, name: auth.user?.name ?? null }),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || "bootstrap failed");
+        if (!res.ok) {
+          const error = new Error(data.error || "bootstrap failed") as Error & { status?: number };
+          error.status = res.status;
+          throw error;
+        }
         if (cancelled) return;
         setCityId(data.city.id);
         setLocalCityId(data.city.id);
@@ -153,8 +158,13 @@ export function GameInitializer() {
         setCity(mapCityToStore(data.city));
         queryClient.setQueryData(["city", data.city.id], data.city);
         queryClient.invalidateQueries({ queryKey: ["play-initial", data.city.id] });
-      } catch {
-        // If bootstrap fails, let the normal error UI show up via useCity.
+      } catch (error) {
+        if ((error as any)?.status === 401) {
+          await auth.signOut();
+          clearGuestSession();
+          setLocalCityId(null);
+          router.replace("/login");
+        }
       } finally {
         bootstrapInFlightRef.current = false;
         if (!cancelled) {
@@ -167,7 +177,7 @@ export function GameInitializer() {
     return () => {
       cancelled = true;
     };
-  }, [auth.isLoggedIn, auth.ready, auth.token, auth.user?.email, auth.user?.name, mounted, pathname, queryClient, setCity]);
+  }, [auth, auth.isLoggedIn, auth.ready, auth.token, auth.user?.email, auth.user?.name, mounted, pathname, queryClient, router, setCity]);
 
   // Create city if no cityId exists (guest fallback)
   useEffect(() => {

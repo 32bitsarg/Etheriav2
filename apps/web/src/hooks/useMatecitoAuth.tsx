@@ -16,6 +16,7 @@ export function useMatecitoAuth() {
 
     matecito.auth.sessionReady
       .then(() => {
+        return (async () => {
         if (typeof window !== "undefined" && !matecito.auth.token) {
           const stored = window.localStorage.getItem(SESSION_KEY);
           if (stored) {
@@ -35,6 +36,14 @@ export function useMatecitoAuth() {
             } catch {
               window.localStorage.removeItem(SESSION_KEY);
             }
+          }
+        }
+
+        if (matecito.auth.token) {
+          const me = await matecito.auth.getMe().catch(() => ({ data: null, error: { message: "Session validation failed" } }));
+          if ((me as any)?.error || !(me as any)?.data?.id) {
+            await matecito.auth.signOut();
+            if (typeof window !== "undefined") window.localStorage.removeItem(SESSION_KEY);
           }
         }
 
@@ -58,6 +67,7 @@ export function useMatecitoAuth() {
             window.localStorage.removeItem(SESSION_KEY);
           }
         });
+        })();
       })
       .catch(() => setReady(true));
 

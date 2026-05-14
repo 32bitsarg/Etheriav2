@@ -128,10 +128,7 @@ export const AudioEngine = {
   async playScene() {
     if (typeof window === "undefined") return;
     if (!initialized) this.init();
-    if (!unlocked) {
-      createContext();
-      return;
-    }
+    if (!unlocked) return;
     await playRandom();
   },
 

@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useGameStore } from "@/stores/gameStore";
-import { useAllianceMembership, useWorldSeason, useWinterPressure } from "@/hooks/useCity";
+import { useWorldSeason, useWinterPressure } from "@/hooks/useCity";
 import { useI18n } from "@/i18n";
 import { getAllianceBuffs, getTechBuffs, getSeasonBuffs, getWinterDebuffs, getZoneBuffs, type ActiveBuff } from "@/lib/buffData";
 
@@ -42,15 +42,15 @@ export function ActiveBuffsPanel() {
   const posX = useGameStore((s) => s.posX);
   const posY = useGameStore((s) => s.posY);
   const cityId = useGameStore((s) => s.cityId);
+  const allianceMembership = useGameStore((s) => s.allianceMembership);
 
-  const { data: allianceData } = useAllianceMembership();
   const { data: seasonData } = useWorldSeason();
   const { data: winterData } = useWinterPressure(cityId);
 
   const buffs = useMemo(() => {
     const result: ActiveBuff[] = [];
 
-    result.push(...getAllianceBuffs(allianceData?.effects ?? [], t));
+    result.push(...getAllianceBuffs((allianceMembership as any)?.effects ?? [], t));
 
     if (techBonuses) {
       result.push(...getTechBuffs(techBonuses, t));
@@ -69,7 +69,7 @@ export function ActiveBuffsPanel() {
     }
 
     return result;
-  }, [techBonuses, allianceData, seasonData, winterData, posX, posY, t]);
+  }, [techBonuses, allianceMembership, seasonData, winterData, posX, posY, t]);
 
   if (buffs.length === 0) return null;
 

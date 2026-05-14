@@ -22,13 +22,17 @@ export function MusicController() {
       prevKeyRef.current = "";
       return;
     }
+    if (!isUnlocked) {
+      AudioEngine.init();
+      return;
+    }
 
     const compositeKey = `${pathname}|${lastViewKey}`;
     if (compositeKey !== prevKeyRef.current) {
       prevKeyRef.current = compositeKey;
       AudioEngine.playScene();
     }
-  }, [pathname, lastViewKey]);
+  }, [isUnlocked, pathname, lastViewKey]);
 
   return null;
 }

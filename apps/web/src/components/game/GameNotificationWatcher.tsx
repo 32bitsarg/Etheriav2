@@ -13,6 +13,7 @@ import {
 } from "@/hooks/useCity";
 import { useGameStore } from "@/stores/gameStore";
 import { useToastStore, type ToastIcon, type ToastType } from "@/stores/toastStore";
+import { useMatecitoAuth } from "@/hooks/useMatecitoAuth";
 
 const reportIconByType: Record<GameReportType, ToastIcon> = {
   BATTLE: "battle",
@@ -57,15 +58,17 @@ function formatCountdown(value: string) {
 
 export function GameNotificationWatcher() {
   const { t } = useI18n();
+  const auth = useMatecitoAuth();
   const cityId = useGameStore((s) => s.cityId);
   const addToast = useToastStore((s) => s.addToast);
+  const enabled = auth.ready && auth.isLoggedIn && !!cityId;
 
-  const mailData = useMailMessages(true);
-  const reportsData = useGameReports(true);
-  const battleReports = useBattleReports(cityId);
-  const barbarianAlerts = useBarbarianAttackAlerts(cityId);
-  const activeBattles = useActiveBattles(cityId);
-  const allianceData = useAllianceMembership();
+  const mailData = useMailMessages(false);
+  const reportsData = useGameReports(false);
+  const battleReports = useBattleReports(enabled ? cityId : null);
+  const barbarianAlerts = useBarbarianAttackAlerts(enabled ? cityId : null);
+  const activeBattles = useActiveBattles(enabled ? cityId : null);
+  const allianceData = useAllianceMembership(false);
 
   const seenMail = useRef(new Set<string>());
   const seenReports = useRef(new Set<string>());

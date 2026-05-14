@@ -12,6 +12,10 @@ const cinzelDecorative = Cinzel_Decorative({ subsets: ["latin"], weight: ["400",
 export const metadata: Metadata = {
   title: "Etheria - Strategy Game",
   description: "Build your empire in Etheria",
+  icons: {
+    icon: "/assets/landing/conquest-of-etheria/logo-conquest-of-etheria-transparent.png",
+    shortcut: "/assets/landing/conquest-of-etheria/logo-conquest-of-etheria-transparent.png",
+  },
 };
 
 export default function RootLayout({

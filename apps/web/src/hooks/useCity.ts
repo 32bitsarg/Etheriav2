@@ -9,6 +9,11 @@ import { matecito } from "@/lib/matecitoClient";
 const API_BASE = "/api";
 const pendingUpgradeKeys = new Set<string>();
 
+function shouldRetryAuthQuery(failureCount: number, error: any) {
+  if (error?.status === 401) return false;
+  return failureCount < 1;
+}
+
 function getAuthHeaders() {
   const headers: Record<string, string> = {};
   if (matecito.auth.token) {
@@ -681,7 +686,11 @@ export function useAllianceMembership(enabled = true) {
       const res = await fetch(`${API_BASE}/alliances/me`, {
         headers: getAuthHeaders(),
       });
-      if (!res.ok) throw new Error("Failed to fetch alliance membership");
+      if (!res.ok) {
+        const error = new Error("Failed to fetch alliance membership") as Error & { status?: number };
+        error.status = res.status;
+        throw error;
+      }
       const data = await res.json();
       return data as {
         gate: { allowed: boolean; reason?: string | null };
@@ -697,6 +706,7 @@ export function useAllianceMembership(enabled = true) {
     },
     enabled: enabled && !!matecito.auth.token,
     staleTime: 10_000,
+    retry: shouldRetryAuthQuery,
   });
 }
 
@@ -706,12 +716,17 @@ export function useGameReports(enabled = true) {
     queryFn: async () => {
       const res = await fetch(`${API_BASE}/reports`, { headers: getAuthHeaders() });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed to fetch reports");
+      if (!res.ok) {
+        const error = new Error(data.error || "Failed to fetch reports") as Error & { status?: number };
+        error.status = res.status;
+        throw error;
+      }
       return { reports: data.reports as GameReport[], unreadCount: Number(data.unreadCount ?? 0) };
     },
     enabled: enabled && !!matecito.auth.token,
     staleTime: 10_000,
     refetchInterval: 30_000,
+    retry: shouldRetryAuthQuery,
   });
 }
 
@@ -1066,7 +1081,11 @@ export function useMailMessages(enabled = true) {
         headers: getAuthHeaders(),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed to fetch mail");
+      if (!res.ok) {
+        const error = new Error(data.error || "Failed to fetch mail") as Error & { status?: number };
+        error.status = res.status;
+        throw error;
+      }
       return {
         inbox: data.inbox as MailMessage[],
         sent: data.sent as MailMessage[],
@@ -1077,6 +1096,7 @@ export function useMailMessages(enabled = true) {
     staleTime: 10_000,
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
+    retry: shouldRetryAuthQuery,
   });
 }
 
