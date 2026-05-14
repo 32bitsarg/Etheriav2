@@ -634,36 +634,48 @@ const cityRouter = new Hono();
 
 // Bootstrap for authenticated user: ensure game profile + a starter city exists.
 cityRouter.post("/bootstrap", requireMatecitoAuth(), async (c) => {
+  const startedAt = performance.now();
   const userId = c.get("userId");
-  const body = await c.req.json().catch(() => ({}));
-  const desiredCityName =
-    typeof body.cityName === "string" && body.cityName.trim().length >= 2 ? body.cityName.trim() : generateCityName(userId);
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const desiredCityName =
+      typeof body.cityName === "string" && body.cityName.trim().length >= 2 ? body.cityName.trim() : generateCityName(userId);
 
-  // Game profile doc (separate from Matecito Auth users).
-  const profileRes = await db.from(COLLECTIONS.USERS).eq("id", userId).getFirst() as any;
-  if (!profileRes.data) {
-    const now = new Date().toISOString();
-    await db.from(COLLECTIONS.USERS).insert({
-      id: userId,
-      email: typeof body.email === "string" ? body.email : null,
-      name: typeof body.name === "string" ? body.name : generatePlayerName(userId),
-      createdAt: now,
-      updatedAt: now,
-    });
+    // Game profile doc (separate from Matecito Auth users).
+    const profileRes = await db.from(COLLECTIONS.USERS).eq("id", userId).getFirst() as any;
+    if (!profileRes.data) {
+      const now = new Date().toISOString();
+      await db.from(COLLECTIONS.USERS).insert({
+        id: userId,
+        email: typeof body.email === "string" ? body.email : null,
+        name: typeof body.name === "string" ? body.name : generatePlayerName(userId),
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    const existingCityRes = await db.from(COLLECTIONS.CITIES).eq("userId", userId).getFirst() as any;
+    const existingCityId = existingCityRes.data?.id ?? null;
+
+    let cityId = existingCityId as string | null;
+    if (!cityId) {
+      const created = await createStarterCityForUser({ userId, cityName: desiredCityName });
+      if ("error" in created) return c.json({ error: created.error, code: "CITY_CREATE_FAILED" }, 503);
+      cityId = created.cityId;
+    }
+
+    const fullCity = await getCityWithResources(cityId);
+    const durationMs = Math.round(performance.now() - startedAt);
+    if (durationMs >= 500) console.info(`[perf] bootstrap user=${userId} city=${cityId} ${durationMs}ms`);
+    return c.json({ city: fullCity });
+  } catch (error) {
+    const durationMs = Math.round(performance.now() - startedAt);
+    console.error(`[bootstrap] failed user=${userId} ${durationMs}ms`, error);
+    return c.json({
+      error: error instanceof Error ? error.message : "Bootstrap failed",
+      code: "BOOTSTRAP_FAILED",
+    }, 500);
   }
-
-  const existingCityRes = await db.from(COLLECTIONS.CITIES).eq("userId", userId).getFirst() as any;
-  const existingCityId = existingCityRes.data?.id ?? null;
-
-  let cityId = existingCityId as string | null;
-  if (!cityId) {
-    const created = await createStarterCityForUser({ userId, cityName: desiredCityName });
-    if ("error" in created) return c.json({ error: created.error }, 503);
-    cityId = created.cityId;
-  }
-
-  const fullCity = await getCityWithResources(cityId);
-  return c.json({ city: fullCity });
 });
 
 // Create Starter City
@@ -791,10 +803,20 @@ cityRouter.get("/world/movements", async (c) => {
 });
 
 cityRouter.get("/:id/play-initial", async (c) => {
+  const startedAt = performance.now();
   const id = c.req.param("id");
-  const snapshot = await getPlayInitialSnapshot(id);
-  if (!snapshot) return c.json({ error: "City not found" }, 404);
-  return c.json(snapshot);
+  try {
+    const snapshot = await getPlayInitialSnapshot(id);
+    if (!snapshot) return c.json({ error: "City not found", code: "CITY_NOT_FOUND" }, 404);
+    return c.json(snapshot);
+  } catch (error) {
+    const durationMs = Math.round(performance.now() - startedAt);
+    console.error(`[play-initial] failed city=${id} ${durationMs}ms`, error);
+    return c.json({
+      error: error instanceof Error ? error.message : "Failed to load play initial",
+      code: "PLAY_INITIAL_FAILED",
+    }, 500);
+  }
 });
 
 // Get city

@@ -2,12 +2,23 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCreateCity, usePlayInitial } from "@/hooks/useCity";
+import { fetchWithTimeout, useCreateCity, usePlayInitial } from "@/hooks/useCity";
 import { useGameStore } from "@/stores/gameStore";
 import { getCityId, setCityId } from "@/lib/guestAuth";
 import { useRouter, usePathname } from "next/navigation";
 import { useMatecitoAuth } from "@/hooks/useMatecitoAuth";
 import { clearGuestSession } from "@/lib/guestAuth";
+
+const AUTH_TIMEOUT_MS = 8_000;
+const BOOTSTRAP_TIMEOUT_MS = 12_000;
+const PLAY_INITIAL_TIMEOUT_MS = 15_000;
+
+type InitPhase = "auth" | "bootstrap" | "snapshot" | "ready" | "error";
+type InitError = {
+  code: string;
+  message: string;
+  detail?: string;
+};
 
 function getDefaultTechBonuses() {
   return {
@@ -78,6 +89,8 @@ export function GameInitializer() {
   const [hasCreatedCity, setHasCreatedCity] = useState(false);
   const [bootstrapPending, setBootstrapPending] = useState(false);
   const [bootstrapResolved, setBootstrapResolved] = useState(false);
+  const [phaseStartedAt, setPhaseStartedAt] = useState(() => Date.now());
+  const [initError, setInitError] = useState<InitError | null>(null);
   const [localCityId, setLocalCityId] = useState<string | null>(() => getCityId());
   const bootstrapInFlightRef = useRef(false);
   const router = useRouter();
@@ -98,19 +111,54 @@ export function GameInitializer() {
   const setSeasonState = useGameStore((s) => s.setSeasonState);
   const setPlayInitialLoadedAt = useGameStore((s) => s.setPlayInitialLoadedAt);
 
+  const currentPhase: InitPhase = !auth.ready
+    ? "auth"
+    : bootstrapPending || (auth.isLoggedIn && !bootstrapResolved)
+      ? "bootstrap"
+      : isLoading
+        ? "snapshot"
+        : initError || (!cityData && error)
+          ? "error"
+          : "ready";
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
+    setPhaseStartedAt(Date.now());
+  }, [currentPhase]);
+
+  useEffect(() => {
+    if (currentPhase === "ready" || currentPhase === "error") return;
+    const timeoutMs = currentPhase === "auth" ? AUTH_TIMEOUT_MS : currentPhase === "bootstrap" ? BOOTSTRAP_TIMEOUT_MS : PLAY_INITIAL_TIMEOUT_MS;
+    const id = window.setTimeout(() => {
+      setInitError({
+        code: currentPhase === "auth" ? "AUTH_TIMEOUT" : currentPhase === "bootstrap" ? "BOOTSTRAP_TIMEOUT" : "PLAY_INITIAL_TIMEOUT",
+        message: currentPhase === "auth"
+          ? "La sesion tardo demasiado en validarse."
+          : currentPhase === "bootstrap"
+            ? "La ciudad tardo demasiado en prepararse."
+            : "La aldea tardo demasiado en cargar.",
+        detail: `Fase: ${currentPhase}`,
+      });
+      setBootstrapPending(false);
+      bootstrapInFlightRef.current = false;
+    }, timeoutMs);
+    return () => window.clearTimeout(id);
+  }, [currentPhase]);
+
+  useEffect(() => {
     if (!auth.isLoggedIn) {
       setBootstrapResolved(false);
+      setInitError(null);
     }
   }, [auth.isLoggedIn]);
 
   // Map city data to store when loaded
   useEffect(() => {
     if (!playInitialData?.city) return;
+    setInitError(null);
 
     const city = playInitialData.city;
     setCity(mapCityToStore(city));
@@ -166,22 +214,24 @@ export function GameInitializer() {
     let cancelled = false;
     bootstrapInFlightRef.current = true;
     setBootstrapPending(true);
+    setInitError(null);
 
     (async () => {
       try {
         const pendingCityName = localStorage.getItem("etheria_pending_city_name") ?? "Etheria";
-        const res = await fetch("/api/city/bootstrap", {
+        const res = await fetchWithTimeout("/api/city/bootstrap", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${auth.token}`,
           },
           body: JSON.stringify({ cityName: pendingCityName, email: auth.user?.email ?? null, name: auth.user?.name ?? null }),
-        });
+        }, BOOTSTRAP_TIMEOUT_MS);
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          const error = new Error(data.error || "bootstrap failed") as Error & { status?: number };
+          const error = new Error(data.error || "bootstrap failed") as Error & { status?: number; code?: string };
           error.status = res.status;
+          error.code = data.code;
           throw error;
         }
         if (cancelled) return;
@@ -197,7 +247,13 @@ export function GameInitializer() {
           clearGuestSession();
           setLocalCityId(null);
           router.replace("/login");
+          return;
         }
+        setInitError({
+          code: (error as any)?.code ?? "BOOTSTRAP_FAILED",
+          message: error instanceof Error ? error.message : "No se pudo preparar la ciudad.",
+          detail: (error as any)?.status ? `HTTP ${(error as any).status}` : undefined,
+        });
       } finally {
         bootstrapInFlightRef.current = false;
         if (!cancelled) {
@@ -211,6 +267,23 @@ export function GameInitializer() {
       cancelled = true;
     };
   }, [auth, auth.isLoggedIn, auth.ready, auth.token, auth.user?.email, auth.user?.name, mounted, pathname, queryClient, router, setCity]);
+
+  useEffect(() => {
+    if (!error) return;
+    const status = (error as any)?.status;
+    if (status === 404 && effectiveCityId) {
+      clearGuestSession();
+      setLocalCityId(null);
+      setBootstrapResolved(false);
+      setInitError(null);
+      return;
+    }
+    setInitError({
+      code: (error as any)?.code ?? (status ? `PLAY_INITIAL_${status}` : "PLAY_INITIAL_FAILED"),
+      message: error.message,
+      detail: status ? `HTTP ${status}` : undefined,
+    });
+  }, [effectiveCityId, error]);
 
   // Create city if no cityId exists (guest fallback)
   useEffect(() => {
@@ -231,13 +304,50 @@ export function GameInitializer() {
   // Prevent hydration mismatch
   if (!mounted) return null;
 
+  const phaseText = currentPhase === "auth"
+    ? "Validando sesion..."
+    : currentPhase === "bootstrap"
+      ? "Preparando ciudad..."
+      : currentPhase === "snapshot"
+        ? "Cargando aldea..."
+        : "Preparing your empire";
+  const stuckSeconds = Math.max(0, Math.floor((Date.now() - phaseStartedAt) / 1000));
+
+  if (initError) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-etheria-bg z-50">
+        <div className="w-full max-w-md rounded-2xl border border-red-500/30 bg-black/50 p-6 text-center text-red-100 shadow-2xl">
+          <h2 className="text-xl font-display font-bold text-red-300">No se pudo cargar Etheria</h2>
+          <p className="mt-2 text-sm text-red-100/80">{initError.message}</p>
+          <p className="mt-2 font-mono text-xs text-red-200/60">{initError.code} {initError.detail ? `- ${initError.detail}` : ""}</p>
+          <div className="mt-5 flex justify-center gap-3">
+            <button onClick={() => window.location.reload()} className="rounded-lg border border-etheria-gold/40 px-4 py-2 text-sm text-etheria-gold-soft hover:bg-etheria-gold/10">
+              Reintentar
+            </button>
+            <button
+              onClick={async () => {
+                await auth.signOut();
+                clearGuestSession();
+                router.replace("/login");
+              }}
+              className="rounded-lg border border-white/10 px-4 py-2 text-sm text-white/70 hover:bg-white/10"
+            >
+              Volver al login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!auth.ready || isLoading || createCity.isPending || bootstrapPending || (auth.isLoggedIn && !bootstrapResolved)) {
     return (
       <div className="absolute inset-0 flex items-center justify-center bg-etheria-bg z-50">
         <div className="text-center">
           <div className="mb-4 text-5xl animate-bounce">🏰</div>
           <h2 className="text-2xl font-display font-bold text-etheria-gold">Building Etheria...</h2>
-          <p className="text-sm text-etheria-text-muted mt-2">Preparing your empire</p>
+          <p className="text-sm text-etheria-text-muted mt-2">{phaseText}</p>
+          <p className="mt-1 font-mono text-[11px] text-etheria-text-muted/60">{currentPhase} - {stuckSeconds}s</p>
           <div className="mt-4 w-48 h-1.5 bg-etheria-panel rounded-full overflow-hidden mx-auto">
             <div className="h-full bg-gradient-to-r from-amber-600 to-amber-400 rounded-full animate-shimmer" />
           </div>

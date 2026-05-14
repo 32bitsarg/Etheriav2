@@ -8,6 +8,24 @@ import { matecito } from "@/lib/matecitoClient";
 
 const API_BASE = "/api";
 const pendingUpgradeKeys = new Set<string>();
+export const PLAY_INITIAL_TIMEOUT_MS = 15_000;
+
+export async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = 12_000) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if ((error as any)?.name === "AbortError") {
+      const timeoutError = new Error("Request timed out") as Error & { code?: string };
+      timeoutError.code = "REQUEST_TIMEOUT";
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
 
 function updatePlayInitialCity(queryClient: ReturnType<typeof useQueryClient>, cityId: string, updater: (city: any) => any) {
   queryClient.setQueryData(["play-initial", cityId], (current: any) => {
@@ -96,11 +114,12 @@ export function usePlayInitial(cityId: string | null) {
   return useQuery({
     queryKey: ["play-initial", cityId],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/city/${cityId}/play-initial`, { cache: "no-store" });
+      const res = await fetchWithTimeout(`${API_BASE}/city/${cityId}/play-initial`, { cache: "no-store" }, PLAY_INITIAL_TIMEOUT_MS);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const error = new Error(data.error || "Failed to fetch play initial") as Error & { status?: number };
+        const error = new Error(data.error || "Failed to fetch play initial") as Error & { status?: number; code?: string };
         error.status = res.status;
+        error.code = data.code;
         throw error;
       }
       return data as PlayInitialData;
