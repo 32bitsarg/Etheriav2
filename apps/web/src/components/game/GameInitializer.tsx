@@ -238,8 +238,10 @@ export function GameInitializer() {
         setCityId(data.city.id);
         setLocalCityId(data.city.id);
         localStorage.removeItem("etheria_pending_city_name");
-        setCity(mapCityToStore(data.city));
-        queryClient.setQueryData(["city", data.city.id], data.city);
+        if (Array.isArray(data.city.buildings)) {
+          setCity(mapCityToStore(data.city));
+          queryClient.setQueryData(["city", data.city.id], data.city);
+        }
         queryClient.invalidateQueries({ queryKey: ["play-initial", data.city.id] });
       } catch (error) {
         if ((error as any)?.status === 401) {

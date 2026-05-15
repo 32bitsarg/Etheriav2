@@ -81,8 +81,10 @@ export async function logBotAction(input: {
 }
 
 export async function listRecentBotLogs(since: Date) {
-  const res = await db.from(COLLECTIONS.BOT_ACTION_LOGS).limit(5000).get() as any;
-  return (res.data ?? []).filter((log: any) => new Date(log.createdAt).getTime() >= since.getTime());
+  const res = await db.from(COLLECTIONS.BOT_ACTION_LOGS)
+    .gte("createdAt", since.toISOString())
+    .get() as any;
+  return res.data ?? [];
 }
 
 export async function writeBotMetrics(input: Record<string, unknown>) {

@@ -10,7 +10,7 @@ import {
   getBuildingMaxLevelForTownHall,
   getBuildingTime,
 } from "./buildings.js";
-import { canAfford, subtractResources } from "./resources.js";
+import { calculateResources, canAfford, subtractResources } from "./resources.js";
 import {
   calculateTechBonuses,
   canResearch,
@@ -120,6 +120,14 @@ async function loadCityActionSnapshot(cityId: string): Promise<CitySnapshot | nu
   const stats = calculateCityStats(buildings);
   const cityTechs = cityTechsRes.data ?? [];
   const techBonuses = city.techBonuses ?? calculateTechBonuses(cityTechs.map((tech: any) => ({ techId: tech.techId, level: tech.level })));
+  const resourceSnapshotAt = new Date();
+  const resources = calculateResources(
+    { gold: city.gold, wood: city.wood, stone: city.stone, food: city.food, gems: city.gems ?? 0 },
+    stats.production,
+    stats.storage,
+    new Date(city.lastResourceUpdate ?? city.createdAt),
+    resourceSnapshotAt
+  );
 
   const researchQueue = sortPendingQueues(researchQueueRes.data ?? []);
   const buildQueues = sortPendingQueues(buildQueuesRes.data ?? []);
@@ -134,18 +142,13 @@ async function loadCityActionSnapshot(cityId: string): Promise<CitySnapshot | nu
     buildQueues,
     trainingQueues,
     activeResearch: researchQueue[0] ?? null,
-    resources: {
-      gold: city.gold,
-      wood: city.wood,
-      stone: city.stone,
-      food: city.food,
-      gems: city.gems ?? 0,
-    },
+    lastResourceUpdate: resourceSnapshotAt.toISOString(),
+    resources,
     production: stats.production,
-    maxGold: city.maxGold,
-    maxWood: city.maxWood,
-    maxStone: city.maxStone,
-    maxFood: city.maxFood,
+    maxGold: stats.storage.maxGold,
+    maxWood: stats.storage.maxWood,
+    maxStone: stats.storage.maxStone,
+    maxFood: stats.storage.maxFood,
     techBonuses,
   };
 }

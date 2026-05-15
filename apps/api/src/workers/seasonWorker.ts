@@ -2,6 +2,7 @@ import { getSeasonState, initializeSeasonState, advanceSeason, calculateIntensit
 import { mergeRecordByLogicalId } from "../infrastructure/matecitoRecord.js";
 import { db, COLLECTIONS } from "../infrastructure/matecito.js";
 import { createGameReport } from "../domain/reports.js";
+import { prisma } from "@etheria/database";
 
 let seasonWorkerRunning = false;
 
@@ -57,11 +58,20 @@ export async function processSeasonTicks(): Promise<void> {
 }
 
 async function emitSeasonReports(reportKey: string, state: any, title: string, summary: string) {
-  const reportsRes = await db.from(COLLECTIONS.GAME_REPORTS).eq("type", "SYSTEM").limit(5000).get() as any;
-  const alreadyEmitted = (reportsRes.data ?? []).some((report: any) => report.payload?.seasonReportKey === reportKey);
+  const existing = await prisma.gameReport.findFirst({
+    where: {
+      type: "SYSTEM" as any,
+      payload: {
+        path: ["seasonReportKey"],
+        equals: reportKey,
+      },
+    },
+    select: { id: true },
+  });
+  const alreadyEmitted = !!existing;
   if (alreadyEmitted) return;
 
-  const citiesRes = await db.from(COLLECTIONS.CITIES).limit(5000).get() as any;
+  const citiesRes = await db.from(COLLECTIONS.CITIES).get() as any;
   const seenUsers = new Set<string>();
   for (const city of citiesRes.data ?? []) {
     if (!city.userId || seenUsers.has(city.userId)) continue;

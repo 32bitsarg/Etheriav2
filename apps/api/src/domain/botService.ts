@@ -23,8 +23,17 @@ import { generateCityName, generatePlayerName } from "./nameGenerator.js";
 import { createAllianceForUser, joinAlliance } from "./alliances.js";
 import { createChatMessage } from "./chat.js";
 import { sendMailMessage } from "./mail.js";
+import { prisma } from "@etheria/database";
 
 type BotActionStatus = "SUCCESS" | "EXPECTED_BLOCKED" | "VALIDATION_ERROR" | "UNEXPECTED_ERROR";
+type BotGlobalSnapshot = {
+  targets: any[];
+  barbarianCamps: any[];
+  recentGlobalBattles: any[];
+  seasonState: any;
+  alliances: any[];
+  marketOffers: any[];
+};
 
 function nextTickDate(config: BotSimulationConfig, jitterSeconds = 15) {
   const jitter = Math.floor(Math.random() * jitterSeconds * 1000);
@@ -114,12 +123,31 @@ export async function ensureBotPopulation(config = getBotSimulationConfig()) {
   return created;
 }
 
-async function loadBotSnapshot(bot: { cityId: string; userId: string; state: any }, config: BotSimulationConfig) {
+async function loadGlobalBotSnapshot(): Promise<BotGlobalSnapshot> {
+  const [targetsRes, barbarianCampsRes, recentGlobalBattlesRes, seasonRes, alliancesRes, marketOffersRes] = await Promise.all([
+    db.from(COLLECTIONS.CITIES).limit(200).get() as any,
+    db.from(COLLECTIONS.BARBARIAN_CAMPS).eq("status", "ACTIVE").get() as any,
+    db.from(COLLECTIONS.BATTLES).limit(200).get() as any,
+    db.from(COLLECTIONS.WORLD_SEASON_STATE).getFirst() as any,
+    db.from(COLLECTIONS.ALLIANCES).limit(100).get() as any,
+    db.from(COLLECTIONS.MARKET_OFFERS).eq("status", "OPEN").limit(100).get() as any,
+  ]);
+  return {
+    targets: targetsRes.data ?? [],
+    barbarianCamps: barbarianCampsRes.data ?? [],
+    recentGlobalBattles: recentGlobalBattlesRes.data ?? [],
+    seasonState: seasonRes.data ?? null,
+    alliances: alliancesRes.data ?? [],
+    marketOffers: marketOffersRes.data ?? [],
+  };
+}
+
+async function loadBotSnapshot(bot: { cityId: string; userId: string; state: any }, config: BotSimulationConfig, global: BotGlobalSnapshot) {
   const now = new Date();
   const protectionCutoff = new Date(now.getTime() - config.newPlayerProtectionHours * 60 * 60 * 1000);
   const globalCooldownCutoff = new Date(now.getTime() - config.globalTargetCooldownMinutes * 60 * 1000);
 
-  const [cityRes, buildingsRes, unitsRes, cityTechsRes, buildQueuesRes, trainingQueuesRes, researchQueuesRes, battlesRes, targetsRes, barbarianCampsRes, recentGlobalBattlesRes, seasonRes, membershipRes, alliancesRes, marketOffersRes, allBotsRes] = await Promise.all([
+  const [cityRes, buildingsRes, unitsRes, cityTechsRes, buildQueuesRes, trainingQueuesRes, researchQueuesRes, battlesRes, membershipRes] = await Promise.all([
     db.from(COLLECTIONS.CITIES).eq("id", bot.cityId).getFirst() as any,
     db.from(COLLECTIONS.BUILDINGS).eq("cityId", bot.cityId).get() as any,
     db.from(COLLECTIONS.UNITS).eq("cityId", bot.cityId).get() as any,
@@ -128,14 +156,7 @@ async function loadBotSnapshot(bot: { cityId: string; userId: string; state: any
     db.from(COLLECTIONS.TRAINING_QUEUES).eq("cityId", bot.cityId).eq("isComplete", false).get() as any,
     db.from(COLLECTIONS.RESEARCH_QUEUES).eq("cityId", bot.cityId).eq("isComplete", false).get() as any,
     db.from(COLLECTIONS.BATTLES).eq("attackerCityId", bot.cityId).get() as any,
-    db.from(COLLECTIONS.CITIES).limit(200).get() as any,
-    db.from(COLLECTIONS.BARBARIAN_CAMPS).eq("status", "ACTIVE").get() as any,
-    db.from(COLLECTIONS.BATTLES).limit(200).get() as any, 
-    db.from(COLLECTIONS.WORLD_SEASON_STATE).getFirst() as any,
     db.from(COLLECTIONS.ALLIANCE_MEMBERS).eq("userId", bot.userId).getFirst() as any,
-    db.from(COLLECTIONS.ALLIANCES).limit(100).get() as any,
-    db.from(COLLECTIONS.MARKET_OFFERS).eq("status", "OPEN").limit(100).get() as any,
-    db.from(COLLECTIONS.BOT_PLAYERS).get() as any,
   ]);
 
   if (!cityRes.data) throw new Error(`Bot city not found: ${bot.cityId}`);
@@ -143,12 +164,12 @@ async function loadBotSnapshot(bot: { cityId: string; userId: string; state: any
 
   // Safety filter: exclude new players and cities under global cooldown
   const recentlyAttackedCityIds = new Set(
-    (recentGlobalBattlesRes.data ?? [])
+    (global.recentGlobalBattles ?? [])
       .filter((b: any) => new Date(b.startedAt) > globalCooldownCutoff)
       .map((b: any) => b.defenderCityId)
   );
 
-  const filteredTargets = (targetsRes.data ?? []).filter((city: any) => {
+  const filteredTargets = (global.targets ?? []).filter((city: any) => {
     if (city.id === bot.cityId) return false;
     if (city.userId === bot.userId) return false;
 
@@ -165,10 +186,10 @@ async function loadBotSnapshot(bot: { cityId: string; userId: string; state: any
     return true;
   });
 
-  const incomingAttacks = (recentGlobalBattlesRes.data ?? [])
+  const incomingAttacks = (global.recentGlobalBattles ?? [])
     .filter((b: any) => b.defenderCityId === bot.cityId && new Date(b.startedAt) > globalCooldownCutoff);
 
-  const resolvedRaids = (recentGlobalBattlesRes.data ?? [])
+  const resolvedRaids = (global.recentGlobalBattles ?? [])
     .filter((b: any) => b.defenderCityId === bot.cityId && b.status === "RESOLVED" && b.resolvedAt && new Date(b.resolvedAt).getTime() > now.getTime() - 60 * 60_000);
 
   const allianceObjective = membershipRes.data?.allianceId ? await ensureAllianceObjective(membershipRes.data.allianceId) : null;
@@ -192,16 +213,16 @@ async function loadBotSnapshot(bot: { cityId: string; userId: string; state: any
     activeResearch: researchQueuesRes.data?.[0] ?? null,
     activeResearchQueues: researchQueuesRes.data ?? [],
     allianceMembership: membershipRes.data ?? null,
-    alliances: alliancesRes.data ?? [],
-    marketOffers: marketOffersRes.data ?? [],
+    alliances: global.alliances ?? [],
+    marketOffers: global.marketOffers ?? [],
     allianceObjectives: allianceObjective ? [allianceObjective] : [],
     activeOutgoingBattles,
     targets: filteredTargets,
-    barbarianCamps: (barbarianCampsRes.data ?? []).filter((camp: any) => {
+    barbarianCamps: (global.barbarianCamps ?? []).filter((camp: any) => {
       const dist = Math.sqrt(Math.pow(camp.posX - cityRes.data.posX, 2) + Math.pow(camp.posY - cityRes.data.posY, 2));
       return dist <= config.maxAttackDistance;
     }),
-    seasonState: seasonRes.data ?? null,
+    seasonState: global.seasonState ?? null,
     state: {
       ...(bot.state ?? {}),
       incomingAttacks,
@@ -426,10 +447,11 @@ export async function processDueBots(config = getBotSimulationConfig()) {
   }
 
   const bots = await listDueBots(now, config.maxBotsPerTick);
+  const globalSnapshot = await loadGlobalBotSnapshot();
 
   let errors = 0;
   for (const bot of bots) {
-    const snapshot = await loadBotSnapshot(bot, config);
+    const snapshot = await loadBotSnapshot(bot, config, globalSnapshot);
     const decision = decideBotAction(snapshot, bot.profile, config, now);
     const actionType = botActionType(decision);
 
@@ -507,22 +529,31 @@ export async function writeBotMetricsSnapshot(windowMinutes = 15) {
     attemptedByType[realType] = (attemptedByType[realType] ?? 0) + 1;
   }
 
-  const [battlesRes, techsRes] = await Promise.all([
-    db.from(COLLECTIONS.BATTLES).get() as any,
-    db.from(COLLECTIONS.CITY_TECHS).get() as any,
+  const botCityIdsList = [...botCityIds];
+  const [resolvedBattles, completedResearch] = await Promise.all([
+    botCityIdsList.length > 0
+      ? prisma.battle.count({
+          where: {
+            attackerCityId: { in: botCityIdsList },
+            resolvedAt: {
+              gte: windowStartedAt,
+              lte: windowEndedAt,
+            },
+          },
+        })
+      : Promise.resolve(0),
+    botCityIdsList.length > 0
+      ? prisma.cityTech.count({
+          where: {
+            cityId: { in: botCityIdsList },
+            unlockedAt: {
+              gte: windowStartedAt,
+              lte: windowEndedAt,
+            },
+          },
+        })
+      : Promise.resolve(0),
   ]);
-  const resolvedBattles = (battlesRes.data ?? []).filter((battle: any) =>
-    botCityIds.has(battle.attackerCityId) &&
-    battle.resolvedAt &&
-    new Date(battle.resolvedAt).getTime() >= windowStartedAt.getTime() &&
-    new Date(battle.resolvedAt).getTime() <= windowEndedAt.getTime()
-  ).length;
-  const completedResearch = (techsRes.data ?? []).filter((tech: any) =>
-    botCityIds.has(tech.cityId) &&
-    tech.unlockedAt &&
-    new Date(tech.unlockedAt).getTime() >= windowStartedAt.getTime() &&
-    new Date(tech.unlockedAt).getTime() <= windowEndedAt.getTime()
-  ).length;
 
   await writeBotMetrics({
     windowStartedAt: windowStartedAt.toISOString(),

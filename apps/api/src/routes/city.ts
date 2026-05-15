@@ -65,6 +65,7 @@ const genId = () => crypto.randomUUID();
 const citySnapshotCache = new Map<string, { data: any; cachedAt: number }>();
 const CITY_SNAPSHOT_TTL_MS = 15_000;
 const WORLD_MAP_CITY_LIMIT = Number(process.env.WORLD_MAP_CITY_LIMIT ?? 200);
+const TARGET_CITY_LIMIT = Number(process.env.TARGET_CITY_LIMIT ?? 300);
 const RANKING_CITY_LIMIT = Number(process.env.RANKING_CITY_LIMIT ?? 100);
 const SEASON_STATE_CACHE_TTL_MS = 15_000;
 let seasonStateCache: { data: any; cachedAt: number } | null = null;
@@ -664,10 +665,9 @@ cityRouter.post("/bootstrap", requireMatecitoAuth(), async (c) => {
       cityId = created.cityId;
     }
 
-    const fullCity = await getCityWithResources(cityId);
     const durationMs = Math.round(performance.now() - startedAt);
     if (durationMs >= 500) console.info(`[perf] bootstrap user=${userId} city=${cityId} ${durationMs}ms`);
-    return c.json({ city: fullCity });
+    return c.json({ city: { id: cityId }, cityId });
   } catch (error) {
     const durationMs = Math.round(performance.now() - startedAt);
     console.error(`[bootstrap] failed user=${userId} ${durationMs}ms`, error);
@@ -699,17 +699,20 @@ cityRouter.post("/create", async (c) => {
   const created = await createStarterCityForUser({ userId, cityName });
   if ("error" in created) return c.json({ error: created.error }, 503);
 
-  const fullCity = await getCityWithResources(created.cityId);
-  return c.json({ city: fullCity, message: "City created with starter buildings" });
+  return c.json({ city: { id: created.cityId }, cityId: created.cityId, message: "City created with starter buildings" });
 });
 
 // ─── List cities (for attack target selection) ───
 
 cityRouter.get("/list/all", async (c) => {
-  const citiesRes = await db.from(COLLECTIONS.CITIES).get() as any;
-  const rawCities = (citiesRes.data ?? []) as any[];
-  const membershipsRes = await db.from(COLLECTIONS.ALLIANCE_MEMBERS).get() as any;
-  const memberships = membershipsRes.data ?? [];
+  const rawCities = await prisma.city.findMany({
+    orderBy: { createdAt: "desc" },
+    take: TARGET_CITY_LIMIT,
+  });
+  const memberships = await prisma.allianceMember.findMany({
+    where: { userId: { in: rawCities.map((city) => city.userId) } },
+    select: { userId: true, allianceId: true },
+  });
   const allianceByUser = new Map(memberships.map((m: any) => [m.userId, m.allianceId]));
   const powerByCity = await getCityPowerMap(rawCities.map((city: any) => city.id));
 
@@ -726,14 +729,19 @@ cityRouter.get("/list/all", async (c) => {
 });
 
 cityRouter.get("/ranking/all", async (c) => {
-  const citiesRes = await db.from(COLLECTIONS.CITIES).limit(RANKING_CITY_LIMIT).get() as any;
-  const cities = (citiesRes.data ?? []) as any[];
+  const cities = await prisma.city.findMany({ orderBy: { createdAt: "desc" }, take: RANKING_CITY_LIMIT });
   const powerByCity = await getCityPowerMap(cities.map((city) => city.id));
 
-  const membersRes = await db.from(COLLECTIONS.ALLIANCE_MEMBERS).get() as any;
-  const memberByUserId = new Map<string, string>((membersRes.data ?? []).map((m: any) => [m.userId, m.allianceId]));
-  const alliancesRes = await db.from(COLLECTIONS.ALLIANCES).get() as any;
-  const allianceByAllianceId = new Map<string, string>((alliancesRes.data ?? []).map((a: any) => [a.id, a.name]));
+  const members = await prisma.allianceMember.findMany({
+    where: { userId: { in: cities.map((city) => city.userId) } },
+    select: { userId: true, allianceId: true },
+  });
+  const memberByUserId = new Map<string, string>(members.map((m: any) => [m.userId, m.allianceId]));
+  const allianceIds = [...new Set(members.map((m) => m.allianceId))];
+  const alliances = allianceIds.length > 0
+    ? await prisma.alliance.findMany({ where: { id: { in: allianceIds } }, select: { id: true, name: true } })
+    : [];
+  const allianceByAllianceId = new Map<string, string>(alliances.map((a: any) => [a.id, a.name]));
 
   const ranking = cities
     .map((city) => {
@@ -831,9 +839,8 @@ cityRouter.get("/:id", async (c) => {
 cityRouter.post("/:id/build", zValidator("json", CreateBuildingRequestSchema), async (c) => {
   const cityId = c.req.param("id");
   const data = c.req.valid("json");
-  const city = await getCityWithResources(cityId);
   try {
-    return c.json(await createBuildingAction({ cityId, ...data, actor: { type: "human" }, citySnapshot: city }));
+    return c.json(await createBuildingAction({ cityId, ...data, actor: { type: "human" } }));
   } catch (error) {
     return actionErrorResponse(c, error);
   }
@@ -843,9 +850,8 @@ cityRouter.post("/:id/build", zValidator("json", CreateBuildingRequestSchema), a
 cityRouter.post("/:id/buildings/:buildingId/upgrade", async (c) => {
   const cityId = c.req.param("id");
   const buildingId = c.req.param("buildingId");
-  const city = await getCityWithResources(cityId);
   try {
-    return c.json(await upgradeBuildingAction({ cityId, buildingId, actor: { type: "human" }, citySnapshot: city }));
+    return c.json(await upgradeBuildingAction({ cityId, buildingId, actor: { type: "human" } }));
   } catch (error) {
     return actionErrorResponse(c, error);
   }
@@ -907,9 +913,8 @@ cityRouter.post("/:id/build-queues/:queueId/cancel", async (c) => {
 cityRouter.post("/:id/train", zValidator("json", TrainUnitsRequestSchema), async (c) => {
   const cityId = c.req.param("id");
   const data = c.req.valid("json");
-  const city = await getCityWithResources(cityId);
   try {
-    return c.json(await trainUnitsAction({ cityId, ...data, actor: { type: "human" }, citySnapshot: city }));
+    return c.json(await trainUnitsAction({ cityId, ...data, actor: { type: "human" } }));
   } catch (error) {
     return actionErrorResponse(c, error);
   }
@@ -960,14 +965,12 @@ cityRouter.post("/:id/training-queues/:queueId/cancel", async (c) => {
 cityRouter.post("/:id/attack", zValidator("json", AttackRequestSchema), async (c) => {
   const attackerCityId = c.req.param("id");
   const data = c.req.valid("json");
-  const attackerCity = await getCityWithResources(attackerCityId);
   try {
     return c.json(await attackCityAction({
       attackerCityId,
       targetCityId: data.targetCityId,
       units: data.units as any,
       actor: { type: "human" },
-      citySnapshot: attackerCity,
     }));
   } catch (error) {
     return actionErrorResponse(c, error);
@@ -993,14 +996,13 @@ cityRouter.post("/:id/trade", zValidator("json", SendResourcesRequestSchema), as
 // Get queues
 cityRouter.get("/:id/queue", async (c) => {
   const cityId = c.req.param("id");
-  await reconcileExpiredBuildQueues(cityId);
 
   const [buildQueuesRes, trainingQueuesRes] = await Promise.all([
     db.from(COLLECTIONS.BUILD_QUEUES).eq("cityId", cityId).eq("isComplete", false).get(),
     db.from(COLLECTIONS.TRAINING_QUEUES).eq("cityId", cityId).eq("isComplete", false).get(),
   ]);
 
-  const buildQueues = await normalizeActiveBuildQueues(cityId, (buildQueuesRes as any).data ?? []);
+  const buildQueues = (buildQueuesRes as any).data ?? [];
   const trainingQueues = (trainingQueuesRes as any).data ?? [];
 
   // Sort by startedAt ascending
@@ -1067,9 +1069,8 @@ cityRouter.get("/:id/techs", async (c) => {
 cityRouter.post("/:id/research", zValidator("json", StartResearchRequestSchema), async (c) => {
   const cityId = c.req.param("id");
   const data = c.req.valid("json");
-  const city = await getCityWithResources(cityId);
   try {
-    return c.json(await startResearchAction({ cityId, techId: data.techId, actor: { type: "human" }, citySnapshot: city }));
+    return c.json(await startResearchAction({ cityId, techId: data.techId, actor: { type: "human" } }));
   } catch (error) {
     return actionErrorResponse(c, error);
   }

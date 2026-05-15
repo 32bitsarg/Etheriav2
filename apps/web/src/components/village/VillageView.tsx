@@ -8,7 +8,7 @@ import { BUILDING_INFO, BUILDING_NAMES, BUILDING_SIZES, MAX_BUILDING_LEVEL, getU
 import { BuildingSprite } from "@/components/village/BuildingIcon";
 import { VillageCanvas } from "@/components/village/VillageCanvas";
 import { ResourceIconSVG } from "@/components/village/ResourceIconSVG";
-import { useAcceptMarketOffer, useActiveBattles, useAllCities, useAllianceMembership, useAttackCity, useBarbarianAttackAlerts, useBarbarianCamps, useBattleReports, useBreakTreaty, useCancelBuildQueue, useCancelResearchQueue, useCancelTrainingQueue, useCityRanking, useClaimQuest, useContributeAllianceObjective, useCreateAlliance, useCreateMarketOffer, useDisbandAlliance, useGameReports, useJoinAlliance, useKickAllianceMember, useLeaveAlliance, useMailMessages, useMarkGameReportRead, useMarkMailRead, useMarkMapOpened, useMarkReportRead, useMarketOffers, usePlayerQuests, useProposePeace, useRenameCity, useResearchTech, useScoutTarget, useSendMailMessage, useTechs, useTrainUnits, useTransferAllianceLeadership, useUpdateAlliance, useUpdateAllianceMemberRole, useUpgradeBuilding, useVillageLayout, useWorldMap, useWorldMovements, useWorldSeason } from "@/hooks/useCity";
+import { useAcceptMarketOffer, useActiveBattles, useAllCities, useAllianceMembership, useAttackCity, useBarbarianAttackAlerts, useBattleReports, useBreakTreaty, useCancelBuildQueue, useCancelResearchQueue, useCancelTrainingQueue, useCityRanking, useClaimQuest, useContributeAllianceObjective, useCreateAlliance, useCreateMarketOffer, useDisbandAlliance, useGameReports, useJoinAlliance, useKickAllianceMember, useLeaveAlliance, useMailMessages, useMarkGameReportRead, useMarkMailRead, useMarkMapOpened, useMarkReportRead, useMarketOffers, usePlayerQuests, useProposePeace, useRenameCity, useResearchTech, useScoutTarget, useSendMailMessage, useTechs, useTrainUnits, useTransferAllianceLeadership, useUpdateAlliance, useUpdateAllianceMemberRole, useUpgradeBuilding, useVillageLayout, useWorldMap, useWorldMovements, useWorldSeason } from "@/hooks/useCity";
 import { WorldMapCanvas } from "@/components/worldmap/WorldMapCanvas";
 import { BarbarianAttackAlertBanner } from "@/components/barbarians/BarbarianAttackAlertBanner";
 import { WinterPressureBanner } from "@/components/barbarians/WinterPressureBanner";
@@ -267,6 +267,7 @@ export function VillageView() {
             storage={storage}
             production={production}
             allianceData={allianceData}
+            movements={worldMoves ?? []}
             onRename={() => setIsRenameOpen(true)}
             onEnterVillage={() => setActiveView("pueblo")}
             t={t}
@@ -639,20 +640,18 @@ function PuebloView({ buildings, selectedBuildingId, onSelectBuilding, cityName,
   );
 }
 
-function MapaView({ cityName, resources, storage, production, allianceData, onRename, onEnterVillage, t }: {
+function MapaView({ cityName, resources, storage, production, allianceData, movements, onRename, onEnterVillage, t }: {
   cityName: string;
   resources: any;
   storage: any;
   production: { goldPerHour: number; woodPerHour: number; stonePerHour: number; foodPerHour: number };
   allianceData: any;
+  movements: any[];
   onRename: () => void;
   onEnterVillage: () => void;
   t: (key: string) => string;
 }) {
-  const { data: cities } = useAllCities();
   const { data: worldMap } = useWorldMap();
-  const { data: barbarianCamps } = useBarbarianCamps();
-  const { data: movements } = useWorldMovements();
   const { data: seasonData } = useWorldSeason();
   const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
   const [radialPosition, setRadialPosition] = useState({ x: 0, y: 0 });
@@ -667,7 +666,9 @@ function MapaView({ cityName, resources, storage, production, allianceData, onRe
   const addToast = useToastStore((s) => s.addToast);
   const scoutTarget = useScoutTarget();
   const markMapOpened = useMarkMapOpened();
-  const selectedCity = cities?.find((city) => city.id === selectedCityId) ?? null;
+  const cities = worldMap?.cities ?? [];
+  const barbarianCamps = worldMap?.barbarianCamps ?? [];
+  const selectedCity = cities.find((city) => city.id === selectedCityId) ?? null;
   const isOwnCity = selectedCityId != null && selectedCityId === myCityId;
 
   const enterVillage = () => {
@@ -688,14 +689,14 @@ function MapaView({ cityName, resources, storage, production, allianceData, onRe
       {isEntering && <div className="etheria-map-enter-zoom pointer-events-none absolute inset-0 z-50" />}
       <div className="absolute inset-0">
         <WorldMapCanvas
-          cities={(cities ?? []).map((city) => ({
+          cities={cities.map((city) => ({
             ...city,
             relation: getMapRelation(city, allianceData),
           }))}
           mapConfig={worldMap?.map ?? null}
           myCityId={myCityId}
-          barbarianCamps={barbarianCamps ?? []}
-          movements={movements ?? []}
+          barbarianCamps={barbarianCamps}
+          movements={movements}
           seasonState={seasonData?.season ?? null}
           onSelectCityId={(cityId, position) => {
             setSelectedCityId(cityId);
@@ -925,15 +926,14 @@ function MailModal({ onClose, t }: { onClose: () => void; t: (key: string) => st
   const markBattleReportRead = useMarkReportRead();
   const sendMail = useSendMailMessage();
   const addToast = useToastStore((s) => s.addToast);
-  const { data: allCities } = useAllCities();
-
-  const battleReports = battleReportsData ?? [];
-  
   const [tab, setTab] = useState<"inbox" | "sent" | "reports" | "compose">("inbox");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [recipientCityId, setRecipientCityId] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const { data: allCities } = useAllCities(tab === "compose");
+
+  const battleReports = battleReportsData ?? [];
 
   const messages = tab === "inbox" ? mailData?.inbox ?? [] : tab === "sent" ? mailData?.sent ?? [] : [];
   const selected = messages.find((m: any) => m.id === selectedId);

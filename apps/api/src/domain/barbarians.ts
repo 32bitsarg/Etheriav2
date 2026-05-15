@@ -12,6 +12,7 @@ import {
 } from './barbarianConfigData.js';
 import { getRewardConfig, calculateEstimatedReward } from './barbarianRewardConfigData.js';
 import { db, COLLECTIONS } from '../infrastructure/matecito.js';
+import { prisma } from '@etheria/database';
 
 function assertDbOk(result: unknown, context: string) {
   if (!result) return;
@@ -96,8 +97,7 @@ export function generateBarbarianArmy(
 
 export async function findValidSpawnPosition(
   zoneId: string,
-  existingCamps: BarbarianCamp[],
-  existingCities: { posX: number; posY: number }[]
+  existingCamps: BarbarianCamp[]
 ): Promise<SpawnCandidate | null> {
   const zoneConfig = LOCAL_BARBARIAN_ZONE_CONFIGS.find((z) => z.zoneId === zoneId);
   if (!zoneConfig) return null;
@@ -121,7 +121,15 @@ export async function findValidSpawnPosition(
     const resolvedZone = resolveWorldZone(posX, posY, worldConfig.map.width, worldConfig.map.height);
     if (resolvedZone.id !== zoneId) continue;
 
-    const tooCloseToCity = existingCities.some(
+    const nearbyCities = await prisma.city.findMany({
+      where: {
+        posX: { gte: posX - minDistToCities, lte: posX + minDistToCities },
+        posY: { gte: posY - minDistToCities, lte: posY + minDistToCities },
+      },
+      select: { posX: true, posY: true },
+      take: 200,
+    });
+    const tooCloseToCity = nearbyCities.some(
       (city) => Math.sqrt((city.posX - posX) ** 2 + (city.posY - posY) ** 2) < minDistToCities
     );
     if (tooCloseToCity) continue;
@@ -181,20 +189,12 @@ export async function getAllActiveCamps(): Promise<BarbarianCamp[]> {
   return campsRes.data ?? [];
 }
 
-export async function getAllCities(): Promise<{ posX: number; posY: number }[]> {
-  const citiesRes = await db.from(COLLECTIONS.CITIES).get() as any;
-  assertDbOk(citiesRes, 'CITIES.get()');
-  return (citiesRes.data ?? []).map((c: any) => ({ posX: c.posX, posY: c.posY }));
-}
-
 export async function spawnBarbarianCamp(
   zoneId: string,
   seasonState: WorldSeasonState | null
 ): Promise<BarbarianCamp | null> {
   const existingCamps = await getAllActiveCamps();
-  const existingCities = await getAllCities();
-
-  const position = await findValidSpawnPosition(zoneId, existingCamps, existingCities);
+  const position = await findValidSpawnPosition(zoneId, existingCamps);
   if (!position) return null;
 
   const archetype = pickRandomArchetype(zoneId, seasonState);

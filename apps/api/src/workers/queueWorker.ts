@@ -259,38 +259,40 @@ async function processTrainingQueues() {
 // ─── Resource Ticks ───
 
 async function processResourceTicks() {
-  const cities = await db.from(COLLECTIONS.CITIES).get() as any;
   const now = new Date();
-  const eligibleCities = (cities.data ?? [])
-    .filter((city: any) => {
-      const lastUpdate = new Date(city.lastResourceUpdate ?? city.createdAt).getTime();
-      return now.getTime() - lastUpdate >= RESOURCE_TICK_MIN_ELAPSED_MS;
-    })
-    .sort((a: any, b: any) =>
-      new Date(a.lastResourceUpdate ?? a.createdAt).getTime() -
-      new Date(b.lastResourceUpdate ?? b.createdAt).getTime()
-    )
-    .slice(0, RESOURCE_TICK_BATCH_SIZE);
+  const eligibleCities = await prisma.city.findMany({
+    where: {
+      lastResourceUpdate: {
+        lte: new Date(now.getTime() - RESOURCE_TICK_MIN_ELAPSED_MS),
+      },
+    },
+    include: { units: true },
+    orderBy: { lastResourceUpdate: 'asc' },
+    take: RESOURCE_TICK_BATCH_SIZE,
+  });
 
   if (eligibleCities.length === 0) return;
 
   const seasonState = await getSeasonState();
-  const worldConfig = await getWorldConfig();
   const isWinter = seasonState?.currentSeason === 'WINTER';
 
   // Preload alliance effects to avoid N+1 queries per city
   const userIds = new Set(eligibleCities.map((city: any) => city.userId).filter(Boolean));
   const allianceEffectsByUserId = new Map<string, any[]>();
   if (userIds.size > 0) {
-    const membershipsRes = await db.from(COLLECTIONS.ALLIANCE_MEMBERS).get() as any;
-    const memberships = (membershipsRes.data ?? []).filter((m: any) => userIds.has(m.userId));
+    const memberships = await prisma.allianceMember.findMany({
+      where: { userId: { in: [...userIds] } },
+      select: { userId: true, allianceId: true },
+    });
     const allianceIds = new Set(memberships.map((m: any) => m.allianceId).filter(Boolean));
     if (allianceIds.size > 0) {
-      const effectsRes = await db.from(COLLECTIONS.ALLIANCE_EFFECTS).get() as any;
       const nowMs = Date.now();
-      const allEffects = (effectsRes.data ?? []).filter((effect: any) =>
-        allianceIds.has(effect.allianceId) && (!effect.expiresAt || new Date(effect.expiresAt).getTime() > nowMs)
-      );
+      const allEffects = await prisma.allianceEffect.findMany({
+        where: {
+          allianceId: { in: [...allianceIds] },
+          expiresAt: { gt: new Date(nowMs) },
+        },
+      });
       const effectsByAllianceId = new Map<string, any[]>();
       for (const effect of allEffects) {
         const list = effectsByAllianceId.get(effect.allianceId) ?? [];
@@ -318,7 +320,7 @@ async function processResourceTicks() {
       stonePerHour: city.stonePerHour ?? 0,
       foodPerHour: city.foodPerHour ?? 0,
     }, {
-      techBonuses: city.techBonuses,
+      techBonuses: city.techBonuses ? city.techBonuses as Record<string, unknown> : undefined,
       allianceEffects: activeAllianceEffects,
       seasonState,
       cityPosX: city.posX ?? 0,
@@ -328,9 +330,8 @@ async function processResourceTicks() {
     let newFood = Math.min(city.maxFood, Math.floor(city.food + effective.production.foodPerHour * hoursElapsed));
 
     // Winter pressure: troop food consumption
-    const unitsRes = await db.from(COLLECTIONS.UNITS).eq('cityId', city.id).get() as any;
     const units: Record<UnitType, number> = { WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0, PIKEMAN: 0, CROSSBOWMAN: 0, CATAPULT: 0 };
-    for (const u of unitsRes.data ?? []) {
+    for (const u of city.units ?? []) {
       units[u.type as UnitType] = (units[u.type as UnitType] ?? 0) + u.count;
     }
 
@@ -338,10 +339,10 @@ async function processResourceTicks() {
       const totalTroops = Object.values(units).reduce((s, c) => s + c, 0);
       if (totalTroops > 0) {
         const winterState = evaluateWinterPressure(
-          city,
+          city as any,
           effective.production.foodPerHour,
           units,
-          city.winterState ?? null,
+          (city.winterState ?? null) as any,
           now,
           DEFAULT_WINTER_PRESSURE_CONFIG
         );
@@ -368,7 +369,7 @@ async function processResourceTicks() {
         if (winterState.isStarving && winterState.starvationHours >= DEFAULT_WINTER_PRESSURE_CONFIG.desertionAfterHours) {
           for (const [type, loss] of Object.entries(winterState.desertionLosses)) {
             if ((loss as number) > 0) {
-              const unitRecord = unitsRes.data?.find((u: any) => u.type === type);
+              const unitRecord = city.units?.find((u: any) => u.type === type);
               if (unitRecord) {
                 const newCount = Math.max(0, unitRecord.count - (loss as number));
                 if (newCount > 0) {
@@ -396,13 +397,13 @@ async function processResourceTicks() {
     const newWood = Math.min(city.maxWood, Math.floor(city.wood + effective.production.woodPerHour * hoursElapsed));
     const newStone = Math.min(city.maxStone, Math.floor(city.stone + effective.production.stonePerHour * hoursElapsed));
 
-    await mergeRecordBySelector(COLLECTIONS.CITIES, city, {
+    await db.from(COLLECTIONS.CITIES).eq('id', city.id).merge({
         gold: newGold,
         wood: newWood,
         stone: newStone,
         food: newFood,
         lastResourceUpdate: now.toISOString(),
-      });
+      }).execute() as any;
   }
 }
 

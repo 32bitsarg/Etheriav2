@@ -1,4 +1,5 @@
 import { db, COLLECTIONS } from "../infrastructure/matecito.js";
+import { prisma } from "@etheria/database";
 import { getUnitStats } from "./units.js";
 import { calculateTechBonuses } from "./techs.js";
 import type { TechBonuses } from "@etheria/shared";
@@ -86,19 +87,26 @@ export async function calculateCityPower(cityId: string): Promise<CityPowerBreak
 }
 
 export async function getCityPowerMap(cityIds: string[]) {
-  const [buildingsRes, unitsRes, cityTechsRes] = await Promise.all([
-    db.from(COLLECTIONS.BUILDINGS).limit(5000).get() as any,
-    db.from(COLLECTIONS.UNITS).limit(5000).get() as any,
-    db.from(COLLECTIONS.CITY_TECHS).limit(5000).get() as any,
+  if (cityIds.length === 0) return new Map<string, CityPowerBreakdown>();
+  const [buildings, units, cityTechs] = await Promise.all([
+    prisma.building.findMany({ where: { cityId: { in: cityIds } }, select: { cityId: true, type: true, level: true } }),
+    prisma.cityUnit.findMany({ where: { cityId: { in: cityIds } }, select: { cityId: true, type: true, count: true } }),
+    prisma.cityTech.findMany({ where: { cityId: { in: cityIds } }, select: { cityId: true, techId: true, level: true } }),
   ]);
 
-  const requested = new Set(cityIds);
+  const buildingsByCity = new Map<string, any[]>();
+  const unitsByCity = new Map<string, any[]>();
+  const techsByCity = new Map<string, any[]>();
+  for (const row of buildings) buildingsByCity.set(row.cityId, [...(buildingsByCity.get(row.cityId) ?? []), row]);
+  for (const row of units) unitsByCity.set(row.cityId, [...(unitsByCity.get(row.cityId) ?? []), row]);
+  for (const row of cityTechs) techsByCity.set(row.cityId, [...(techsByCity.get(row.cityId) ?? []), row]);
+
   const map = new Map<string, CityPowerBreakdown>();
   for (const cityId of cityIds) {
     map.set(cityId, calculateCityPowerFromParts({
-      buildings: (buildingsRes.data ?? []).filter((row: any) => row.cityId === cityId && requested.has(row.cityId)),
-      units: (unitsRes.data ?? []).filter((row: any) => row.cityId === cityId && requested.has(row.cityId)),
-      cityTechs: (cityTechsRes.data ?? []).filter((row: any) => row.cityId === cityId && requested.has(row.cityId)),
+      buildings: buildingsByCity.get(cityId) ?? [],
+      units: unitsByCity.get(cityId) ?? [],
+      cityTechs: techsByCity.get(cityId) ?? [],
     }));
   }
   return map;

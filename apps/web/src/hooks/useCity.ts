@@ -442,7 +442,7 @@ export interface CityRankingEntry {
   };
 }
 
-export function useAllCities() {
+export function useAllCities(enabled = true) {
   return useQuery({
     queryKey: ["cities", "all"],
     queryFn: async () => {
@@ -452,6 +452,7 @@ export function useAllCities() {
       return data.cities as TargetCity[];
     },
     staleTime: 30000,
+    enabled,
   });
 }
 

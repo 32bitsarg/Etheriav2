@@ -5,6 +5,7 @@ import { calculateCityStats } from "./buildings.js";
 import { getWorldConfig, type WorldSpawnConfig } from "./worldConfig.js";
 import type { WorldConfigDoc } from "./worldConfigData.js";
 import { isBuildableTerrain } from "./worldTerrainConfigData.js";
+import { prisma } from "@etheria/database";
 
 const genId = () => crypto.randomUUID();
 
@@ -183,12 +184,11 @@ export async function allocatePositionForCity(seed: string): Promise<WorldPoint 
   let occupied: WorldPoint[] = [];
 
   try {
-    const citiesRes = await withDbRetry<any>(
-      () => db.from(COLLECTIONS.CITIES).get() as any,
-      "CITIES.get()"
-    );
-    assertDbOk(citiesRes, "CITIES.get()");
-    occupied = ((citiesRes.data ?? []) as any[]).map((city) => ({ x: city.posX ?? 0, y: city.posY ?? 0 }));
+    const cities = await prisma.city.findMany({
+      select: { posX: true, posY: true },
+      take: 3000,
+    });
+    occupied = cities.map((city) => ({ x: city.posX ?? 0, y: city.posY ?? 0 }));
   } catch (error) {
     console.warn(`[cityCreation] Falling back to deterministic spawn because cities lookup failed: ${String((error as any)?.message ?? error)}`);
     return getFallbackSpawn(seed, world);

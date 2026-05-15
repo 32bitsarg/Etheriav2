@@ -10,6 +10,7 @@ import { calculateTravelTimeWithMultiplier } from './battles.js';
 import { getUnitStats } from './units.js';
 import { getWorldConfig } from './worldConfig.js';
 import { calculatePathSpeedMultiplier } from './worldTerrainConfigData.js';
+import { prisma } from '@etheria/database';
 
 const genId = () => crypto.randomUUID();
 
@@ -23,11 +24,16 @@ export interface CityTargetCandidate {
  * Get all active barbarian camps that can attack.
  */
 export async function getAttackableCamps(): Promise<any[]> {
-  const campsRes = await db.from(COLLECTIONS.BARBARIAN_CAMPS)
-    .eq('status', 'ACTIVE')
-    .get() as any;
-
-  const camps = campsRes.data ?? [];
+  const camps = await prisma.barbarianCamp.findMany({
+    where: { status: "ACTIVE" as any },
+    select: { id: true, archetype: true, level: true, name: true, posX: true, posY: true, lastActionAt: true },
+  });
+  const armies = camps.length > 0
+    ? await prisma.barbarianArmy.findMany({
+        where: { campId: { in: camps.map((camp) => camp.id) } },
+      })
+    : [];
+  const armyByCampId = new Map(armies.map((army) => [army.campId, army]));
   const now = new Date();
 
   // Filter camps that have army and are not on cooldown
@@ -41,18 +47,14 @@ export async function getAttackableCamps(): Promise<any[]> {
     }
 
     // Check if camp has army
-    const armyRes = await db.from(COLLECTIONS.BARBARIAN_ARMIES)
-      .eq('campId', camp.id)
-      .getFirst() as any;
-
-    if (!armyRes.data) continue;
-
-    const totalUnits = Object.values(armyRes.data.units as Record<string, number>)
+    const army = armyByCampId.get(camp.id);
+    if (!army) continue;
+    const totalUnits = Object.values(army.units as Record<string, number>)
       .reduce((sum: number, count: number) => sum + count, 0);
 
     if (totalUnits < 5) continue; // Minimum army size
 
-    result.push({ camp, army: armyRes.data });
+    result.push({ camp, army });
   }
 
   return result;
@@ -65,10 +67,62 @@ export async function getTargetCandidates(
   camp: any,
   season: Season
 ): Promise<CityTargetCandidate[]> {
-  const citiesRes = await db.from(COLLECTIONS.CITIES).get() as any;
-  const allCities = citiesRes.data ?? [];
-  const now = new Date();
   const config = LOCAL_BARBARIAN_ATTACK_CONFIG;
+  const minPosX = Math.floor(camp.posX - config.targetRadius);
+  const maxPosX = Math.ceil(camp.posX + config.targetRadius);
+  const minPosY = Math.floor(camp.posY - config.targetRadius);
+  const maxPosY = Math.ceil(camp.posY + config.targetRadius);
+
+  const allCities = await prisma.city.findMany({
+    where: {
+      posX: { gte: minPosX, lte: maxPosX },
+      posY: { gte: minPosY, lte: maxPosY },
+    },
+    select: {
+      id: true,
+      userId: true,
+      createdAt: true,
+      posX: true,
+      posY: true,
+      goldPerHour: true,
+      woodPerHour: true,
+      stonePerHour: true,
+      foodPerHour: true,
+      gold: true,
+      wood: true,
+      stone: true,
+      food: true,
+    },
+  });
+  const now = new Date();
+  const incomingAttacks = await prisma.barbarianAttack.findMany({
+    where: {
+      status: "MARCHING" as any,
+      OR: [
+        { targetCityId: { in: allCities.map((city) => city.id) } },
+        { campId: camp.id },
+      ],
+    },
+    select: { targetCityId: true, campId: true },
+  });
+  const buildings = await prisma.building.findMany({
+    where: {
+      cityId: { in: allCities.map((city) => city.id) },
+      type: "TOWER" as any,
+    },
+    select: { cityId: true, level: true },
+  });
+  const incomingByCity = new Map<string, number>();
+  const incomingByCampAndCity = new Map<string, number>();
+  for (const attack of incomingAttacks) {
+    incomingByCity.set(attack.targetCityId, (incomingByCity.get(attack.targetCityId) ?? 0) + 1);
+    if (attack.campId === camp.id) {
+      const key = `${attack.campId}:${attack.targetCityId}`;
+      incomingByCampAndCity.set(key, (incomingByCampAndCity.get(key) ?? 0) + 1);
+    }
+  }
+  const towerByCity = new Map<string, number>();
+  for (const building of buildings) towerByCity.set(building.cityId, building.level);
 
   const candidates: CityTargetCandidate[] = [];
 
@@ -88,35 +142,20 @@ export async function getTargetCandidates(
     if (distance > config.targetRadius) continue;
 
     // Check city defense cooldown
-    if (city.lastBarbarianAttackAt) {
-      const hoursSinceAttack = (now.getTime() - new Date(city.lastBarbarianAttackAt).getTime()) / (1000 * 60 * 60);
+    const lastBarbarianAttackAt = (city as any).lastBarbarianAttackAt;
+    if (lastBarbarianAttackAt) {
+      const hoursSinceAttack = (now.getTime() - new Date(lastBarbarianAttackAt).getTime()) / (1000 * 60 * 60);
       if (hoursSinceAttack < config.cityDefenseCooldownHours) continue;
     }
 
     // Check if city already has max incoming attacks
-    const incomingAttacksRes = await db.from(COLLECTIONS.BARBARIAN_ATTACKS)
-      .eq('targetCityId', city.id)
-      .eq('status', 'MARCHING')
-      .get() as any;
-
-    if ((incomingAttacksRes.data ?? []).length >= config.maxSimultaneousAttacksPerCity) continue;
+    if ((incomingByCity.get(city.id) ?? 0) >= config.maxSimultaneousAttacksPerCity) continue;
 
     // Check if camp already attacking this city
-    const campAttacksRes = await db.from(COLLECTIONS.BARBARIAN_ATTACKS)
-      .eq('campId', camp.id)
-      .eq('targetCityId', city.id)
-      .eq('status', 'MARCHING')
-      .get() as any;
-
-    if ((campAttacksRes.data ?? []).length >= config.maxSimultaneousAttacksPerCamp) continue;
+    if ((incomingByCampAndCity.get(`${camp.id}:${city.id}`) ?? 0) >= config.maxSimultaneousAttacksPerCamp) continue;
 
     // Calculate defense score
-    const buildingsRes = await db.from(COLLECTIONS.BUILDINGS)
-      .eq('cityId', city.id)
-      .get() as any;
-
-    const tower = (buildingsRes.data ?? []).find((b: any) => b.type === 'TOWER');
-    const defenseScore = tower ? tower.level * 50 : 0;
+    const defenseScore = (towerByCity.get(city.id) ?? 0) * 50;
 
     // Calculate target score
     const score = calculateTargetScore({
@@ -129,7 +168,7 @@ export async function getTargetCandidates(
       cityPower,
       cityDefense: defenseScore,
       distance,
-      cityLastAttackedAt: city.lastBarbarianAttackAt,
+      cityLastAttackedAt: lastBarbarianAttackAt,
       season,
       campLevel: camp.level,
     });

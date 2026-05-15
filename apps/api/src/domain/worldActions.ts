@@ -1,26 +1,42 @@
-import { db, COLLECTIONS } from "../infrastructure/matecito.js";
+import { prisma } from "@etheria/database";
 import type { WorldMovement } from "@etheria/shared";
 
-async function getByStatuses(collection: string, field: string, statuses: string[]) {
-  const results = await Promise.all(
-    statuses.map((status) => db.from(collection).eq(field, status).get() as any)
-  );
-  return results.flatMap((res: any) => res.data ?? []);
-}
-
 export async function getActiveMovements() {
-  const [battles, barbarianBattles, barbarianAttacks, caravans, citiesRes, campsRes] = await Promise.all([
-    getByStatuses(COLLECTIONS.BATTLES, "status", ["MARCHING", "RETURNING"]),
-    getByStatuses(COLLECTIONS.BARBARIAN_BATTLES, "status", ["MARCHING", "RETURNING"]),
-    getByStatuses(COLLECTIONS.BARBARIAN_ATTACKS, "status", ["MARCHING", "RETURNING"]),
-    getByStatuses(COLLECTIONS.TRADE_CARAVANS, "status", ["MARCHING", "RETURNING"]),
-    db.from(COLLECTIONS.CITIES).get() as any,
-    db.from(COLLECTIONS.BARBARIAN_CAMPS).get() as any,
+  const [battles, barbarianBattles, barbarianAttacks, caravans] = await Promise.all([
+    prisma.battle.findMany({ where: { status: { in: ["MARCHING", "RETURNING"] as any } } }),
+    prisma.barbarianBattle.findMany({ where: { status: { in: ["MARCHING", "RETURNING"] as any } } }),
+    prisma.barbarianAttack.findMany({ where: { status: { in: ["MARCHING", "RETURNING"] as any } } }),
+    prisma.tradeCaravan.findMany({ where: { status: { in: ["MARCHING", "RETURNING"] as any } } }),
   ]);
 
-  const cities = (citiesRes.data ?? []) as any[];
-  const camps = (campsRes.data ?? []) as any[];
-  
+  const cityIds = new Set<string>();
+  const campIds = new Set<string>();
+  for (const battle of battles) {
+    cityIds.add(battle.attackerCityId);
+    cityIds.add(battle.defenderCityId);
+  }
+  for (const battle of barbarianBattles) {
+    cityIds.add(battle.attackerCityId);
+    campIds.add(battle.targetCampId);
+  }
+  for (const raid of barbarianAttacks) {
+    campIds.add(raid.campId);
+    cityIds.add(raid.targetCityId);
+  }
+  for (const caravan of caravans) {
+    cityIds.add(caravan.senderCityId);
+    cityIds.add(caravan.recipientCityId);
+  }
+
+  const [cities, camps] = await Promise.all([
+    cityIds.size > 0
+      ? prisma.city.findMany({ where: { id: { in: [...cityIds] } }, select: { id: true, name: true, posX: true, posY: true } })
+      : Promise.resolve([]),
+    campIds.size > 0
+      ? prisma.barbarianCamp.findMany({ where: { id: { in: [...campIds] } }, select: { id: true, name: true, posX: true, posY: true } })
+      : Promise.resolve([]),
+  ]);
+
   const cityMap = new Map(cities.map(c => [c.id, c]));
   const campMap = new Map(camps.map(c => [c.id, c]));
 
@@ -35,13 +51,13 @@ export async function getActiveMovements() {
     movements.push({
       id: battle.id,
       type: "ATTACK",
-      status: battle.status,
+      status: battle.status as "MARCHING" | "RETURNING",
       from: { x: attacker.posX, y: attacker.posY, name: attacker.name },
       to: { x: defender.posX, y: defender.posY, name: defender.name },
-      startedAt: battle.startedAt,
-      arrivesAt: battle.arrivesAt,
-      resolvedAt: battle.resolvedAt,
-      returnsAt: battle.returnsAt,
+      startedAt: battle.startedAt.toISOString(),
+      arrivesAt: battle.arrivesAt.toISOString(),
+      resolvedAt: battle.resolvedAt?.toISOString(),
+      returnsAt: battle.returnsAt?.toISOString(),
     });
   }
 
@@ -54,13 +70,13 @@ export async function getActiveMovements() {
     movements.push({
       id: battle.id,
       type: "BARBARIAN_ATTACK",
-      status: battle.status,
+      status: battle.status as "MARCHING" | "RETURNING",
       from: { x: attacker.posX, y: attacker.posY, name: attacker.name },
       to: { x: camp.posX, y: camp.posY, name: camp.name },
-      startedAt: battle.startedAt,
-      arrivesAt: battle.arrivesAt,
-      resolvedAt: battle.resolvedAt,
-      returnsAt: battle.returnsAt,
+      startedAt: battle.startedAt.toISOString(),
+      arrivesAt: battle.arrivesAt.toISOString(),
+      resolvedAt: battle.resolvedAt?.toISOString(),
+      returnsAt: battle.returnsAt?.toISOString(),
     });
   }
 
@@ -73,13 +89,13 @@ export async function getActiveMovements() {
     movements.push({
       id: raid.id,
       type: "BARBARIAN_RAID",
-      status: raid.status,
+      status: raid.status as "MARCHING" | "RETURNING",
       from: { x: camp.posX, y: camp.posY, name: camp.name },
       to: { x: defender.posX, y: defender.posY, name: defender.name },
-      startedAt: raid.startedAt,
-      arrivesAt: raid.arrivesAt,
-      resolvedAt: raid.resolvedAt,
-      returnsAt: raid.returnsAt,
+      startedAt: raid.startedAt.toISOString(),
+      arrivesAt: raid.arrivesAt.toISOString(),
+      resolvedAt: raid.resolvedAt?.toISOString(),
+      returnsAt: raid.returnsAt?.toISOString(),
     });
   }
 
@@ -92,13 +108,13 @@ export async function getActiveMovements() {
     movements.push({
       id: caravan.id,
       type: "TRADE",
-      status: caravan.status,
+      status: caravan.status as "MARCHING" | "RETURNING",
       from: { x: sender.posX, y: sender.posY, name: sender.name },
       to: { x: recipient.posX, y: recipient.posY, name: recipient.name },
-      startedAt: caravan.startedAt,
-      arrivesAt: caravan.arrivesAt,
-      resolvedAt: caravan.resolvedAt ?? caravan.deliveredAt ?? caravan.completedAt,
-      returnsAt: caravan.returnsAt,
+      startedAt: caravan.startedAt.toISOString(),
+      arrivesAt: caravan.arrivesAt.toISOString(),
+      resolvedAt: caravan.completedAt?.toISOString(),
+      returnsAt: undefined,
     });
   }
 

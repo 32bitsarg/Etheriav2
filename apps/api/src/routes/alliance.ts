@@ -6,6 +6,7 @@ import { canEditAllianceForum, canManageAlliance, canUseAllianceCenter, createAl
 import { db, COLLECTIONS } from '../infrastructure/matecito.js';
 import { mergeRecordByLogicalId } from '../infrastructure/matecitoRecord.js';
 import { contributeAllianceObjective, ensureAllianceObjective } from '../domain/allianceObjectives.js';
+import { prisma } from '@etheria/database';
 
 const allianceRouter = new Hono();
 const genId = () => crypto.randomUUID();
@@ -13,25 +14,27 @@ const genId = () => crypto.randomUUID();
 async function getAllianceDashboard(userId: string) {
   const gate = await canUseAllianceCenter(userId);
   const membership = await getAllianceMembershipForUser(userId);
-  const alliancesRes = await db.from(COLLECTIONS.ALLIANCES).limit(100).get() as any;
-  const alliances = (alliancesRes.data ?? []).filter((alliance: any) => !alliance.disbandedAt);
+  const alliances = (await prisma.alliance.findMany({
+    take: 100,
+    orderBy: { createdAt: 'desc' },
+  }) as any[]).filter((alliance) => !alliance.disbandedAt);
   if (!membership?.allianceId) return { gate, membership, alliances, members: [], diplomacy: [], events: [], effects: [], objectives: [], objectiveContributions: [] };
   const objective = await ensureAllianceObjective(membership.allianceId);
-  const [membersRes, diplomacyA, diplomacyB, eventsRes, effectsRes] = await Promise.all([
-    db.from(COLLECTIONS.ALLIANCE_MEMBERS).eq('allianceId', membership.allianceId).get() as any,
-    db.from(COLLECTIONS.ALLIANCE_DIPLOMACY).eq('allianceAId', membership.allianceId).get() as any,
-    db.from(COLLECTIONS.ALLIANCE_DIPLOMACY).eq('allianceBId', membership.allianceId).get() as any,
-    db.from(COLLECTIONS.ALLIANCE_DIPLOMACY_EVENTS).eq('allianceId', membership.allianceId).limit(50).get() as any,
-    db.from(COLLECTIONS.ALLIANCE_EFFECTS).eq('allianceId', membership.allianceId).get() as any,
+  const [members, diplomacyA, diplomacyB, events, effects] = await Promise.all([
+    prisma.allianceMember.findMany({ where: { allianceId: membership.allianceId } }),
+    prisma.allianceDiplomacy.findMany({ where: { allianceAId: membership.allianceId } }),
+    prisma.allianceDiplomacy.findMany({ where: { allianceBId: membership.allianceId } }),
+    prisma.allianceDiplomacyEvent.findMany({ where: { allianceId: membership.allianceId }, take: 50, orderBy: { createdAt: 'desc' } }),
+    prisma.allianceEffect.findMany({ where: { allianceId: membership.allianceId, expiresAt: { gt: new Date() } } }),
   ]);
   return {
     gate,
     membership,
     alliances,
-    members: membersRes.data ?? [],
-    diplomacy: [...(diplomacyA.data ?? []), ...(diplomacyB.data ?? [])],
-    events: (eventsRes.data ?? []).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    effects: (effectsRes.data ?? []).filter((effect: any) => new Date(effect.expiresAt).getTime() > Date.now()),
+    members,
+    diplomacy: [...diplomacyA, ...diplomacyB],
+    events,
+    effects,
     objectives: objective ? [objective] : [],
     objectiveContributions: [],
   };
@@ -47,8 +50,7 @@ async function getMembershipById(memberId: string) {
 }
 
 async function countAllianceMembers(allianceId: string) {
-  const res = await db.from(COLLECTIONS.ALLIANCE_MEMBERS).eq('allianceId', allianceId).get() as any;
-  return (res.data ?? []).length;
+  return prisma.allianceMember.count({ where: { allianceId } });
 }
 
 async function addAllianceEvent(allianceId: string, type: string, message: string, otherAllianceId?: string | null) {
@@ -108,8 +110,8 @@ allianceRouter.post('/me/disband', requireMatecitoAuth(), async (c) => {
   const membership = await getAllianceMembershipForUser(userId);
   if (!membership?.allianceId) return c.json({ error: 'No alliance' }, 404);
   if (membership.role !== 'LEADER') return c.json({ error: 'Insufficient role' }, 403);
-  const membersRes = await db.from(COLLECTIONS.ALLIANCE_MEMBERS).eq('allianceId', membership.allianceId).get() as any;
-  for (const member of membersRes.data ?? []) await db.from(COLLECTIONS.ALLIANCE_MEMBERS).eq('id', member.id).delete() as any;
+  const members = await prisma.allianceMember.findMany({ where: { allianceId: membership.allianceId }, select: { id: true } });
+  for (const member of members) await db.from(COLLECTIONS.ALLIANCE_MEMBERS).eq('id', member.id).delete() as any;
   await mergeRecordByLogicalId(COLLECTIONS.ALLIANCES, membership.allianceId, { disbandedAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
   return c.json({ success: true });
 });

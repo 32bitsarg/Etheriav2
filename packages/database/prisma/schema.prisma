@@ -61,6 +61,7 @@ model BotActionLog {
 
   @@index([botId, createdAt])
   @@index([actionType, status, createdAt])
+  @@index([cityId, createdAt])
   @@map("bot_action_logs")
 }
 
@@ -129,6 +130,8 @@ model City {
 
   @@index([userId])
   @@index([posX, posY])
+  @@index([lastResourceUpdate])
+  @@index([createdAt])
   @@map("cities")
 }
 
@@ -242,6 +245,8 @@ model Battle {
   @@index([attackerCityId])
   @@index([defenderCityId])
   @@index([status, arrivesAt])
+  @@index([defenderCityId, startedAt])
+  @@index([attackerCityId, resolvedAt])
   @@map("battles")
 }
 
@@ -475,6 +480,7 @@ model BarbarianCamp {
   alerts   BarbarianAttackAlert[]
 
   @@index([status])
+  @@index([status, lastActionAt])
   @@index([zoneId])
   @@index([posX, posY])
   @@map("barbarian_camps")
@@ -659,6 +665,7 @@ model GameReport {
 
   @@index([userId, readAt, createdAt])
   @@index([cityId, createdAt])
+  @@index([type, createdAt])
   @@map("game_reports")
 }
 
