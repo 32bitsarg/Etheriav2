@@ -1,16 +1,16 @@
 "use client";
 
-type SidebarNavIconId = "summary" | "village" | "buildings" | "army" | "research" | "map" | "quests";
+type SidebarNavIconId = "summary" | "village" | "buildings" | "army" | "research" | "map" | "quests" | "mail";
 
 const ICON_PATH: Record<SidebarNavIconId, string> = {
   summary: "/assets/ui/nav-icons/summary.png",
-  // Reuse the old summary crest for Village per design decision.
-  village: "/assets/ui/nav-icons/summary.png",
+  village: "/assets/ui/nav-icons/village.png",
   buildings: "/assets/ui/nav-icons/buildings.png",
   army: "/assets/ui/nav-icons/army.png",
   research: "/assets/ui/nav-icons/research.png",
   map: "/assets/ui/nav-icons/map.png",
   quests: "/assets/ui/nav-icons/quests.png",
+  mail: "/assets/ui/sidebar/mail-seal.png",
 };
 
 export function SidebarNavIcon({

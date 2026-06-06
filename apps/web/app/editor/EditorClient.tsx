@@ -3,7 +3,7 @@
 import { type BuildingType } from "@etheria/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BuildingSprite } from "@/components/village/BuildingIcon";
-import { VillageCanvas } from "@/components/village/VillageCanvas";
+import { VillageHTMLCanvas } from "@/components/village/VillageHTMLCanvas";
 import { WorldMapCanvas } from "@/components/worldmap/WorldMapCanvas";
 import { GameInitializer } from "@/components/game/GameInitializer";
 import { useGameStore } from "@/stores/gameStore";
@@ -64,9 +64,6 @@ function VillageLayoutEditorContent() {
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [panelPos, setPanelPos] = useState({ x: 16, y: 16 });
   const [editorCenterVersion, setEditorCenterVersion] = useState(0);
-  const handleEditorViewport = useCallback((next: { left: number; top: number; width: number; height: number; worldScale: number }) => {
-    void next;
-  }, []);
 
   const layout = draft ?? data ?? {
     version: 1,
@@ -178,7 +175,6 @@ function VillageLayoutEditorContent() {
     });
   }, [layout]);
 
-  const handleEditorCameraChange = useCallback((_camera: { x: number; y: number; zoom: number }) => {}, []);
 
   const handlePanelPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     panelDragRef.current = { startX: event.clientX, startY: event.clientY, originX: panelPos.x, originY: panelPos.y };
@@ -331,20 +327,15 @@ function VillageLayoutEditorContent() {
       <section className="absolute inset-0">
         <div className="h-full w-full">
           {editorMode === "village" ? (
-            <div
-              className="relative h-full w-full touch-none overflow-hidden"
-            >
-              <VillageCanvas
+            <div className="relative h-full w-full touch-none overflow-hidden">
+              <VillageHTMLCanvas
                 layout={layout}
                 buildings={uniqueBuildings}
                 selectedBuildingId={selectedId}
                 onSelectBuilding={selectBuilding}
                 queues={[]}
                 editorMode
-                onEditorViewport={handleEditorViewport}
-                onEditorAnchorChange={handleAnchorChange}
-                onEditorCameraChange={handleEditorCameraChange}
-                editorCenterVersion={editorCenterVersion}
+                onAnchorChange={handleAnchorChange}
               />
             </div>
           ) : (

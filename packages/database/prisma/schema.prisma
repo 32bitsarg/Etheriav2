@@ -9,21 +9,40 @@ datasource db {
 }
 
 model User {
-  id        String   @id
-  email     String?  @unique
-  name      String?
-  avatar    String?
-  isBot     Boolean  @default(false)
-  botProfile String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id
+  email        String?  @unique
+  name         String?
+  avatar       String?
+  isBot        Boolean  @default(false)
+  botProfile   String?
+  passwordHash String?
+  passwordSalt String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  cities City[]
+  cities       City[]
+  sessions     Session[]
   sentMail     MailMessage[] @relation("MailSender")
   receivedMail MailMessage[] @relation("MailRecipient")
   botPlayer    BotPlayer?
 
   @@map("users")
+}
+
+model Session {
+  id         String   @id
+  userId     String
+  tokenHash  String   @unique
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  expiresAt  DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+  @@map("sessions")
 }
 
 model BotPlayer {
@@ -117,6 +136,9 @@ model City {
   techBonuses        Json?
   winterState        Json?
   lastWinterEvaluatedAt DateTime?
+  power              Int      @default(0)
+  lastAttackAt       DateTime?
+  shieldExpiresAt    DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -690,6 +712,198 @@ model PlayerQuest {
   @@unique([cityId, questId])
   @@index([userId, status])
   @@map("player_quests")
+}
+
+// ─── Notifications ───
+
+model Notification {
+  id        String   @id
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  payload   Json?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read, createdAt])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  BUILD_COMPLETE
+  TRAINING_COMPLETE
+  UNDER_ATTACK
+  BATTLE_RESULT
+  RALLY_INVITE
+  RALLY_LAUNCHED
+  CITY_CONQUERED
+  SPY_RESULT
+  DAILY_QUEST_RESET
+  ACHIEVEMENT_UNLOCKED
+  RANKED_OVERTAKEN
+}
+
+// ─── Daily Quests ───
+
+model DailyQuest {
+  id        String   @id
+  userId    String
+  cityId    String
+  questId   String
+  title     String
+  summary   String
+  target    Int
+  progress  Int      @default(0)
+  reward    Json
+  status    String   @default("ACTIVE")
+  date      String   // YYYY-MM-DD — the day this quest belongs to
+  claimedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cityId, questId, date])
+  @@index([userId, date, status])
+  @@map("daily_quests")
+}
+
+// ─── Rally Attacks ───
+
+model RallyAttack {
+  id            String   @id
+  createdByCityId String
+  targetCityId  String
+  targetCampId  String?
+  launchAt      DateTime
+  status        RallyStatus @default(OPEN)
+  createdAt     DateTime @default(now())
+
+  participants  RallyParticipant[]
+
+  @@index([status, launchAt])
+  @@index([createdByCityId])
+  @@map("rally_attacks")
+}
+
+model RallyParticipant {
+  id         String   @id
+  rallyId    String
+  userId     String
+  cityId     String
+  units      Json
+  joinedAt   DateTime @default(now())
+
+  rally RallyAttack @relation(fields: [rallyId], references: [id], onDelete: Cascade)
+
+  @@unique([rallyId, cityId])
+  @@index([rallyId])
+  @@map("rally_participants")
+}
+
+enum RallyStatus {
+  OPEN
+  LAUNCHED
+  CANCELLED
+}
+
+// ─── City Conquest ───
+
+model CityConquestProgress {
+  id          String   @id
+  attackerCityId String
+  defenderCityId String
+  wins        Int      @default(0)
+  winsRequired Int     @default(3)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([attackerCityId, defenderCityId])
+  @@index([defenderCityId])
+  @@map("city_conquest_progress")
+}
+
+// ─── Espionage ───
+
+model EspionageMission {
+  id             String   @id
+  spyCityId      String
+  targetCityId   String
+  status         EspionageStatus @default(TRAVELING)
+  result         Json?
+  expiresAt      DateTime?
+  startedAt      DateTime @default(now())
+  resolvedAt     DateTime?
+  arrivesAt      DateTime
+
+  @@index([spyCityId])
+  @@index([targetCityId])
+  @@index([status, arrivesAt])
+  @@map("espionage_missions")
+}
+
+enum EspionageStatus {
+  TRAVELING
+  SUCCESS
+  CAUGHT
+  EXPIRED
+}
+
+// ─── Achievements ───
+
+model Achievement {
+  id          String   @id
+  key         String   @unique
+  titleKey    String
+  summaryKey  String
+  iconKey     String
+  points      Int      @default(10)
+  createdAt   DateTime @default(now())
+
+  playerAchievements PlayerAchievement[]
+
+  @@map("achievements")
+}
+
+model PlayerAchievement {
+  id            String   @id
+  userId        String
+  achievementId String
+  achievementKey String
+  unlockedAt    DateTime @default(now())
+
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@map("player_achievements")
+}
+
+// ─── Activity Feed ───
+
+model ActivityFeed {
+  id        String   @id
+  type      String
+  actorName String
+  actorId   String
+  payload   Json
+  public    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([public, createdAt])
+  @@index([actorId, createdAt])
+  @@map("activity_feed")
+}
+
+// ─── Wonder ───
+
+model Wonder {
+  id              String   @id @default("world_wonder")
+  holderAllianceId String?
+  holderCityId    String?
+  controlStartedAt DateTime?
+  daysControlled  Int      @default(0)
+  updatedAt       DateTime @updatedAt
+
+  @@map("wonder")
 }
 
 model MarketOffer {

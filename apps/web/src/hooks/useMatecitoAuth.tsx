@@ -1,120 +1,117 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { AuthUser } from "matecitodb";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { matecito } from "@/lib/matecitoClient";
 
-const SESSION_KEY = "etheria_matecito_session";
+interface AuthUser {
+  id: string;
+  email?: string;
+  name?: string;
+}
+
+async function apiFetch(path: string, options?: RequestInit) {
+  return fetch(`/api${path}`, {
+    ...options,
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) },
+  });
+}
+
+function extractErrorMessage(data: any, fallback: string): string {
+  const err = data?.error;
+  if (!err) return data?.message ?? fallback;
+  if (typeof err === "string") return err;
+  // Zod validation error from Hono: { issues: [...], name: "ZodError" }
+  if (Array.isArray(err?.issues)) return err.issues.map((i: any) => i.message).join(", ");
+  if (typeof err?.message === "string") return err.message;
+  return fallback;
+}
+
+const DEV_AUTO_LOGIN = process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN === "true";
+const DEV_EMAIL = process.env.NEXT_PUBLIC_DEV_EMAIL ?? "";
+const DEV_PASSWORD = process.env.NEXT_PUBLIC_DEV_PASSWORD ?? "";
+
+async function devAutoLogin(applyUser: (u: AuthUser | null) => void) {
+  if (!DEV_EMAIL || !DEV_PASSWORD) return;
+  try {
+    let res = await apiFetch("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email: DEV_EMAIL, password: DEV_PASSWORD, remember: true }),
+    });
+    if (!res.ok) {
+      await apiFetch("/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ email: DEV_EMAIL, password: DEV_PASSWORD, name: "Dev Player", remember: true }),
+      }).catch(() => {});
+      res = await apiFetch("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email: DEV_EMAIL, password: DEV_PASSWORD, remember: true }),
+      });
+    }
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (data?.user) applyUser(data.user);
+    }
+  } catch (e) {
+    console.warn("[dev] auto-login failed:", e);
+  }
+}
 
 export function useMatecitoAuth() {
   const [ready, setReady] = useState(false);
-  const [user, setUser] = useState<AuthUser | null>(matecito.auth.user);
-  const [token, setToken] = useState<string | null>(matecito.auth.token);
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  const applyUser = useCallback((u: AuthUser | null) => {
+    setUser(u);
+    matecito.auth._set(u ? u.id : null, u);
+  }, []);
 
   useEffect(() => {
-    let unsub: null | (() => void) = null;
-
-    matecito.auth.sessionReady
-      .then(() => {
-        return (async () => {
-        if (typeof window !== "undefined" && !matecito.auth.token) {
-          const stored = window.localStorage.getItem(SESSION_KEY);
-          if (stored) {
-            try {
-              const parsed = JSON.parse(stored) as {
-                access_token?: string;
-                refresh_token?: string | null;
-                user?: AuthUser;
-              };
-              if (parsed?.access_token) {
-                matecito.auth.setSession({
-                  access_token: parsed.access_token,
-                  refresh_token: parsed.refresh_token ?? undefined,
-                  user: parsed.user,
-                });
-              }
-            } catch {
-              window.localStorage.removeItem(SESSION_KEY);
-            }
-          }
+    apiFetch("/auth/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then(async (data) => {
+        if (data?.user) {
+          applyUser(data.user);
+        } else if (DEV_AUTO_LOGIN) {
+          await devAutoLogin(applyUser);
         }
-
-        if (matecito.auth.token) {
-          const me = await matecito.auth.getMe().catch(() => ({ data: null, error: { message: "Session validation failed" } }));
-          if ((me as any)?.error || !(me as any)?.data?.id) {
-            await matecito.auth.signOut();
-            if (typeof window !== "undefined") window.localStorage.removeItem(SESSION_KEY);
-          }
-        }
-
-        setReady(true);
-        setUser(matecito.auth.user);
-        setToken(matecito.auth.token);
-        unsub = matecito.auth.onAuthChange((u) => {
-          setUser(u);
-          setToken(matecito.auth.token);
-          if (typeof window === "undefined") return;
-          if (matecito.auth.token) {
-            window.localStorage.setItem(
-              SESSION_KEY,
-              JSON.stringify({
-                access_token: matecito.auth.token,
-                refresh_token: matecito.auth.refreshToken ?? null,
-                user: matecito.auth.user,
-              })
-            );
-          } else {
-            window.localStorage.removeItem(SESSION_KEY);
-          }
-        });
-        })();
       })
-      .catch(() => setReady(true));
-
-    return () => {
-      unsub?.();
-    };
-  }, []);
+      .catch(() => {})
+      .finally(() => setReady(true));
+  }, [applyUser]);
 
   return useMemo(
     () => ({
       ready,
       user,
-      token,
-      isLoggedIn: !!user && !!token,
+      token: user ? user.id : null,
+      isLoggedIn: !!user,
       signUp: async (email: string, password: string, extra?: { name?: string; username?: string }) => {
-        const res = await matecito.auth.signUp(email, password, extra);
-        if (res.data && typeof window !== "undefined") {
-          window.localStorage.setItem(
-            SESSION_KEY,
-            JSON.stringify({
-              access_token: res.data.access_token,
-              refresh_token: res.data.refresh_token,
-              user: res.data.user,
-            })
-          );
-        }
-        return res;
+        const res = await apiFetch("/auth/register", {
+          method: "POST",
+          body: JSON.stringify({ email, password, name: extra?.name, remember: true }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return { data: null, error: { message: extractErrorMessage(data, "Registration failed") } };
+        applyUser(data.user);
+        return { data, error: null };
       },
       signIn: async (email: string, password: string) => {
-        const res = await matecito.auth.signIn(email, password);
-        if (res.data && typeof window !== "undefined") {
-          window.localStorage.setItem(
-            SESSION_KEY,
-            JSON.stringify({
-              access_token: res.data.access_token,
-              refresh_token: res.data.refresh_token,
-              user: res.data.user,
-            })
-          );
-        }
-        return res;
+        const res = await apiFetch("/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ email, password, remember: true }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return { data: null, error: { message: extractErrorMessage(data, "Login failed") } };
+        applyUser(data.user);
+        return { data, error: null };
       },
       signOut: async () => {
-        if (typeof window !== "undefined") window.localStorage.removeItem(SESSION_KEY);
-        return matecito.auth.signOut();
+        await apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
+        applyUser(null);
+        return { error: null };
       },
     }),
-    [ready, user, token]
+    [ready, user, applyUser]
   );
 }

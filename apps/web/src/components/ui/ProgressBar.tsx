@@ -8,16 +8,16 @@ interface ProgressBarProps {
 }
 
 const colorMap = {
-  gold: "from-amber-600 to-amber-400",
-  green: "from-emerald-600 to-emerald-400",
-  red: "from-red-600 to-red-400",
-  blue: "from-blue-600 to-blue-400",
+  gold: "from-amber-500 to-amber-400",
+  green: "from-emerald-500 to-emerald-400",
+  red: "from-red-500 to-red-400",
+  blue: "from-sky-500 to-sky-400",
 };
 
 const sizeMap = {
   sm: "h-1.5",
-  md: "h-2.5",
-  lg: "h-4",
+  md: "h-2",
+  lg: "h-3",
 };
 
 export function ProgressBar({ value, max, className = "", color = "gold", showLabel = false, size = "md" }: ProgressBarProps) {
@@ -25,7 +25,7 @@ export function ProgressBar({ value, max, className = "", color = "gold", showLa
 
   return (
     <div className={`w-full ${className}`}>
-      <div className={`w-full ${sizeMap[size]} bg-etheria-bg-light rounded-full overflow-hidden border border-etheria-border/50`}>
+      <div className={`w-full ${sizeMap[size]} bg-stone-100 rounded-full overflow-hidden`}>
         <div
           className={`h-full bg-gradient-to-r ${colorMap[color]} rounded-full transition-all duration-500 ease-out`}
           style={{ width: `${pct}%` }}
@@ -33,8 +33,8 @@ export function ProgressBar({ value, max, className = "", color = "gold", showLa
       </div>
       {showLabel && (
         <div className="flex justify-between mt-1">
-          <span className="text-[10px] text-etheria-text-dim">{value.toLocaleString()}</span>
-          <span className="text-[10px] text-etheria-text-dim">{max.toLocaleString()}</span>
+          <span className="text-[10px] text-stone-400">{value.toLocaleString()}</span>
+          <span className="text-[10px] text-stone-400">{max.toLocaleString()}</span>
         </div>
       )}
     </div>

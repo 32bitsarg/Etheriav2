@@ -83,49 +83,39 @@ export function SeasonHUD() {
   const asset = SEASON_ASSETS[currentSeason];
 
   return (
-    <div
-      className="pointer-events-auto flex items-center gap-1.5 rounded-lg px-2 py-1"
-      style={asset ? { backgroundImage: `linear-gradient(90deg, rgba(4,8,12,0.3), rgba(4,8,12,0.15)), url(${asset.bg})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
-    >
-      <span className="grid h-7 w-7 shrink-0 place-items-center overflow-hidden rounded-md border border-white/10 bg-black/25">
+    <div className="pointer-events-auto flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white/85 px-2.5 py-1.5 backdrop-blur-md shadow-sm">
+      <span className="grid h-7 w-7 shrink-0 place-items-center overflow-hidden rounded-md border border-stone-100 bg-stone-50">
         {asset ? (
           <img src={asset.icon} alt="" className="h-7 w-7 object-contain" />
         ) : (
-          <span className="text-[10px] text-white/50">{currentSeason.slice(0, 2)}</span>
+          <span className="text-[10px] text-stone-400">{currentSeason.slice(0, 2)}</span>
         )}
       </span>
       <div className="flex min-w-[80px] flex-col leading-tight">
         <div className="flex items-center gap-1">
-          <span className="text-[10px] font-semibold text-white">{t(SEASON_KEYS[currentSeason] ?? "")}</span>
-          <span className="text-[8px] text-white/30">{t(PHASE_KEYS[phase] ?? "")}</span>
+          <span className="text-[11px] font-semibold text-stone-800">{t(SEASON_KEYS[currentSeason] ?? "")}</span>
+          <span className="text-[9px] text-stone-400">{t(PHASE_KEYS[phase] ?? "")}</span>
         </div>
         <div className="flex items-center gap-1.5">
           {modifiers.map((m) => (
-            <span key={m.res} className={`text-[9px] font-mono font-bold ${m.val >= 0 ? "text-etheria-success" : "text-red-400"}`}>
+            <span key={m.res} className={`text-[9px] font-semibold ${m.val >= 0 ? "text-emerald-600" : "text-rose-500"}`}>
               {m.val >= 0 ? "+" : ""}
               {m.val}% {t(RESOURCE_SHORT_KEYS[m.res])}
             </span>
           ))}
         </div>
         {currentSeason === "WINTER" && (
-          <span className="text-[8px] text-amber-400/70">{t("play.seasons.winterPressure")}</span>
+          <span className="text-[8px] text-amber-600">{t("play.seasons.winterPressure")}</span>
         )}
       </div>
       <div className="ml-1 flex flex-col items-end">
-        <div
-          className="h-1.5 w-12 overflow-hidden rounded-full border border-white/10 bg-white/10"
-          style={{ backgroundImage: "url(/assets/ui/seasons/phase-bar-sprite.png)", backgroundSize: "100% 100%" }}
-        >
+        <div className="h-1.5 w-12 overflow-hidden rounded-full bg-stone-200">
           <div
             className="h-full rounded-full transition-all"
-            style={{
-              width: `${intensityPct}%`,
-              backgroundColor: asset?.accent ?? "rgba(234,179,8,0.8)",
-              boxShadow: `0 0 8px ${asset?.accent ?? "rgba(234,179,8,0.8)"}`,
-            }}
+            style={{ width: `${intensityPct}%`, backgroundColor: asset?.accent ?? "#f59e0b" }}
           />
         </div>
-        <span className="font-mono text-[9px] text-white/40">{formatTimeRemaining(endsAt)}</span>
+        <span className="font-mono text-[9px] text-stone-400">{formatTimeRemaining(endsAt)}</span>
       </div>
     </div>
   );

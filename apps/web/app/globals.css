@@ -1,42 +1,49 @@
 @import "tailwindcss";
 
-/* ─── Etheria Design System (Dark Fantasy) ─── */
+/* ─── Etheria Design System (Light Glass) ─── */
 
 @theme {
   /* ─── Core Colors ─── */
-  --color-etheria-bg: #070b0c;
-  --color-etheria-bg-deep: #050707;
-  --color-etheria-panel: #101717;
-  --color-etheria-panel-2: #151d1b;
-  --color-etheria-panel-hover: #1a241e;
+  --color-etheria-bg: #ffffff;
+  --color-etheria-bg-deep: #fafaf9;
+  --color-etheria-bg-light: #fafaf9;
+  --color-etheria-panel: #ffffff;
+  --color-etheria-panel-light: #f5f5f4;
+  --color-etheria-panel-2: #f5f5f4;
+  --color-etheria-panel-hover: #f5f5f4;
+  --color-etheria-wood-panel: #ffffff;
+  --color-etheria-parchment: #fdf7ee;
+  --color-etheria-parchment-light: #f6ebdb;
+  --color-etheria-parchment-border: #e7e5e4;
 
   /* ─── Gold / Accent ─── */
-  --color-etheria-gold: #d7a84c;
-  --color-etheria-gold-soft: #f2d48a;
-  --color-etheria-gold-dark: #6f4a1e;
-  --color-etheria-gold-deep: #3b2b17;
+  --color-etheria-gold: #f59e0b;
+  --color-etheria-gold-soft: #fbbf24;
+  --color-etheria-gold-dark: #d97706;
+  --color-etheria-gold-deep: #fef3c7;
 
   /* ─── Emerald / Teal ─── */
-  --color-etheria-emerald: #0f5f50;
-  --color-etheria-emerald-light: #1ba885;
-  --color-etheria-teal: #2ec7c9;
-  --color-etheria-blue: #4dc7ff;
+  --color-etheria-emerald: #059669;
+  --color-etheria-emerald-light: #10b981;
+  --color-etheria-teal: #0ea5e9;
+  --color-etheria-blue: #38bdf8;
 
   /* ─── Status ─── */
-  --color-etheria-danger: #b84a3c;
-  --color-etheria-success: #7ed957;
-  --color-etheria-warning: #fbbf24;
+  --color-etheria-danger: #ef4444;
+  --color-etheria-success: #10b981;
+  --color-etheria-warning: #f59e0b;
   --color-etheria-info: #3b82f6;
 
   /* ─── Borders ─── */
-  --color-etheria-border: rgba(215, 168, 76, 0.32);
-  --color-etheria-border-gold: rgba(215, 168, 76, 0.45);
-  --color-etheria-border-dim: rgba(215, 168, 76, 0.14);
+  --color-etheria-border: #e7e5e4;
+  --color-etheria-border-gold: #d6d3d1;
+  --color-etheria-border-dim: #f5f5f4;
+  --color-etheria-border-light: #f5f5f4;
 
   /* ─── Text ─── */
-  --color-etheria-text: #eadfc5;
-  --color-etheria-text-muted: #9f947d;
-  --color-etheria-text-dim: #7a6a4a;
+  --color-etheria-text: #1c1917;
+  --color-etheria-text-muted: #78716c;
+  --color-etheria-text-dim: #a8a29e;
 
   /* ─── Resources ─── */
   --color-etheria-wood: #71451e;
@@ -45,7 +52,7 @@
   --color-etheria-gems: #4dc7ff;
 
   /* ─── Layout Dimensions ─── */
-  --sidebar-width: 110px;
+  --sidebar-width: 80px;
   --right-panel-width: 150px;
   --topbar-height: 48px;
   --bottombar-height: 0px;
@@ -57,11 +64,30 @@
   --font-serif: var(--font-cinzel);
 
   /* ─── Shadows ─── */
-  --shadow-panel: inset 0 1px 0 rgba(255, 255, 255, 0.07), inset 0 -1px 0 rgba(0, 0, 0, 0.8), 0 12px 38px rgba(0, 0, 0, 0.35);
-  --shadow-gold: 0 0 20px rgba(215, 168, 76, 0.25);
-  --shadow-teal: 0 0 20px rgba(46, 199, 201, 0.2);
-  --shadow-inner: inset 0 0 18px rgba(0, 0, 0, 0.35);
+  --shadow-panel: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-gold: 0 0 20px rgba(245, 158, 11, 0.2);
+  --shadow-teal: 0 0 20px rgba(14, 165, 233, 0.15);
+  --shadow-inner: inset 0 0 18px rgba(0, 0, 0, 0.04);
+
+  /* ─── Landing Design System ─── */
+  --color-cream: #fdf7ee;
+  --color-cream2: #f6ebdb;
+  --color-ink: #2c2118;
+  --color-inksoft: #6f6052;
+  --font-fredoka: var(--font-fredoka);
 }
+
+/* ─── Landing Animations ─── */
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes floaty2 {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-8px) rotate(2deg); }
+}
+.animate-floaty { animation: floaty 6s ease-in-out infinite; }
+.animate-floaty2 { animation: floaty2 7s ease-in-out infinite; }
 
 /* ─── Global Styles ─── */
 html {
@@ -75,6 +101,7 @@ body {
   font-family: var(--font-body) !important;
   overflow-x: hidden;
   min-height: 100vh;
+  overscroll-behavior: none;
 }
 
 h1, h2, h3, h4, .font-display, .font-serif {
@@ -98,37 +125,13 @@ h1, h2, h3, h4, .font-display, .font-serif {
 .frame-panel {
   border: 1px solid var(--color-etheria-border);
   box-shadow: var(--shadow-panel);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 16%),
-    radial-gradient(circle at top, rgba(215, 168, 76, 0.10), transparent 38%),
-    linear-gradient(135deg, rgba(16, 23, 23, 0.98), rgba(9, 13, 13, 0.98));
+  background: #ffffff;
   position: relative;
+  border-radius: 16px;
 }
 
 .frame-panel::before,
-.frame-panel::after {
-  content: "";
-  position: absolute;
-  width: 18px;
-  height: 18px;
-  pointer-events: none;
-  opacity: 0.85;
-  z-index: 4;
-}
-
-.frame-panel::before {
-  left: 5px;
-  top: 5px;
-  border-left: 1px solid var(--color-etheria-gold);
-  border-top: 1px solid var(--color-etheria-gold);
-}
-
-.frame-panel::after {
-  right: 5px;
-  bottom: 5px;
-  border-right: 1px solid var(--color-etheria-gold);
-  border-bottom: 1px solid var(--color-etheria-gold);
-}
+.frame-panel::after { display: none; }
 
 /* ─── Hex Badge ─── */
 .hex-badge {
@@ -146,70 +149,54 @@ h1, h2, h3, h4, .font-display, .font-serif {
 .progress-bar {
   height: 5px;
   border-radius: 999px;
-  border: 1px solid rgba(215, 168, 76, 0.26);
-  background: rgba(0, 0, 0, 0.45);
+  border: none;
+  background: #e7e5e4;
   overflow: hidden;
 }
 
 .progress-bar > div {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #3c2a12, var(--color-etheria-gold), #ffe49a);
-  box-shadow: 0 0 12px rgba(215, 168, 76, 0.35);
+  background: linear-gradient(90deg, #d97706, #f59e0b);
 }
 
-.progress-bar.green > div { background: linear-gradient(90deg, #133c24, #7ed957); }
-.progress-bar.blue > div { background: linear-gradient(90deg, #083048, #4dc7ff); }
+.progress-bar.green > div { background: linear-gradient(90deg, #059669, #10b981); }
+.progress-bar.blue > div { background: linear-gradient(90deg, #0284c7, #38bdf8); }
 
-/* ─── Grepolis-Style Floating Sidebar ─── */
+/* ─── Glass Floating Sidebar ─── */
 .grepolis-sidebar {
   position: absolute;
-  left: 0;
-  top: var(--topbar-height);
+  left: 8px;
+  top: calc(var(--topbar-height) + 8px);
   transform: none;
-  max-height: 55vh;
+  max-height: calc(100vh - var(--topbar-height) - 24px);
   overflow-y: auto;
-  border-radius: 0 12px 12px 0;
+  border-radius: 18px;
   z-index: 40;
-  width: var(--sidebar-width);
+  width: 68px;
   display: flex;
   flex-direction: column;
-  /* More translucent deep navy blue */
-  background:
-    linear-gradient(180deg, rgba(4, 8, 24, 0.36), rgba(3, 6, 18, 0.54)),
-    url("/assets/ui/panels/sidebar-bg.png") center top / 100% auto repeat-y,
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"),
-    linear-gradient(180deg, rgba(6, 12, 40, 0.45) 0%, rgba(4, 8, 28, 0.50) 50%, rgba(5, 10, 34, 0.40) 100%);
-  backdrop-filter: blur(8px);
-  /* No hard right border — decorative column via ::after */
-  border: 1px solid rgba(215, 168, 76, 0.15);
-  border-left: none;
-  box-shadow: 6px 12px 30px rgba(0,0,0,0.4);
-  overflow: visible; /* allow ::after to extend beyond */
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(214, 211, 209, 0.7);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  padding: 6px;
 }
 
 .resource-bar-shell {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(215, 168, 76, 0.2);
-  border-radius: 999px;
+  border: 1px solid rgba(209, 213, 219, 0.8);
+  border-radius: 12px;
   padding: 6px 12px;
-  background:
-    linear-gradient(90deg, rgba(4, 8, 12, 0.52), rgba(4, 8, 12, 0.18)),
-    url("/assets/ui/panels/resourcebar-bg.png") center / 100% 100% no-repeat;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 235, 180, 0.12),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
-    0 10px 24px rgba(0, 0, 0, 0.2);
+  background: rgba(248, 250, 252, 0.85);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .resource-bar-shell::before {
-  content: "";
-  position: absolute;
-  inset: 1px 8px auto;
-  height: 1px;
-  pointer-events: none;
-  background: linear-gradient(90deg, transparent, rgba(255, 230, 160, 0.36), transparent);
+  display: none;
 }
 
 .queue-rail-sidebar {
@@ -295,160 +282,73 @@ h1, h2, h3, h4, .font-display, .font-serif {
 /* ─── Nav Item ─── */
 .grepolis-nav-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   width: 100%;
-  min-height: 36px;
+  height: 52px;
   padding: 0;
   border: none;
+  border-radius: 12px;
   background: transparent;
   cursor: pointer;
   position: relative;
-  text-align: left;
-  transition: background 0.13s ease;
-  border-bottom: 1px solid rgba(60, 45, 8, 0.15);
+  transition: background 0.13s ease, color 0.13s ease;
+  color: rgba(120, 113, 108, 0.9);
+  gap: 2px;
 }
 
 .grepolis-nav-item:hover {
-  background: rgba(20, 35, 100, 0.30);
+  background: rgba(245, 245, 244, 0.8);
 }
 
-/* Active: blue wash + left bar */
 .grepolis-nav-item.active {
-  background: linear-gradient(90deg,
-    rgba(30, 55, 155, 0.40) 0%,
-    rgba(15, 28, 80, 0.25) 60%,
-    transparent 100%
-  );
+  background: #1c1917;
+  color: #ffffff;
 }
 
-/* Left active bar — golden */
-.grepolis-nav-item.active::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: linear-gradient(180deg, #f8d858, #b87818, #f8d858);
-  box-shadow: 0 0 10px rgba(215, 168, 76, 0.6);
-  z-index: 1;
-}
+.grepolis-nav-item.active::before { display: none; }
 
 /* ─── Icon slot ─── */
 .grepolis-nav-item__icon-wrap {
-  flex: 0 0 38px;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 36px;
   position: relative;
 }
 
-/* Compact Medallion */
 .grepolis-nav-item__icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
+  font-size: 18px;
+  line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  position: relative;
-  flex-shrink: 0;
-
-  background:
-    /* Highlight glint top-left */
-    radial-gradient(circle at 30% 22%, rgba(160, 190, 255, 0.18) 0%, transparent 38%),
-    /* Dark BLUE inner cavity — key Grepolis trait */
-    radial-gradient(circle at 50% 50%, rgba(5, 10, 42, 0.96) 0%, rgba(12, 22, 70, 0.88) 52%, transparent 72%),
-    /* Bronze/gold conic ring */
-    conic-gradient(from 110deg,
-      #6a3e08 0deg,
-      #b87810 55deg,
-      #e8b828 88deg,
-      #d8a018 115deg,
-      #885010 175deg,
-      #6a3e08 215deg,
-      #b07010 265deg,
-      #e8b828 295deg,
-      #6a3e08 360deg
-    );
-
-  border: 1.5px solid rgba(195, 148, 22, 0.65);
-  outline: 1px solid rgba(25, 15, 3, 0.85);
-  box-shadow:
-    0 0 0 1.5px rgba(12, 8, 1, 0.80),
-    0 4px 10px rgba(0, 0, 0, 0.80),
-    inset 0 1px 2px rgba(120, 160, 255, 0.10);
-  transition: all 0.15s ease;
-}
-
-.grepolis-nav-item:hover .grepolis-nav-item__icon {
-  border-color: rgba(230, 180, 40, 0.90);
-  box-shadow:
-    0 0 0 2.5px rgba(12, 8, 1, 0.80),
-    0 0 20px rgba(215, 168, 76, 0.30),
-    0 5px 14px rgba(0, 0, 0, 0.75),
-    inset 0 2px 4px rgba(140, 180, 255, 0.14),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.65);
-}
-
-.grepolis-nav-item.active .grepolis-nav-item__icon {
-  border-color: rgba(255, 200, 48, 0.95);
-  box-shadow:
-    0 0 0 2.5px rgba(12, 8, 1, 0.80),
-    0 0 26px rgba(242, 201, 76, 0.55),
-    0 0 46px rgba(215, 168, 76, 0.22),
-    0 5px 14px rgba(0, 0, 0, 0.72),
-    inset 0 2px 4px rgba(160, 200, 255, 0.18),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.60);
-  background:
-    radial-gradient(circle at 30% 22%, rgba(180, 210, 255, 0.22) 0%, transparent 38%),
-    radial-gradient(circle at 50% 50%, rgba(8, 15, 58, 0.96) 0%, rgba(18, 32, 95, 0.88) 52%, transparent 72%),
-    conic-gradient(from 110deg,
-      #8a5210 0deg,
-      #d89418 55deg,
-      #ffd030 88deg,
-      #f0b820 115deg,
-      #a86818 175deg,
-      #8a5210 215deg,
-      #cc8818 265deg,
-      #ffd030 295deg,
-      #8a5210 360deg
-    );
+  background: none;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  width: auto;
+  height: auto;
+  border-radius: 0;
 }
 
 /* ─── Label ─── */
 .grepolis-nav-item__label {
-  flex: 1;
-  min-width: 0;
-  padding-right: 6px;
-  font-family: var(--font-serif);
-  font-size: 9px;
+  font-family: var(--font-body);
+  font-size: 8.5px;
   font-weight: 600;
-  color: #d4aa5a;
   letter-spacing: 0.03em;
-  line-height: 1.2;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
-  transition: color 0.12s ease;
-  white-space: normal;
-  word-break: break-word;
+  line-height: 1;
+  text-transform: uppercase;
+  color: inherit;
+  text-shadow: none;
 }
 
-.grepolis-nav-item:hover .grepolis-nav-item__label {
-  color: #f5cc60;
-}
-
-.grepolis-nav-item.active .grepolis-nav-item__label {
-  color: #fae070;
-  text-shadow: 0 0 10px rgba(215, 168, 76, 0.40), 0 1px 3px rgba(0, 0, 0, 0.95);
-}
-
-/* ─── Badge — BLUE with gold border (authentic Grepolis) ─── */
+/* ─── Badge ─── */
 .grepolis-nav-item__badge {
   position: absolute;
-  top: 4px;
-  left: 28px;
+  top: -2px;
+  right: -2px;
   min-width: 16px;
   height: 16px;
   display: flex;
@@ -456,16 +356,11 @@ h1, h2, h3, h4, .font-display, .font-serif {
   justify-content: center;
   padding: 0 3px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #1a4acc, #0d2880);
-  border: 1.5px solid rgba(220, 175, 40, 0.75);
+  background: #ef4444;
+  border: 2px solid #ffffff;
   font-size: 8px;
   font-weight: 700;
-  font-family: var(--font-mono);
   color: #ffffff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.65),
-    0 0 10px rgba(26, 74, 204, 0.50);
   z-index: 2;
   pointer-events: none;
 }
@@ -473,9 +368,9 @@ h1, h2, h3, h4, .font-display, .font-serif {
 /* ─── Divider ─── */
 .grepolis-sidebar__divider {
   height: 1px;
-  margin: 3px 10px;
-  background: linear-gradient(90deg, transparent, rgba(160, 120, 25, 0.45), transparent);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+  margin: 4px 0;
+  background: rgba(214, 211, 209, 0.6);
+  box-shadow: none;
 }
 
 /* ─── Gold Button ─── */
@@ -515,23 +410,15 @@ h1, h2, h3, h4, .font-display, .font-serif {
 .village-topbar {
   position: relative;
   overflow: hidden;
-  background:
-    linear-gradient(90deg, rgba(4, 8, 18, 0.72), rgba(5, 10, 22, 0.42), rgba(4, 8, 18, 0.72)),
-    url("/assets/ui/panels/topbar-bg.png") center / auto 100% repeat-x;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 235, 180, 0.1),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
-    0 10px 28px rgba(0, 0, 0, 0.22);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(209, 213, 219, 0.7);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .village-topbar::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(90deg, rgba(0, 0, 0, 0.32), transparent 18%, transparent 82%, rgba(0, 0, 0, 0.32)),
-    linear-gradient(180deg, rgba(255, 230, 160, 0.06), transparent 36%, rgba(0, 0, 0, 0.18));
+  display: none;
 }
 
 .village-topbar > * {
@@ -701,37 +588,19 @@ h1, h2, h3, h4, .font-display, .font-serif {
   align-items: stretch;
   gap: 4px;
   padding: 5px;
-  border: 1px solid rgba(215, 168, 76, 0.16);
-  backdrop-filter: blur(10px);
-  background:
-    linear-gradient(180deg, rgba(14, 18, 18, 0.66), rgba(5, 8, 8, 0.82)),
-    radial-gradient(circle at top, rgba(215, 168, 76, 0.06), transparent 42%);
-  box-shadow: 0 20px 42px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255,255,255,.04);
+  border: 1px solid rgba(209, 213, 219, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.08);
 }
 
 .village-queue-dock::before {
-  content: "";
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  top: 4px;
-  height: 18px;
-  pointer-events: none;
-  opacity: 0.36;
-  background: center top / 100% 100% no-repeat url("/assets/ui/village-dock/dock-ornament-strip.png");
-  filter: saturate(0.96) brightness(1.03);
+  display: none;
 }
 
 .village-queue-dock__crest {
-  position: absolute;
-  left: 50%;
-  top: -2px;
-  width: 44px;
-  height: 46px;
-  transform: translateX(-50%);
-  pointer-events: none;
-  opacity: 0.52;
-  background: center/100% 100% no-repeat url("/assets/ui/village-dock/dock-ornament-crest.png");
+  display: none;
 }
 
 .village-queue-panel {
@@ -792,11 +661,11 @@ h1, h2, h3, h4, .font-display, .font-serif {
   justify-content: space-between;
   gap: 5px;
   padding: 4px 6px 2px;
-  font-family: var(--font-display);
-  font-size: 7px;
-  letter-spacing: 0.12em;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(240, 221, 175, 0.9);
+  color: rgba(68, 64, 60, 0.8);
 }
 
 .village-queue-rail__count {
@@ -806,9 +675,9 @@ h1, h2, h3, h4, .font-display, .font-serif {
   height: 13px;
   padding: 0 3px;
   border-radius: 999px;
-  border: 1px solid rgba(242, 212, 138, 0.18);
-  background: rgba(8, 10, 10, 0.58);
-  color: #fff4cf;
+  border: 1px solid rgba(214, 211, 209, 0.6);
+  background: rgba(245, 245, 244, 0.8);
+  color: rgba(68, 64, 60, 0.8);
   font-size: 7px;
 }
 
@@ -866,7 +735,7 @@ h1, h2, h3, h4, .font-display, .font-serif {
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: var(--color-etheria-text-muted);
+  color: rgba(120, 113, 108, 0.7);
   font-size: 7px;
   padding: 0 4px 2px;
   text-align: center;
@@ -905,17 +774,17 @@ h1, h2, h3, h4, .font-display, .font-serif {
 }
 
 .village-queue-card.tone-gold .village-queue-card__badge {
-  color: #f2d48a;
+  color: #d97706;
 }
 
 .village-queue-card.tone-teal .village-queue-card__badge {
-  color: #4dc7ff;
+  color: #7c3aed;
 }
 
 .village-queue-card__track {
   height: 2px;
   border-radius: 999px;
-  background: rgba(255,255,255,.06);
+  background: rgba(214, 211, 209, 0.5);
   border: 0;
   overflow: hidden;
 }
@@ -923,7 +792,7 @@ h1, h2, h3, h4, .font-display, .font-serif {
 .village-queue-card__fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, rgba(35,95,84,.98), rgba(215,168,76,.92));
+  background: linear-gradient(90deg, #d97706, #f59e0b);
 }
 
 .village-queue-cancel {
@@ -932,16 +801,16 @@ h1, h2, h3, h4, .font-display, .font-serif {
   width: 14px;
   height: 14px;
   border-radius: 999px;
-  border: 1px solid rgba(215, 168, 76, 0.2);
-  background: rgba(0, 0, 0, 0.18);
-  color: rgba(240, 221, 175, 0.86);
+  border: 1px solid rgba(214, 211, 209, 0.6);
+  background: rgba(248, 250, 252, 0.8);
+  color: rgba(120, 113, 108, 0.7);
   font-size: 11px;
   line-height: 1;
 }
 
 .village-queue-cancel:hover:not(:disabled) {
-  color: #fff0c4;
-  border-color: rgba(215, 168, 76, 0.42);
+  color: #e11d48;
+  border-color: rgba(252, 165, 165, 0.6);
 }
 
 .etheria-map-radial {
@@ -1267,6 +1136,11 @@ h1, h2, h3, h4, .font-display, .font-serif {
   100% { background-position: 200% 0; }
 }
 
+@keyframes village-glint {
+  0%, 100% { opacity: 0.1; transform: scale(0.85); }
+  50%       { opacity: 0.8; transform: scale(1.25); }
+}
+
 @keyframes toast-in {
   from { transform: translateX(100%) scale(0.95); opacity: 0; }
   to { transform: translateX(0) scale(1); opacity: 1; }
@@ -1289,3 +1163,23 @@ h1, h2, h3, h4, .font-display, .font-serif {
 }
 .animate-toast-in { animation: toast-in 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 .animate-toast-out { animation: toast-out 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+
+/* ─── Modal animation ─── */
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+@media (max-width: 639px) {
+  @keyframes modal-in {
+    from { opacity: 0; transform: translateY(100%); }
+    to   { opacity: 1; transform: translateY(0);    }
+  }
+}
+.animate-modal-in { animation: modal-in 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+/* ─── Village parallax clouds ─── */
+@keyframes cloud-drift {
+  0%   { transform: translateX(0); }
+  50%  { transform: translateX(18px); }
+  100% { transform: translateX(0); }
+}

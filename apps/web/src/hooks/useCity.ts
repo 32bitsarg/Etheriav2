@@ -4,8 +4,6 @@ import type { VillageLayoutData } from "@/lib/villageLayout";
 import type { WorldTerrainMaskData } from "@/lib/worldTerrainMask";
 import villageLayoutJson from "@/data/village-layout.json";
 import { normalizeVillageLayout } from "@/lib/villageLayout";
-import { matecito } from "@/lib/matecitoClient";
-
 const API_BASE = "/api";
 const pendingUpgradeKeys = new Set<string>();
 export const PLAY_INITIAL_TIMEOUT_MS = 15_000;
@@ -49,12 +47,8 @@ function shouldRetryAuthQuery(failureCount: number, error: any) {
   return failureCount < 1;
 }
 
-function getAuthHeaders() {
-  const headers: Record<string, string> = {};
-  if (matecito.auth.token) {
-    headers.Authorization = `Bearer ${matecito.auth.token}`;
-  }
-  return headers;
+function getAuthHeaders(): Record<string, string> {
+  return {};
 }
 
 async function fetchCity(cityId: string): Promise<City & {
@@ -158,9 +152,22 @@ export function useCity(cityId: string | null) {
       const hasActiveTraining = (data.trainingQueues?.length ?? 0) > 0;
       const hasActiveResearch = !!data.activeResearch;
 
-      return hasActiveBuilds || hasActiveTraining || hasActiveResearch ? 5000 : false;
+      if (!hasActiveBuilds && !hasActiveTraining && !hasActiveResearch) return false;
+
+      // Poll faster when any queue is close to completing (< 10s remaining)
+      const now = Date.now();
+      const allCompletesAt = [
+        ...(data.buildQueues?.map((q) => q.completesAt) ?? []),
+        ...(data.trainingQueues?.map((q) => q.completesAt) ?? []),
+        ...(data.activeResearch ? [data.activeResearch.completesAt] : []),
+      ];
+      const soonest = allCompletesAt
+        .map((t) => new Date(t).getTime() - now)
+        .sort((a, b) => a - b)[0] ?? Infinity;
+
+      return soonest < 10_000 ? 1000 : 2000;
     },
-    refetchIntervalInBackground: false,
+    refetchIntervalInBackground: true,
   });
 }
 
@@ -758,7 +765,7 @@ export function useAllianceMembership(enabled = true) {
         objectiveContributions: any[];
       };
     },
-    enabled: enabled && !!matecito.auth.token,
+    enabled,
     staleTime: 10_000,
     retry: shouldRetryAuthQuery,
   });
@@ -777,7 +784,7 @@ export function useGameReports(enabled = true) {
       }
       return { reports: data.reports as GameReport[], unreadCount: Number(data.unreadCount ?? 0) };
     },
-    enabled: enabled && !!matecito.auth.token,
+    enabled,
     staleTime: 10_000,
     refetchInterval: enabled ? 60_000 : false,
     retry: shouldRetryAuthQuery,
@@ -806,7 +813,7 @@ export function usePlayerQuests(cityId: string | null) {
       if (!res.ok) throw new Error(data.error || "Failed to fetch quests");
       return data.quests as PlayerQuest[];
     },
-    enabled: !!cityId && !!matecito.auth.token,
+    enabled: !!cityId,
     staleTime: 10_000,
   });
 }
@@ -1099,7 +1106,7 @@ export function useChatMessages(channel: ChatChannel, enabled = true) {
       if (!res.ok) throw new Error(data.error || "Failed to fetch chat messages");
       return data.messages as ChatMessage[];
     },
-    enabled: enabled && !!matecito.auth.token,
+    enabled,
     staleTime: 5_000,
   });
 }
@@ -1146,7 +1153,7 @@ export function useMailMessages(enabled = true) {
         unreadCount: Number(data.unreadCount ?? 0),
       };
     },
-    enabled: enabled && !!matecito.auth.token,
+    enabled,
     staleTime: 10_000,
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,

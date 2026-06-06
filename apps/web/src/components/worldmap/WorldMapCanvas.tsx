@@ -146,7 +146,7 @@ export function WorldMapCanvas({
       };
 
       trySync();
-      const timers = [60, 140, 260].map((ms) => setTimeout(trySync, ms));
+      const timers = [150, 400, 800, 1500].map((ms) => setTimeout(trySync, ms));
 
       const onSelected = (cityId: string, position?: { x: number; y: number }) => propsRef.current.onSelectCityId?.(cityId, position ?? { x: 0, y: 0 });
       const onCampSelected = (camp: any, position?: { x: number; y: number }) => propsRef.current.onSelectCamp?.(camp, position ?? { x: 0, y: 0 });
@@ -230,6 +230,12 @@ export function WorldMapCanvas({
 
   return (
     <div className="relative h-full w-full">
+      {!mapConfig && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#070a0a] gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-amber-500/30 border-t-amber-500 animate-spin" />
+          <p className="text-stone-500 text-xs">Cargando mapa...</p>
+        </div>
+      )}
       <div
         ref={containerRef}
         className={editorMode ? "h-full w-full overflow-hidden" : "h-full w-full overflow-hidden rounded-lg border border-etheria-border/40 shadow-[0_28px_80px_rgba(0,0,0,.55)]"}

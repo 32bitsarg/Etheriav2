@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { BuildingType, UnitType } from "@etheria/shared";
 import { useCountdown } from "@/hooks/useCountdown";
 import { useCancelBuildQueue, useCancelResearchQueue, useCancelTrainingQueue } from "@/hooks/useCity";
@@ -16,13 +17,16 @@ type QueueItem = {
   sublabel: string;
   startedAt: string;
   completesAt: string;
-  tone: "gold" | "teal";
+  color: string;
+  iconBg: string;
   buildingType?: BuildingType;
   buildingLevel?: number;
   icon?: string;
   refundableCost?: { gold?: number; wood?: number; stone?: number; food?: number };
-  cancelKind?: "construction" | "training" | "research";
+  cancelKind: "construction" | "training" | "research";
 };
+
+const MAX_SLOTS = 3;
 
 export function VillageImmersiveDock() {
   const cityId = useGameStore((s) => s.cityId);
@@ -37,35 +41,37 @@ export function VillageImmersiveDock() {
 
   const constructionItems = useMemo<QueueItem[]>(
     () =>
-      buildQueues.map((queue) => ({
+      buildQueues.slice(0, MAX_SLOTS).map((queue) => ({
         id: queue.id,
         label: t(BUILDING_NAMES[queue.buildingType] ?? queue.buildingType),
-        sublabel: `Lv ${queue.targetLevel}`,
+        sublabel: `Nv ${queue.targetLevel}`,
         startedAt: queue.startedAt,
         completesAt: queue.completesAt,
-        tone: "gold",
+        color: "#d97706",
+        iconBg: "rgba(217,119,6,0.1)",
         buildingType: queue.buildingType,
         buildingLevel: queue.targetLevel,
         refundableCost: getUpgradeCost(queue.buildingType, Math.max(0, queue.targetLevel - 1)),
         cancelKind: "construction",
       })),
-    [buildQueues]
+    [buildQueues, t]
   );
 
   const trainingItems = useMemo<QueueItem[]>(
     () =>
-      trainingQueues.map((queue) => ({
+      trainingQueues.slice(0, MAX_SLOTS).map((queue) => ({
         id: queue.id,
         label: t(UNIT_INFO[queue.unitType as UnitType]?.nameKey ?? queue.unitType),
-        sublabel: `x${queue.count}`,
+        sublabel: `×${queue.count}`,
         startedAt: queue.startedAt,
         completesAt: queue.completesAt,
-        tone: "gold",
+        color: "#0284c7",
+        iconBg: "rgba(2,132,199,0.1)",
         icon: UNIT_INFO[queue.unitType as UnitType]?.icon ?? "⚔️",
         refundableCost: getTrainingCost(queue.unitType as UnitType, queue.count),
         cancelKind: "training",
       })),
-    [trainingQueues]
+    [trainingQueues, t]
   );
 
   const researchItems = useMemo<QueueItem[]>(
@@ -75,165 +81,227 @@ export function VillageImmersiveDock() {
             {
               id: activeResearch.id,
               label: t(TECH_INFO[activeResearch.techId]?.nameKey ?? activeResearch.techId),
-              sublabel: `Lv ${activeResearch.targetLevel}`,
+              sublabel: `Nv ${activeResearch.targetLevel}`,
               startedAt: activeResearch.startedAt,
               completesAt: activeResearch.completesAt,
-              tone: "teal",
-              icon: "✦",
+              color: "#7c3aed",
+              iconBg: "rgba(124,58,237,0.1)",
+              icon: "📚",
               refundableCost: getTechCost(activeResearch.techId, Math.max(0, activeResearch.targetLevel - 1)),
-              cancelKind: "research",
+              cancelKind: "research" as const,
             },
           ]
         : [],
-    [activeResearch]
+    [activeResearch, t]
   );
 
+  const hasAny = constructionItems.length > 0 || trainingItems.length > 0 || researchItems.length > 0;
+  if (!hasAny) return null;
+
+  const showRefund = (title: string, data?: any) => {
+    const refundText = Object.entries(data?.refund ?? {})
+      .filter(([, v]) => typeof v === "number" && (v as number) > 0)
+      .map(([key, v]) => `${key}: ${formatNumber(v as number)}`)
+      .join(" · ");
+    addToast({ type: "success", title, message: refundText || t("play.dock.refund50") });
+  };
+
+  const handleCancel = (item: QueueItem) => {
+    if (!cityId) return;
+    if (item.cancelKind === "construction") {
+      cancelBuildQueue.mutate(
+        { cityId, queueId: item.id },
+        {
+          onSuccess: (data) => showRefund(t("play.dock.upgradeCancelled"), data),
+          onError: (err) => addToast({ type: "error", title: t("play.dock.cancelFailed"), message: err.message }),
+        }
+      );
+    } else if (item.cancelKind === "training") {
+      cancelTrainingQueue.mutate(
+        { cityId, queueId: item.id },
+        {
+          onSuccess: (data) => showRefund(t("play.dock.trainingCancelled"), data),
+          onError: (err) => addToast({ type: "error", title: t("play.dock.cancelFailed"), message: err.message }),
+        }
+      );
+    } else {
+      cancelResearchQueue.mutate(
+        { cityId, queueId: item.id },
+        {
+          onSuccess: (data) => showRefund(t("play.dock.researchCancelled"), data),
+          onError: (err) => addToast({ type: "error", title: t("play.dock.cancelFailed"), message: err.message }),
+        }
+      );
+    }
+  };
+
+  const cancellingId =
+    cancelBuildQueue.variables?.queueId ??
+    cancelTrainingQueue.variables?.queueId ??
+    cancelResearchQueue.variables?.queueId ??
+    null;
+
   return (
-    <aside className="village-queue-dock pointer-events-auto absolute bottom-3 left-1/2 z-40 w-[min(760px,calc(100vw-18px))] -translate-x-1/2 overflow-hidden rounded-[18px]">
-      <div className="village-queue-dock__crest" aria-hidden="true" />
-      <QueueDockPanel
-        kind="construction"
-        title={t("play.dock.construction")}
-        emptyText={t("play.dock.noConstruction")}
+    <aside className="pointer-events-auto absolute inset-x-3 bottom-3 z-40 flex items-center gap-1.5 rounded-2xl border border-stone-200/70 bg-white/82 px-3 py-2 shadow-lg shadow-stone-900/5 backdrop-blur-xl">
+      <QueueSection
+        label={t("play.dock.construction")}
+        emoji="🏗️"
+        accentColor="#d97706"
         items={constructionItems}
-        onCancelItem={(item) => {
-          if (!cityId) return;
-          cancelBuildQueue.mutate(
-            { cityId, queueId: item.id },
-            {
-              onSuccess: (data) => {
-                const refundText = Object.entries(data.refund ?? {})
-                  .filter(([, value]) => typeof value === "number" && value > 0)
-                  .map(([key, value]) => `${key}: ${formatNumber(value as number)}`)
-                  .join(" · ");
-                addToast({ type: "success", title: t("play.dock.upgradeCancelled"), message: refundText || t("play.dock.refund50") });
-              },
-              onError: (error) => {
-                addToast({ type: "error", title: t("play.dock.cancelFailed"), message: error.message });
-              },
-            }
-          );
-        }}
-        cancellingItemId={cancelBuildQueue.variables?.queueId ?? null}
+        cancellingId={cancellingId}
+        onCancel={handleCancel}
+        cancelLabel={t("play.dock.cancel")}
       />
-      <QueueDockPanel
-        kind="training"
-        title={t("play.dock.training")}
-        emptyText={t("play.dock.noTraining")}
+      <div className="mx-1 h-8 w-px shrink-0 bg-stone-200" />
+      <QueueSection
+        label={t("play.dock.training")}
+        emoji="🛡️"
+        accentColor="#0284c7"
         items={trainingItems}
-        onCancelItem={(item) => {
-          if (!cityId) return;
-          cancelTrainingQueue.mutate(
-            { cityId, queueId: item.id },
-            {
-              onSuccess: () => addToast({ type: "success", title: t("play.dock.trainingCancelled"), message: t("play.dock.refund50") }),
-              onError: (error) => addToast({ type: "error", title: t("play.dock.cancelFailed"), message: error.message }),
-            }
-          );
-        }}
-        cancellingItemId={cancelTrainingQueue.variables?.queueId ?? null}
+        cancellingId={cancellingId}
+        onCancel={handleCancel}
+        cancelLabel={t("play.dock.cancel")}
       />
-      <QueueDockPanel
-        kind="research"
-        title={t("play.dock.research")}
-        emptyText={t("play.dock.noResearch")}
+      <div className="mx-1 h-8 w-px shrink-0 bg-stone-200" />
+      <QueueSection
+        label={t("play.dock.research")}
+        emoji="📚"
+        accentColor="#7c3aed"
         items={researchItems}
-        onCancelItem={(item) => {
-          if (!cityId) return;
-          cancelResearchQueue.mutate(
-            { cityId, queueId: item.id },
-            {
-              onSuccess: () => addToast({ type: "success", title: t("play.dock.researchCancelled"), message: t("play.dock.refund50") }),
-              onError: (error) => addToast({ type: "error", title: t("play.dock.cancelFailed"), message: error.message }),
-            }
-          );
-        }}
-        cancellingItemId={cancelResearchQueue.variables?.queueId ?? null}
+        cancellingId={cancellingId}
+        onCancel={handleCancel}
+        cancelLabel={t("play.dock.cancel")}
       />
     </aside>
   );
 }
 
-function QueueDockPanel({
-  title,
-  emptyText,
+function QueueSection({
+  label,
+  emoji,
+  accentColor,
   items,
-  kind,
-  onCancelItem,
-  cancellingItemId,
+  cancellingId,
+  onCancel,
+  cancelLabel,
 }: {
-  title: string;
-  emptyText: string;
+  label: string;
+  emoji: string;
+  accentColor: string;
   items: QueueItem[];
-  kind: "construction" | "training" | "research";
-  onCancelItem?: (item: QueueItem) => void;
-  cancellingItemId?: string | null;
+  cancellingId: string | null;
+  onCancel: (item: QueueItem) => void;
+  cancelLabel: string;
 }) {
   return (
-    <section className={`village-queue-panel village-queue-panel--${kind}`}>
-      <div className="village-queue-rail__header">
-        <span>{title}</span>
-        <span className="village-queue-rail__count">{items.length}</span>
+    <div className="flex min-w-0 flex-1 items-center gap-1.5">
+      {/* Section label */}
+      <div className="flex shrink-0 flex-col items-center gap-0.5 pr-1">
+        <span className="text-[15px] leading-none">{emoji}</span>
+        <span className="text-[8px] font-bold uppercase tracking-wider text-stone-400">{label}</span>
       </div>
-      <div className="px-1.5 pb-1 pt-0.5">
-        <QueueStack emptyText={emptyText} items={items} onCancelItem={onCancelItem} cancellingItemId={cancellingItemId} />
-      </div>
-    </section>
+
+      {/* 3 horizontal slots */}
+      {Array.from({ length: MAX_SLOTS }).map((_, i) => {
+        const item = items[i];
+        return item ? (
+          <QueueSlot
+            key={item.id}
+            item={item}
+            isCancelling={cancellingId === item.id}
+            onCancel={onCancel}
+            cancelLabel={cancelLabel}
+          />
+        ) : (
+          <EmptySlot key={`empty-${i}`} />
+        );
+      })}
+    </div>
   );
 }
 
-function QueueStack({ emptyText, items, onCancelItem, cancellingItemId }: { emptyText: string; items: QueueItem[]; onCancelItem?: (item: QueueItem) => void; cancellingItemId?: string | null }) {
-  return (
-    items.length === 0 ? (
-      <div className="village-queue-empty">
-        <span>{emptyText}</span>
-      </div>
-    ) : (
-      <div className="space-y-0.5">
-        {items.map((item) => (
-          <QueueCard key={item.id} item={item} onCancel={onCancelItem} isCancelling={cancellingItemId === item.id} />
-        ))}
-      </div>
-    )
-  );
-}
-
-function QueueCard({ item, onCancel, isCancelling }: { item: QueueItem; onCancel?: (item: QueueItem) => void; isCancelling?: boolean }) {
-  const { t } = useI18n();
+function QueueSlot({
+  item,
+  isCancelling,
+  onCancel,
+  cancelLabel,
+}: {
+  item: QueueItem;
+  isCancelling: boolean;
+  onCancel: (item: QueueItem) => void;
+  cancelLabel: string;
+}) {
   const { remaining, progress } = useCountdown(item.completesAt);
   const isWaiting = new Date(item.startedAt).getTime() > Date.now();
   const seconds = remaining() ?? 0;
-  const refund = item.refundableCost
-    ? Object.entries(item.refundableCost)
-        .filter(([, value]) => typeof value === "number" && value > 0)
-        .map(([key, value]) => `${key.slice(0, 1).toUpperCase()}: ${formatNumber(Math.floor((value as number) * 0.5))}`)
-        .join(" · ")
-    : "";
+  const queryClient = useQueryClient();
+  const cityId = useGameStore((s) => s.cityId);
+
+  // When countdown reaches 0, force an immediate refetch after server processes the queue
+  useEffect(() => {
+    if (seconds <= 0 && !isWaiting) {
+      const id = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["city", cityId] });
+      }, 1500);
+      return () => clearTimeout(id);
+    }
+  }, [seconds <= 0, cityId]);
 
   return (
-    <div className={`village-queue-card tone-${item.tone} village-queue-card--compact`} title={`${item.label} ${item.sublabel}`}>
-      <div className="village-queue-card__badge village-queue-card__badge--compact">
-        {item.buildingType ? <BuildingSprite type={item.buildingType} level={item.buildingLevel} size={18} /> : <span>{item.icon ?? "✦"}</span>}
+    <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-stone-200 bg-white/90 px-2 py-1.5">
+      {/* Icon */}
+      <div
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg overflow-hidden"
+        style={{ background: item.iconBg }}
+      >
+        {item.buildingType ? (
+          <BuildingSprite type={item.buildingType} level={item.buildingLevel} size={22} />
+        ) : (
+          <span className="text-[12px] leading-none">{item.icon ?? "✦"}</span>
+        )}
       </div>
+
+      {/* Text + progress */}
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <div className="font-mono text-[9px] leading-none text-etheria-text">{isWaiting ? t("play.queues.waiting") : formatTime(seconds)}</div>
-          {onCancel ? (
-            <button
-              type="button"
-              onClick={() => onCancel(item)}
-              disabled={isCancelling}
-              className={`village-queue-cancel ${isCancelling ? "opacity-50" : ""}`}
-              aria-label={`${t("play.dock.cancel")} ${item.label}`}
-              title={refund ? `${t("play.dock.cancelWithRefund")} ${refund}` : t("play.dock.cancel")}
-            >
-              ×
-            </button>
-          ) : null}
+        <div className="flex items-baseline justify-between gap-1">
+          <span className="truncate text-[11px] font-semibold text-stone-800 leading-tight">
+            {item.label}
+          </span>
+          <span className="shrink-0 text-[10px] font-bold tabular-nums" style={{ color: item.color }}>
+            {isWaiting ? "—" : formatTime(seconds)}
+          </span>
         </div>
-        <div className="village-queue-card__track mt-1">
-          <div className="village-queue-card__fill" style={{ width: `${isWaiting ? 0 : progress(item.startedAt)}%` }} />
+        <div className="mt-1 h-0.5 overflow-hidden rounded-full bg-stone-100">
+          <div
+            className="h-full rounded-full"
+            style={{ width: `${isWaiting ? 0 : progress(item.startedAt)}%`, background: item.color }}
+          />
         </div>
+      </div>
+
+      {/* Cancel */}
+      <button
+        type="button"
+        onClick={() => onCancel(item)}
+        disabled={isCancelling}
+        title={cancelLabel}
+        className="shrink-0 flex h-5 w-5 items-center justify-center rounded text-stone-300 hover:bg-rose-50 hover:text-rose-500 transition-colors disabled:opacity-40"
+      >
+        <svg className="h-2.5 w-2.5" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M1 1l8 8M9 1L1 9" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+function EmptySlot() {
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-dashed border-stone-150 px-2 py-1.5 opacity-30">
+      <div className="h-7 w-7 shrink-0 rounded-lg bg-stone-100" />
+      <div className="flex-1">
+        <div className="h-2 w-12 rounded bg-stone-100" />
+        <div className="mt-1.5 h-0.5 rounded-full bg-stone-100" />
       </div>
     </div>
   );

@@ -282,18 +282,22 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   getLiveResources: () => {
     const state = get();
-    if (!state.lastResourceUpdate) return state.resources;
+    const resources = state.resources ?? { gold: 0, wood: 0, stone: 0, food: 0, gems: 0 };
+    const storage = state.storage ?? { maxGold: 1000, maxWood: 1000, maxStone: 500, maxFood: 500 };
+    const production = state.production ?? { goldPerHour: 0, woodPerHour: 0, stonePerHour: 0, foodPerHour: 0 };
+
+    if (!state.lastResourceUpdate) return resources;
 
     const now = new Date();
     const lastUpdate = new Date(state.lastResourceUpdate);
     const hoursElapsed = (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60);
 
     return {
-      gold: Math.min(state.storage.maxGold, Math.floor(state.resources.gold + state.production.goldPerHour * hoursElapsed)),
-      wood: Math.min(state.storage.maxWood, Math.floor(state.resources.wood + state.production.woodPerHour * hoursElapsed)),
-      stone: Math.min(state.storage.maxStone, Math.floor(state.resources.stone + state.production.stonePerHour * hoursElapsed)),
-      food: Math.min(state.storage.maxFood, Math.floor(state.resources.food + state.production.foodPerHour * hoursElapsed)),
-      gems: state.resources.gems,
+      gold: Math.min(storage.maxGold, Math.floor(resources.gold + production.goldPerHour * hoursElapsed)),
+      wood: Math.min(storage.maxWood, Math.floor(resources.wood + production.woodPerHour * hoursElapsed)),
+      stone: Math.min(storage.maxStone, Math.floor(resources.stone + production.stonePerHour * hoursElapsed)),
+      food: Math.min(storage.maxFood, Math.floor(resources.food + production.foodPerHour * hoursElapsed)),
+      gems: resources.gems,
     };
   },
 }));

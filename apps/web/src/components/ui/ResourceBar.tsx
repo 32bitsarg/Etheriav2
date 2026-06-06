@@ -45,22 +45,27 @@ export function ResourceBar() {
           const value = liveResources[key as keyof typeof liveResources] ?? 0;
           const prod = production[prodKey as keyof typeof production] ?? 0;
           const max = storage[storageKey as keyof typeof storage] ?? 0;
+          const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+          const near = pct >= 90;
 
           return (
             <div key={key} className="flex items-center gap-1.5 shrink-0">
               <ResourceIconSVG type={key as any} size={14} />
-              <span className="text-[11px] font-semibold text-white tabular-nums">
+              <span className="text-[13px] font-bold tabular-nums text-stone-800">
                 {formatNumber(Math.floor(value))}
               </span>
-              <span className="text-[9px] text-white/25">/ {formatNumber(max)}</span>
-              <span className="text-[9px] text-etheria-success">+{prod}/h</span>
+              <span className={`text-[10px] font-semibold ${near ? "text-rose-600" : "text-emerald-600"}`}>
+                +{prod}/h
+              </span>
             </div>
           );
         })}
 
-        <div className="flex items-center gap-1.5 border-l border-white/10 pl-3 shrink-0">
+        <div className="flex items-center gap-1.5 border-l border-stone-200 pl-3 shrink-0">
           <ResourceIconSVG type="gems" size={14} />
-          <span className="text-[11px] font-semibold text-etheria-gems">{formatNumber(Math.floor(liveResources.gems))}</span>
+          <span className="text-[13px] font-bold tabular-nums text-stone-800">
+            {formatNumber(Math.floor(liveResources.gems))}
+          </span>
         </div>
       </div>
     </div>

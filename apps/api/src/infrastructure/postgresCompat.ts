@@ -35,6 +35,7 @@ const MODEL_BY_COLLECTION: Record<string, string> = {
   bot_players: "botPlayer",
   bot_action_logs: "botActionLog",
   bot_metrics_snapshots: "botMetricsSnapshot",
+  sessions: "session",
 };
 
 function modelFor(collection: string): any {

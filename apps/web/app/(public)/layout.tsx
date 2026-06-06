@@ -9,7 +9,7 @@ export default function PublicLayout({
 }) {
   return (
     <I18nClientProvider>
-      <div className="flex min-h-screen flex-col bg-white">
+      <div className="flex min-h-screen flex-col" style={{ background: "#fdf7ee" }}>
         <LandingNavbar />
         <main className="flex-1 overflow-x-hidden">
           {children}

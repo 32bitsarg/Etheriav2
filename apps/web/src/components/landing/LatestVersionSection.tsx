@@ -1,97 +1,67 @@
 "use client";
 
-import { getLatestRelease } from "@/data/changelogData";
 import Link from "next/link";
-import { useI18n } from "@/i18n";
+
+const DISPLAY_FONT = "var(--font-fredoka, Fredoka, system-ui, sans-serif)";
 
 export function LatestVersionSection() {
-  const { t } = useI18n();
-  const release = getLatestRelease();
-
-  if (!release) return null;
-
-  const translateHeading = (heading: string) => {
-    const key = `changelog.headings.${heading}`;
-    const translated = t(key);
-    return translated === key ? heading : translated;
-  };
-
-  const topSections = release.sections
-    .filter((s) => s.audience !== "internal")
-    .slice(0, 3);
-
   return (
-    <section className="relative overflow-hidden px-6 py-20">
-      {/* Thematic background */}
-      <div className="absolute inset-0 bg-[url('/assets/backgrounds/village-isometric-base.png')] bg-cover bg-center opacity-[0.04]" />
-      <div className="absolute inset-0 bg-gradient-to-b from-white via-amber-50/20 to-white" />
-
-      <div className="relative mx-auto max-w-6xl">
-        <div className="mb-12 text-center">
-          <div className="mx-auto mb-3 flex items-center justify-center gap-2">
-            <div className="h-px w-8 bg-amber-400" />
-            <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            <div className="h-px w-8 bg-amber-400" />
-          </div>
-          <p className="text-[13px] font-semibold uppercase tracking-[0.05em] text-amber-600">
-            {t("latestVersion.title")}
-          </p>
-          <h2
-            className="mt-2 text-3xl font-bold tracking-[-0.02em] text-stone-900 sm:text-4xl"
-            style={{ fontFamily: "Inter, system-ui, sans-serif", lineHeight: 1.15 }}
-          >
-            {t(release.nameKey)}
-          </h2>
-        </div>
-
-        <div className="grid gap-8 lg:grid-cols-2 items-start">
-          {/* Image */}
-          <div className="rounded-2xl overflow-hidden border border-stone-200 shadow-lg shadow-stone-100/50">
+    <section id="mundo" className="relative px-6 py-20" style={{ background: "#fdf7ee" }}>
+      <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2">
+        {/* Image column */}
+        <div className="relative order-2 lg:order-1">
+          <div className="absolute -inset-4 -z-10 rounded-[2.5rem] bg-gradient-to-br from-amber-100 to-[#f6ebdb]" />
+          <div className="relative overflow-hidden rounded-[2rem] border-4 border-white shadow-[0_18px_40px_-16px_rgba(60,40,20,.28)]">
             <img
-              src="/assets/landing/conquest-of-etheria/changelog-latest-update.png"
-              alt={t(release.nameKey)}
-              className="w-full h-auto"
+              src="/assets/backgrounds/village-fullscreen.png"
+              className="h-full w-full object-cover"
+              alt="Tu aldea"
             />
           </div>
-
-          {/* Content */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <span className="rounded-lg bg-amber-500 px-3 py-1 text-sm font-semibold text-white shadow-sm shadow-amber-500/20">
-                v{release.version}
-              </span>
-              <span className="text-sm text-stone-400">{release.date}</span>
+          <img
+            src="/assets/buildings/town-hall.png"
+            className="animate-floaty2 absolute -right-4 -top-8 h-28 w-auto drop-shadow-xl sm:h-36"
+            alt=""
+          />
+          <div className="absolute -bottom-5 left-6 flex items-center gap-2.5 rounded-2xl border border-[#f6ebdb] bg-white px-4 py-2.5 shadow-[0_10px_26px_-14px_rgba(60,40,20,.3)]">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-lg">🏗️</span>
+            <div>
+              <div className="text-[13px] font-bold text-[#2c2118]">Mejorando…</div>
+              <div className="text-[11px] text-[#6f6052]">Ayuntamiento → Nv 13</div>
             </div>
-
-            <div className="space-y-5">
-              {topSections.map((section) => (
-                <div key={section.heading}>
-                  <h3 className="mb-2 text-[13px] font-semibold uppercase tracking-[0.05em] text-amber-600">
-                    {translateHeading(section.heading)}
-                  </h3>
-                  <ul className="space-y-2">
-                    {section.itemKeys
-                      .filter((itemKey) => !section.internalItemKeys?.includes(itemKey))
-                      .slice(0, 4)
-                      .map((itemKey, i) => (
-                      <li key={i} className="flex gap-3 text-[14px] text-stone-600">
-                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-                        <span>{t(itemKey)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-
-            <Link
-              href={`/changelog/${release.version}`}
-              className="inline-flex items-center gap-2 text-[14px] font-semibold text-amber-600 hover:text-amber-700 transition-colors"
-            >
-              {t("latestVersion.viewDetails")}
-              <span>→</span>
-            </Link>
           </div>
+        </div>
+
+        {/* Text column */}
+        <div className="order-1 lg:order-2">
+          <span className="inline-block rounded-full bg-teal-100 px-3.5 py-1 text-[13px] font-semibold text-teal-700" style={{ fontFamily: DISPLAY_FONT }}>
+            Empezá tranquilo
+          </span>
+          <h2 className="mt-4 text-4xl font-bold leading-tight text-[#2c2118] sm:text-5xl" style={{ fontFamily: DISPLAY_FONT }}>
+            Una aldea que se siente tuya
+          </h2>
+          <p className="mt-4 text-[16px] leading-relaxed text-[#6f6052]">
+            Cada edificio tiene su lugar y su propósito. Subí de nivel tu granja, tu mina y tu cuartel a tu ritmo —con protección de novato para que nadie te apure mientras aprendés.
+          </p>
+          <ul className="mt-6 space-y-3">
+            {[
+              "12 edificios con mejoras y producción pasiva",
+              "Recursos que crecen incluso si te desconectás",
+              "Colas claras: construí, entrená e investigá",
+            ].map((item) => (
+              <li key={item} className="flex items-center gap-3 text-[15px] font-medium text-[#2c2118]">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-amber-600">✓</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+          <Link
+            href="/registro"
+            className="mt-7 inline-block rounded-full bg-[#2c2118] px-7 py-3 text-[15px] font-semibold text-[#fdf7ee] transition-transform hover:-translate-y-0.5"
+            style={{ fontFamily: DISPLAY_FONT }}
+          >
+            Ver mi aldea →
+          </Link>
         </div>
       </div>
     </section>

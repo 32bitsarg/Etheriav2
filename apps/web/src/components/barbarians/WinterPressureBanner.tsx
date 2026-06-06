@@ -7,9 +7,9 @@ import { useGameStore } from "@/stores/gameStore";
 const ZONE_NAMES_ES: Record<string, string> = {
   NORTH: "Norte Helado",
   CENTER: "Centro Templado",
-  SOUTH: "Sur Calido",
+  SOUTH: "Sur Cálido",
   COAST: "Costa",
-  MOUNTAIN: "Montana",
+  MOUNTAIN: "Montaña",
   FOREST: "Bosque",
   PLAINS: "Llanura",
 };
@@ -26,8 +26,7 @@ export function WinterPressureBanner() {
   const { data, isLoading } = useWinterPressure(cityId, seasonState?.currentSeason === "WINTER");
   const [collapsed, setCollapsed] = useState(false);
 
-  if (isLoading || !data) return null;
-  if (!data.isWinter) return null;
+  if (isLoading || !data || !data.isWinter) return null;
 
   const isStarving = data.winterState?.isStarving ?? false;
   const hasDeficit = data.netFoodPerHour < 0;
@@ -37,79 +36,61 @@ export function WinterPressureBanner() {
 
   if (!isCritical && !isWarning && !isStarving) return null;
 
-  const borderColor = isCritical ? "border-red-500/60" : "border-amber-500/50";
-  const bgColor = isCritical ? "bg-red-950/90" : "bg-amber-950/80";
-  const shadowColor = isCritical ? "shadow-red-900/30" : "shadow-amber-900/20";
-  const textColor = isCritical ? "text-red-300" : "text-amber-300";
-  const titleColor = isCritical ? "text-red-400" : "text-amber-400";
+  const borderColor = isCritical ? "border-red-200" : "border-amber-200";
+  const bgColor = isCritical ? "bg-red-50/95" : "bg-amber-50/95";
+  const textColor = isCritical ? "text-red-700" : "text-amber-700";
+  const titleColor = isCritical ? "text-red-800" : "text-amber-800";
+  const iconBg = isCritical ? "bg-red-500" : "bg-amber-500";
 
   if (collapsed) {
     return (
-      <div className="fixed top-16 left-0 right-0 z-40 flex justify-center pointer-events-none">
+      <div className="fixed top-[calc(var(--topbar-height)+8px)] left-1/2 -translate-x-1/2 z-50 pointer-events-none">
         <button
           onClick={() => setCollapsed(false)}
-          className={`pointer-events-auto mx-4 rounded-lg border ${borderColor} ${bgColor} px-3 py-1.5 text-xs ${titleColor} shadow-lg ${shadowColor} backdrop-blur-sm hover:opacity-80`}
+          className={`pointer-events-auto rounded-2xl border ${borderColor} ${bgColor} px-3 py-1.5 text-xs ${titleColor} shadow-lg backdrop-blur-xl hover:opacity-80`}
         >
-          {isCritical ? "⚠️ Hambruna activa" : "❄️ Presion invernal"}
+          {isCritical ? "⚠️ Hambruna activa" : "❄️ Presión invernal"}
         </button>
       </div>
     );
   }
 
   return (
-    <div className="fixed top-16 left-0 right-0 z-40 flex justify-center pointer-events-none">
-      <div className={`pointer-events-auto mx-4 max-w-md rounded-lg border-2 ${borderColor} ${bgColor} px-4 py-3 shadow-lg ${shadowColor} backdrop-blur-sm`}>
-        <div className="flex items-start gap-3">
-          <span className="text-2xl flex-shrink-0">{isCritical ? "⚠️" : "❄️"}</span>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className={`text-sm font-bold ${titleColor}`}>
-                {isCritical ? "Hambruna Activa" : "Presion Invernal"}
-              </span>
-              <span className="text-xs text-etheria-text-muted">
-                ({ZONE_NAMES_ES[data.zone.id] ?? data.zone.id}: {data.zone.intensity}x)
-              </span>
-            </div>
-
-            <div className={`text-xs ${textColor} mt-1 space-y-0.5`}>
-              {isStarving && (
-                <p>
-                  Hambruna activa desde hace {data.winterState?.starvationHours ?? 0}h
-                  {data.winterState && data.winterState.combatPenalty < 1 && (
-                    <span className="text-red-400"> | Penalidad combate: {Math.round((1 - data.winterState.combatPenalty) * 100)}%</span>
-                  )}
-                </p>
-              )}
-              {hasDeficit && !isStarving && (
-                <p>
-                  Deficit: {Math.abs(Math.round(data.netFoodPerHour))} comida/hora
-                  {hoursUntilStarvation < Infinity && (
-                    <span> | Hambruna en ~{formatHours(hoursUntilStarvation)}</span>
-                  )}
-                </p>
-              )}
-              {data.hourlyConsumption > 0 && (
-                <p className="text-etheria-text-muted">
-                  Consumo tropas: {Math.round(data.hourlyConsumption)}/h | Produccion: {Math.round(data.effectiveProduction)}/h
-                </p>
-              )}
-              {data.winterState && data.winterState.starvationHours >= 10 && (
-                <p className="text-red-400">
-                  Riesgo de desercion de tropas
-                </p>
-              )}
-            </div>
+    <div className="fixed top-[calc(var(--topbar-height)+8px)] left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+      <div className={`pointer-events-auto flex items-center gap-3 rounded-2xl border ${borderColor} ${bgColor} px-4 py-2.5 shadow-lg shadow-stone-900/8 backdrop-blur-xl`}>
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconBg} text-white text-lg`}>
+          {isCritical ? "⚠️" : "❄️"}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className={`text-[13px] font-bold ${titleColor}`}>
+            {isCritical ? "Hambruna Activa" : "Presión Invernal"}
+            <span className="ml-2 text-[11px] font-normal opacity-70">
+              ({ZONE_NAMES_ES[data.zone.id] ?? data.zone.id}: {data.zone.intensity}x)
+            </span>
           </div>
-          <button
-            type="button"
-            onClick={() => setCollapsed(true)}
-            className="flex-shrink-0 rounded p-1 text-etheria-text-muted hover:bg-etheria-border/20 hover:text-etheria-gold-soft"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-          </button>
+          <div className={`text-[11.5px] ${textColor} space-y-0.5`}>
+            {isStarving && (
+              <p>Hambruna activa desde hace {data.winterState?.starvationHours ?? 0}h
+                {data.winterState && data.winterState.combatPenalty < 1 && (
+                  <span> · Penalidad combate: {Math.round((1 - data.winterState.combatPenalty) * 100)}%</span>
+                )}
+              </p>
+            )}
+            {hasDeficit && !isStarving && (
+              <p>Déficit: {Math.abs(Math.round(data.netFoodPerHour))} comida/h
+                {hoursUntilStarvation < Infinity && (
+                  <span> · Hambruna en ~{formatHours(hoursUntilStarvation)}</span>
+                )}
+              </p>
+            )}
+          </div>
         </div>
+        <button
+          onClick={() => setCollapsed(true)}
+          className={`shrink-0 ${textColor} opacity-60 hover:opacity-100 transition-opacity`}
+        >
+          ✕
+        </button>
       </div>
     </div>
   );

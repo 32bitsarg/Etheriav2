@@ -232,7 +232,8 @@ worldRouter.post('/barbarians/:id/attack', zValidator('json', AttackBarbarianReq
     if (existing) {
       await db.from(COLLECTIONS.UNITS)
         .eq('id', existing.id)
-        .update({ count: existing.count - unit.count });
+        .merge({ count: existing.count - unit.count })
+        .execute();
     }
   }
 

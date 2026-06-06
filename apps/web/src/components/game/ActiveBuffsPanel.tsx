@@ -19,17 +19,17 @@ function BuffIcon({ buff }: { buff: ActiveBuff }) {
     <div className="relative group flex items-center">
       <span className="text-base cursor-help leading-none">{buff.icon}</span>
       <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block z-[200] pointer-events-none">
-        <div className="bg-black/95 border border-white/15 rounded-xl p-3 text-xs min-w-[180px] max-w-[260px] shadow-[0_12px_40px_rgba(0,0,0,0.6)] backdrop-blur-md">
-          <div className={`font-bold text-sm mb-1 ${buff.type === "debuff" ? "text-red-400" : "text-etheria-success"}`}>
+        <div className="bg-white border border-stone-200 rounded-xl p-3 text-xs min-w-[180px] max-w-[260px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-md">
+          <div className={`font-bold text-sm mb-1 ${buff.type === "debuff" ? "text-red-600" : "text-emerald-600"}`}>
             {buff.label}
           </div>
-          <div className="text-white/75 leading-relaxed">{buff.description}</div>
+          <div className="text-stone-600 leading-relaxed">{buff.description}</div>
           {buff.expiresAt && (
-            <div className="text-amber-400/80 mt-1.5 text-[10px]">
+            <div className="text-amber-600 mt-1.5 text-[10px]">
               {formatCountdown(buff.expiresAt)}
             </div>
           )}
-          <div className="text-white/25 mt-1.5 text-[10px] uppercase tracking-wider">{buff.source}</div>
+          <div className="text-stone-400 mt-1.5 text-[10px] uppercase tracking-wider">{buff.source}</div>
         </div>
       </div>
     </div>

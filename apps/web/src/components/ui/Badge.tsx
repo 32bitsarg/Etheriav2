@@ -6,11 +6,11 @@ interface BadgeProps {
 }
 
 const variantStyles = {
-  gold: "bg-amber-900/40 text-amber-400 border-amber-700/50",
-  red: "bg-red-900/40 text-red-400 border-red-700/50",
-  green: "bg-emerald-900/40 text-emerald-400 border-emerald-700/50",
-  blue: "bg-blue-900/40 text-blue-400 border-blue-700/50",
-  gray: "bg-slate-800/50 text-slate-400 border-slate-700/50",
+  gold: "bg-amber-100 text-amber-700 border-amber-200",
+  red: "bg-red-100 text-red-700 border-red-200",
+  green: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  blue: "bg-sky-100 text-sky-700 border-sky-200",
+  gray: "bg-stone-100 text-stone-600 border-stone-200",
 };
 
 const sizeStyles = {
@@ -21,7 +21,7 @@ const sizeStyles = {
 
 export function Badge({ children, variant = "gray", size = "md", className = "" }: BadgeProps) {
   return (
-    <span className={`inline-flex items-center font-bold uppercase tracking-wider rounded border ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}>
+    <span className={`inline-flex items-center font-semibold rounded-md border ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}>
       {children}
     </span>
   );

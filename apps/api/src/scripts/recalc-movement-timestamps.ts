@@ -135,7 +135,7 @@ async function run() {
     }
 
     if (Object.keys(patch).length > 0) {
-      await db.from(COLLECTIONS.BARBARIAN_BATTLES).eq("id", b.id).update(patch);
+      await db.from(COLLECTIONS.BARBARIAN_BATTLES).eq("id", b.id).merge(patch).execute();
       updated++;
       console.log(`  PvB    ${b.id.slice(0, 8)} ${b.status.padEnd(10)} ${patch.arrivesAt ? "arr=" + patch.arrivesAt.slice(11, 19) : ""}${patch.returnsAt ? " ret=" + patch.returnsAt.slice(11, 19) : ""}`);
     } else {
@@ -168,7 +168,7 @@ async function run() {
     }
 
     if (Object.keys(patch).length > 0) {
-      await db.from(COLLECTIONS.BARBARIAN_ATTACKS).eq("id", b.id).update(patch);
+      await db.from(COLLECTIONS.BARBARIAN_ATTACKS).eq("id", b.id).merge(patch).execute();
       updated++;
       console.log(`  Raid   ${b.id.slice(0, 8)} ${b.status.padEnd(10)} ${patch.arrivesAt ? "arr=" + patch.arrivesAt.slice(11, 19) : ""}${patch.returnsAt ? " ret=" + patch.returnsAt.slice(11, 19) : ""}`);
     } else {
@@ -198,7 +198,7 @@ async function run() {
     }
 
     if (Object.keys(patch).length > 0) {
-      await db.from(COLLECTIONS.TRADE_CARAVANS).eq("id", t.id).update(patch);
+      await db.from(COLLECTIONS.TRADE_CARAVANS).eq("id", t.id).merge(patch).execute();
       updated++;
       console.log(`  Trade  ${t.id.slice(0, 8)} ${t.status.padEnd(10)} ${patch.arrivesAt ? "arr=" + patch.arrivesAt.slice(11, 19) : ""}${patch.returnsAt ? " ret=" + patch.returnsAt.slice(11, 19) : ""}`);
     } else {

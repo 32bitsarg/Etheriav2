@@ -6,7 +6,7 @@ import { useToastStore, type ToastType } from "@/stores/toastStore";
 import { useAudioStore } from "@/stores/audioStore";
 import { BUILDING_INFO, BUILDING_NAMES, BUILDING_SIZES, MAX_BUILDING_LEVEL, getUpgradeCost, getUpgradeTimeSeconds, UNIT_INFO, UNIT_IMAGE_PATHS, UNIT_TRAINING_COST, UNIT_STATS, applyTrainingCostReduction, getTrainingCost, getTrainingTimeSeconds, TECH_INFO, getTechCost, getTechTimeSeconds, getTechIconPath, formatTime, formatNumber, getBuildingDescriptionKey } from "@/lib/constants";
 import { BuildingSprite } from "@/components/village/BuildingIcon";
-import { VillageCanvas } from "@/components/village/VillageCanvas";
+import { VillageHTMLCanvas } from "@/components/village/VillageHTMLCanvas";
 import { ResourceIconSVG } from "@/components/village/ResourceIconSVG";
 import { useAcceptMarketOffer, useActiveBattles, useAllCities, useAllianceMembership, useAttackCity, useBarbarianAttackAlerts, useBattleReports, useBreakTreaty, useCancelBuildQueue, useCancelResearchQueue, useCancelTrainingQueue, useCityRanking, useClaimQuest, useContributeAllianceObjective, useCreateAlliance, useCreateMarketOffer, useDisbandAlliance, useGameReports, useJoinAlliance, useKickAllianceMember, useLeaveAlliance, useMailMessages, useMarkGameReportRead, useMarkMailRead, useMarkMapOpened, useMarkReportRead, useMarketOffers, usePlayerQuests, useProposePeace, useRenameCity, useResearchTech, useScoutTarget, useSendMailMessage, useTechs, useTrainUnits, useTransferAllianceLeadership, useUpdateAlliance, useUpdateAllianceMemberRole, useUpgradeBuilding, useVillageLayout, useWorldMap, useWorldMovements, useWorldSeason } from "@/hooks/useCity";
 import { WorldMapCanvas } from "@/components/worldmap/WorldMapCanvas";
@@ -18,6 +18,15 @@ import { SeasonHUD } from "@/components/game/SeasonHUD";
 import { ActiveBuffsPanel } from "@/components/game/ActiveBuffsPanel";
 import { SettingsModal } from "@/components/village/SettingsModal";
 import { SidebarNavIcon } from "@/components/ui/SidebarNavIcon";
+import { VillageImmersiveDock } from "@/components/village/VillageImmersiveDock";
+import { NotificationBell } from "@/components/game/NotificationBell";
+import { DailyQuestsPanel } from "@/components/game/DailyQuestsPanel";
+import { RankingsPanel } from "@/components/game/RankingsPanel";
+import { RallyBanner } from "@/components/game/RallyBanner";
+import { DailyEventBanner } from "@/components/game/DailyEventBanner";
+import { WonderPanel } from "@/components/game/WonderPanel";
+import { AchievementsPanel } from "@/components/game/AchievementsPanel";
+import { ActivityFeedPanel } from "@/components/game/ActivityFeedPanel";
 import { useState, useMemo, useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useI18n } from "@/i18n";
 import { normalizeVillageLayout, resolveVillageRenderableBuildings } from "@/lib/villageLayout";
@@ -43,11 +52,25 @@ export function VillageView() {
   const [isMailOpen, setIsMailOpen] = useState(false);
   const [isAllianceOpen, setIsAllianceOpen] = useState(false);
   const [isQuestsOpen, setIsQuestsOpen] = useState(false);
-  const [isRankingOpen, setIsRankingOpen] = useState(false);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isDailyQuestsOpen, setIsDailyQuestsOpen] = useState(false);
+  const [isNewRankingsOpen, setIsNewRankingsOpen] = useState(false);
+  const [isWonderOpen, setIsWonderOpen] = useState(false);
+  const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
+  const [isActivityFeedOpen, setIsActivityFeedOpen] = useState(false);
   const [runtimePollingEnabled, setRuntimePollingEnabled] = useState(false);
   const upgradeLockRef = useRef<string | null>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
+
+  // Prevent wheel events from scrolling page or triggering browser navigation
+  useEffect(() => {
+    const el = shellRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => e.preventDefault();
+    el.addEventListener("wheel", handler, { passive: false });
+    return () => el.removeEventListener("wheel", handler);
+  }, []);
   const cityName = useGameStore((s) => s.name);
   const cityId = useGameStore((s) => s.cityId);
 
@@ -78,6 +101,9 @@ export function VillageView() {
   const { data: activeBattles } = useActiveBattles(cityId, runtimePollingEnabled);
   const { data: barbarianAlerts } = useBarbarianAttackAlerts(cityId, runtimePollingEnabled);
   const { data: worldMoves } = useWorldMovements(activeView === "mapa");
+  // Prefetch map data so it's ready when user switches to map view
+  const { data: worldMap } = useWorldMap();
+  const { data: seasonData } = useWorldSeason();
 
   useEffect(() => {
     const id = window.setTimeout(() => setRuntimePollingEnabled(true), 12_000);
@@ -116,7 +142,7 @@ export function VillageView() {
   }, [buildings]);
 
   const selectedBuilding = uniqueBuildings.find((b) => b.id === selectedBuildingId);
-  const isModalOpen = !!selectedBuilding || isMailOpen || isAllianceOpen || isQuestsOpen || isRankingOpen || isRenameOpen || isSettingsOpen;
+  const isModalOpen = !!selectedBuilding || isMailOpen || isAllianceOpen || isQuestsOpen || isRenameOpen || isSettingsOpen || isDailyQuestsOpen || isNewRankingsOpen || isWonderOpen || isAchievementsOpen || isActivityFeedOpen;
 
   const handleUpgrade = useCallback((id: string, type: string, currentLevel: number) => {
     if (!cityId) return;
@@ -187,57 +213,101 @@ export function VillageView() {
   }, [cityId, resources, cityTechs, researchTech, addToast]);
 
   return (
-    <div className="village-shell relative z-10 grid h-screen w-screen overflow-hidden">
+    <div ref={shellRef} className="village-shell relative z-10 grid h-screen w-screen overflow-hidden">
       <BarbarianAttackAlertBanner />
       <WinterPressureBanner />
 
       {/* Top Bar — full width, grid row 1 */}
-      <header className="village-topbar pointer-events-auto col-span-3 row-start-1 flex items-center gap-3 border-b border-amber-200/15 backdrop-blur-md px-4 z-50 h-12">
+      <header className="village-topbar pointer-events-auto col-span-3 row-start-1 flex items-center gap-2 px-4 z-50 h-12">
         <div className="flex items-center gap-2 shrink-0">
           <SeasonHUD />
           <ActiveBuffsPanel />
+          {/* <DailyEventBanner /> */}
         </div>
-        <span className="flex-1 text-center font-serif text-sm text-etheria-gold-soft uppercase tracking-wider">
+        <span className="flex-1 text-center text-sm font-semibold text-stone-700 tracking-wide">
           {cityName || t("play.sidebar.village")}
         </span>
-        <div className="shrink-0">
+        <div className="shrink-0 flex items-center gap-2">
           <ResourceBar />
+          <NotificationBell />
         </div>
       </header>
 
       <aside className="grepolis-sidebar village-sidebar">
         <nav className="grepolis-sidebar__nav relative pb-2">
-          {VIEWS.map((v) => (
-            <button key={v.id} onClick={() => { setActiveView(v.id); setSelectedBuildingId(null); }} className={`grepolis-nav-item ${activeView === v.id ? "active" : ""}`}>
-              <span className="grepolis-nav-item__icon-wrap">
-                <span className="grepolis-nav-item__icon">{v.icon}</span>
-              </span>
-              <span className="grepolis-nav-item__label">{v.label}</span>
-            </button>
-          ))}
+          {/* View switchers */}
+          <button onClick={() => { setActiveView("pueblo"); setSelectedBuildingId(null); }} className={`grepolis-nav-item ${activeView === "pueblo" ? "active" : ""}`}>
+            <span className="grepolis-nav-item__icon-wrap">
+              <SidebarNavIcon id="village" size={22} />
+            </span>
+            <span className="grepolis-nav-item__label">{t("play.sidebar.village")}</span>
+          </button>
+          <button onClick={() => { setActiveView("mapa"); setSelectedBuildingId(null); }} className={`grepolis-nav-item ${activeView === "mapa" ? "active" : ""}`}>
+            <span className="grepolis-nav-item__icon-wrap">
+              <SidebarNavIcon id="map" size={22} />
+            </span>
+            <span className="grepolis-nav-item__label">{t("play.sidebar.map")}</span>
+          </button>
+
           <div className="grepolis-sidebar__divider" />
-          <button onClick={() => setIsRankingOpen(true)} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap"><span className="grepolis-nav-item__icon">🏆</span></span>
+
+          <button onClick={() => setIsNewRankingsOpen(true)} className="grepolis-nav-item">
+            <span className="grepolis-nav-item__icon-wrap">
+              <SidebarNavIcon id="summary" size={22} />
+            </span>
             <span className="grepolis-nav-item__label">{t("play.sidebar.ranking")}</span>
           </button>
           <button onClick={() => setIsMailOpen(true)} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap">
-              <span className="grepolis-nav-item__icon">📜</span>
-              {((mailData?.unreadCount ?? 0) + (reportsData?.unreadCount ?? 0) + unreadBattleReports) > 0 && <span className="grepolis-nav-item__badge">{(mailData?.unreadCount ?? 0) + (reportsData?.unreadCount ?? 0) + unreadBattleReports}</span>}
+            <span className="grepolis-nav-item__icon-wrap relative">
+              <SidebarNavIcon id="mail" size={22} />
+              {((mailData?.unreadCount ?? 0) + (reportsData?.unreadCount ?? 0) + unreadBattleReports) > 0 && (
+                <span className="grepolis-nav-item__badge">{(mailData?.unreadCount ?? 0) + (reportsData?.unreadCount ?? 0) + unreadBattleReports}</span>
+              )}
             </span>
             <span className="grepolis-nav-item__label">{t("play.sidebar.mail")}</span>
           </button>
           <button onClick={() => setIsQuestsOpen(true)} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap"><SidebarNavIcon id="quests" className="grepolis-nav-item__icon" /></span>
+            <span className="grepolis-nav-item__icon-wrap">
+              <SidebarNavIcon id="quests" size={22} />
+            </span>
             <span className="grepolis-nav-item__label">{t("play.quests.title")}</span>
           </button>
           <button onClick={() => setIsAllianceOpen(true)} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap"><span className="grepolis-nav-item__icon">🛡️</span></span>
+            <span className="grepolis-nav-item__icon-wrap">
+              <SidebarNavIcon id="army" size={22} />
+            </span>
             <span className="grepolis-nav-item__label">{t("play.sidebar.alliances")}</span>
           </button>
+
           <div className="grepolis-sidebar__divider" />
+
+          <button onClick={() => setIsDailyQuestsOpen(true)} className="grepolis-nav-item">
+            <span className="grepolis-nav-item__icon-wrap"><span style={{ fontSize: 20 }}>📋</span></span>
+            <span className="grepolis-nav-item__label">Misiones</span>
+          </button>
+          <button onClick={() => setIsNewRankingsOpen(true)} className="grepolis-nav-item">
+            <span className="grepolis-nav-item__icon-wrap"><span style={{ fontSize: 20 }}>📊</span></span>
+            <span className="grepolis-nav-item__label">Rankings</span>
+          </button>
+          <button onClick={() => setIsWonderOpen(true)} className="grepolis-nav-item">
+            <span className="grepolis-nav-item__icon-wrap"><span style={{ fontSize: 20 }}>🏛️</span></span>
+            <span className="grepolis-nav-item__label">Maravilla</span>
+          </button>
+          <button onClick={() => setIsAchievementsOpen(true)} className="grepolis-nav-item">
+            <span className="grepolis-nav-item__icon-wrap"><span style={{ fontSize: 20 }}>🏆</span></span>
+            <span className="grepolis-nav-item__label">Logros</span>
+          </button>
+          <button onClick={() => setIsActivityFeedOpen(true)} className="grepolis-nav-item">
+            <span className="grepolis-nav-item__icon-wrap"><span style={{ fontSize: 20 }}>📰</span></span>
+            <span className="grepolis-nav-item__label">Feed</span>
+          </button>
+
+          <div className="grepolis-sidebar__divider" />
+
           <button onClick={() => setIsSettingsOpen(true)} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap"><span className="grepolis-nav-item__icon">⚙️</span></span>
+            <span className="grepolis-nav-item__icon-wrap">
+              <span style={{ fontSize: 20 }}>⚙️</span>
+            </span>
             <span className="grepolis-nav-item__label">{t("play.settings.title")}</span>
           </button>
         </nav>
@@ -268,6 +338,8 @@ export function VillageView() {
             production={production}
             allianceData={allianceData}
             movements={worldMoves ?? []}
+            worldMap={worldMap}
+            seasonData={seasonData}
             onRename={() => setIsRenameOpen(true)}
             onEnterVillage={() => setActiveView("pueblo")}
             t={t}
@@ -275,17 +347,13 @@ export function VillageView() {
         )}
       </main>
 
-      {/* Right QueueRail — grid col 3 */}
-      <QueueRail
-        buildQueues={buildQueues}
-        trainingQueues={trainingQueues}
-        researchQueues={researchQueue.length > 0 ? researchQueue : activeResearch ? [activeResearch] : []}
-        battles={myBattles}
-        barbarianAlerts={barbarianAlerts ?? []}
-        tradeMoves={myTradeMoves}
-        cityName={myName}
-        t={t}
-      />
+      {/* Bottom dock — queues */}
+      <VillageImmersiveDock />
+
+      {/* Rally banner — floats above dock when there's an active rally */}
+      <div className="pointer-events-auto absolute inset-x-3 bottom-16 z-40">
+        <RallyBanner />
+      </div>
 
       {isPuebloView && selectedBuilding && (
       <BuildingModal
@@ -308,9 +376,13 @@ export function VillageView() {
       {isMailOpen && <MailModal onClose={() => setIsMailOpen(false)} t={t} />}
       {isQuestsOpen && <QuestsModal cityId={cityId} onClose={() => setIsQuestsOpen(false)} t={t} />}
       {isAllianceOpen && <AllianceModal onClose={() => setIsAllianceOpen(false)} t={t} />}
-      {isRankingOpen && <RankingModal myCityId={cityId} onClose={() => setIsRankingOpen(false)} t={t} />}
       {isRenameOpen && <RenameCityModal cityId={cityId} currentName={cityName} onClose={() => setIsRenameOpen(false)} t={t} />}
       {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
+      {isDailyQuestsOpen && <DailyQuestsPanel onClose={() => setIsDailyQuestsOpen(false)} />}
+      {isNewRankingsOpen && <RankingsPanel onClose={() => setIsNewRankingsOpen(false)} />}
+      {isWonderOpen && <WonderPanel onClose={() => setIsWonderOpen(false)} />}
+      {isAchievementsOpen && <AchievementsPanel onClose={() => setIsAchievementsOpen(false)} />}
+      {isActivityFeedOpen && <ActivityFeedPanel onClose={() => setIsActivityFeedOpen(false)} />}
       <BarbarianCampModal />
     </div>
   );
@@ -628,7 +700,7 @@ function PuebloView({ buildings, selectedBuildingId, onSelectBuilding, cityName,
 
   return (
     <div className="relative h-full overflow-hidden">
-      <VillageCanvas
+      <VillageHTMLCanvas
         layout={activeLayout}
         buildings={placedBuildings}
         selectedBuildingId={selectedBuildingId}
@@ -640,19 +712,19 @@ function PuebloView({ buildings, selectedBuildingId, onSelectBuilding, cityName,
   );
 }
 
-function MapaView({ cityName, resources, storage, production, allianceData, movements, onRename, onEnterVillage, t }: {
+function MapaView({ cityName, resources, storage, production, allianceData, movements, worldMap, seasonData, onRename, onEnterVillage, t }: {
   cityName: string;
   resources: any;
   storage: any;
   production: { goldPerHour: number; woodPerHour: number; stonePerHour: number; foodPerHour: number };
   allianceData: any;
   movements: any[];
+  worldMap: any;
+  seasonData: any;
   onRename: () => void;
   onEnterVillage: () => void;
   t: (key: string) => string;
 }) {
-  const { data: worldMap } = useWorldMap();
-  const { data: seasonData } = useWorldSeason();
   const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
   const [radialPosition, setRadialPosition] = useState({ x: 0, y: 0 });
   const [isEntering, setIsEntering] = useState(false);
@@ -668,7 +740,7 @@ function MapaView({ cityName, resources, storage, production, allianceData, move
   const markMapOpened = useMarkMapOpened();
   const cities = worldMap?.cities ?? [];
   const barbarianCamps = worldMap?.barbarianCamps ?? [];
-  const selectedCity = cities.find((city) => city.id === selectedCityId) ?? null;
+  const selectedCity = cities.find((city: any) => city.id === selectedCityId) ?? null;
   const isOwnCity = selectedCityId != null && selectedCityId === myCityId;
 
   const enterVillage = () => {
@@ -689,7 +761,7 @@ function MapaView({ cityName, resources, storage, production, allianceData, move
       {isEntering && <div className="etheria-map-enter-zoom pointer-events-none absolute inset-0 z-50" />}
       <div className="absolute inset-0">
         <WorldMapCanvas
-          cities={cities.map((city) => ({
+          cities={cities.map((city: any) => ({
             ...city,
             relation: getMapRelation(city, allianceData),
           }))}

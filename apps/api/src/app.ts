@@ -9,6 +9,17 @@ import { reportsRouter } from './routes/reports.js';
 import { questsRouter } from './routes/quests.js';
 import { marketRouter } from './routes/market.js';
 import { adminOpsRouter } from './routes/adminOps.js';
+import { authRouter } from './routes/auth.js';
+import { notificationsRouter } from './routes/notifications.js';
+import { dailyQuestsRouter } from './routes/dailyQuests.js';
+import { rankingsRouter } from './routes/rankings.js';
+import { rallyRouter } from './routes/rally.js';
+import { conquestRouter } from './routes/conquest.js';
+import { espionageRouter } from './routes/espionage.js';
+import { eventsRouter } from './routes/events.js';
+import { wonderRouter } from './routes/wonder.js';
+import { achievementsRouter } from './routes/achievements.js';
+import { activityFeedRouter } from './routes/activityFeed.js';
 import { loadBuildingConfigs } from './domain/buildings.js';
 import { loadUnitConfigs } from './domain/units.js';
 import { loadTechConfigs } from './domain/techs.js';
@@ -60,6 +71,7 @@ export function createApiApp() {
   });
 
   app.get('/health', (c) => c.json({ status: 'ok', time: new Date().toISOString() }));
+  app.route('/auth', authRouter);
   app.route('/city', cityRouter);
   app.route('/chat', chatRouter);
   app.route('/alliances', allianceRouter);
@@ -69,6 +81,16 @@ export function createApiApp() {
   app.route('/quests', questsRouter);
   app.route('/market', marketRouter);
   app.route('/admin/ops', adminOpsRouter);
+  app.route('/notifications', notificationsRouter);
+  app.route('/daily-quests', dailyQuestsRouter);
+  app.route('/rankings', rankingsRouter);
+  app.route('/rally', rallyRouter);
+  app.route('/conquest', conquestRouter);
+  app.route('/espionage', espionageRouter);
+  app.route('/events', eventsRouter);
+  app.route('/wonder', wonderRouter);
+  app.route('/achievements', achievementsRouter);
+  app.route('/activity', activityFeedRouter);
 
   return app;
 }

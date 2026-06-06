@@ -1,14 +1,18 @@
 "use client";
 
-import { createClient } from "matecitodb";
+// Stub — MatecitoDB replaced by the Hono API's cookie-based auth.
+// Auth state is written here by useMatecitoAuth so useCity.ts can read it.
 
-const url = process.env.NEXT_PUBLIC_MATECITO_URL!;
-const anonKey = process.env.NEXT_PUBLIC_MATECITO_ANON_KEY!;
+let _token: string | null = null;
+let _user: { id: string; email?: string; name?: string } | null = null;
 
-if (!url || !anonKey) {
-  // Fail fast in dev; Next will surface this clearly.
-  throw new Error("Missing NEXT_PUBLIC_MATECITO_URL or NEXT_PUBLIC_MATECITO_ANON_KEY");
-}
-
-export const matecito = createClient({ url, apiKey: anonKey, apiVersion: "v2" });
-
+export const matecito = {
+  auth: {
+    get token() { return _token; },
+    get user() { return _user; },
+    _set(token: string | null, user: { id: string; email?: string; name?: string } | null) {
+      _token = token;
+      _user = user;
+    },
+  },
+};

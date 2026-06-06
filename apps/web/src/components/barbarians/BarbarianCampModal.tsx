@@ -44,7 +44,7 @@ export function BarbarianCampModal() {
   const scoutTarget = useScoutTarget();
   const addToast = useToastStore((s) => s.addToast);
 
-  const cityId = useGameStore.getState().cityId;
+  const cityId = useGameStore((s) => s.cityId);
 
   const totalSelected = Object.values(selectedUnits).reduce((s, v) => s + v, 0);
   const canAttack = totalSelected > 0 && !!cityId && !attackCamp.isPending;

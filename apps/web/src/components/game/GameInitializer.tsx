@@ -52,7 +52,7 @@ function mapCityToStore(cityData: any) {
   return {
     cityId: cityData.id,
     name: cityData.name,
-    resources: cityData.resources,
+    resources: cityData.resources ?? { gold: 0, wood: 0, stone: 0, food: 0, gems: 0 },
     production: {
       goldPerHour: cityData.production?.goldPerHour ?? 0,
       woodPerHour: cityData.production?.woodPerHour ?? 0,
@@ -221,10 +221,7 @@ export function GameInitializer() {
         const pendingCityName = localStorage.getItem("etheria_pending_city_name") ?? "Etheria";
         const res = await fetchWithTimeout("/api/city/bootstrap", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${auth.token}`,
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ cityName: pendingCityName, email: auth.user?.email ?? null, name: auth.user?.name ?? null }),
         }, BOOTSTRAP_TIMEOUT_MS);
         const data = await res.json().catch(() => ({}));

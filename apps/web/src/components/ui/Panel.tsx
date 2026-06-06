@@ -8,9 +8,9 @@ interface PanelProps {
 }
 
 const variantStyles = {
-  default: "bg-gradient-to-b from-etheria-panel to-etheria-panel-light border border-etheria-border shadow-[0_4px_24px_rgba(0,0,0,0.6),0_0_0_1px_rgba(146,112,47,0.15)]",
-  parchment: "bg-gradient-to-b from-etheria-parchment to-etheria-parchment-light border border-etheria-parchment-border shadow-[0_4px_24px_rgba(0,0,0,0.6)]",
-  wood: "bg-gradient-to-b from-etheria-wood-panel to-etheria-panel border border-etheria-border-gold shadow-[0_4px_24px_rgba(0,0,0,0.6)]",
+  default: "bg-white border border-stone-200 shadow-[0_4px_24px_rgba(0,0,0,0.08)]",
+  parchment: "bg-[#fdf7ee] border border-[#e7e5e4] shadow-[0_4px_24px_rgba(0,0,0,0.06)]",
+  wood: "bg-white border border-stone-200 shadow-[0_4px_24px_rgba(0,0,0,0.08)]",
 };
 
 const animationStyles = {
@@ -24,7 +24,7 @@ const animationStyles = {
 
 export function Panel({ children, className = "", variant = "default", animation = "fade" }: PanelProps) {
   return (
-    <div className={`rounded-lg ${variantStyles[variant]} ${animationStyles[animation]} ${className}`}>
+    <div className={`rounded-2xl ${variantStyles[variant]} ${animationStyles[animation]} ${className}`}>
       {children}
     </div>
   );

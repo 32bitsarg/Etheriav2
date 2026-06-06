@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
 import { useI18n } from "@/i18n";
 import { useMatecitoAuth } from "@/hooks/useMatecitoAuth";
 import { useRouter } from "next/navigation";
 import { useAudioStore } from "@/stores/audioStore";
+import { Modal } from "@/components/ui/Modal";
 
 interface Props {
   onClose: () => void;
@@ -14,16 +14,7 @@ export function SettingsModal({ onClose }: Props) {
   const { t, locale, setLocale } = useI18n();
   const auth = useMatecitoAuth();
   const router = useRouter();
-  const modalRef = useRef<HTMLDivElement>(null);
   const { musicVolume, isMuted, setMusicVolume, toggleMute } = useAudioStore();
-
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [onClose]);
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -36,96 +27,80 @@ export function SettingsModal({ onClose }: Props) {
   ];
 
   return (
-    <div
-      className="fixed inset-0 z-[100] grid place-items-center bg-black/60 backdrop-blur-sm"
-      onMouseDown={onClose}
+    <Modal
+      isOpen
+      onClose={onClose}
+      title={t("play.settings.title")}
+      headerGradient="from-stone-700 to-stone-900"
+      headerIcon="⚙️"
+      size="xs"
     >
-      <div
-        ref={modalRef}
-        className="w-[min(400px,calc(100vw-32px))] overflow-hidden rounded-xl border border-etheria-border bg-[#0b1111] shadow-2xl"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-etheria-border px-5 py-4">
-          <h2 className="font-serif text-lg text-etheria-gold-soft">
-            {t("play.settings.title")}
-          </h2>
-          <button
-            onClick={onClose}
-            className="rounded-lg border border-etheria-border-dim px-3 py-1 text-xs text-etheria-text-muted transition-colors hover:text-etheria-gold-soft"
-          >
-            {t("play.settings.close")}
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="px-5 py-4 space-y-5">
-          {/* Language */}
-          <div>
-            <label className="mb-2 block text-[11px] font-serif uppercase tracking-[0.1em] text-etheria-text-muted">
-              {t("play.settings.language")}
-            </label>
-            <div className="flex gap-2">
-              {options.map((opt) => (
-                <button
-                  key={opt.code}
-                  onClick={() => setLocale(opt.code)}
-                  className={`flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
-                    locale === opt.code
-                      ? "border-etheria-teal/55 bg-etheria-teal/15 text-etheria-gold-soft"
-                      : "border-etheria-border-dim text-etheria-text-muted hover:text-etheria-gold-soft"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Audio */}
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <label className="block text-[11px] font-serif uppercase tracking-[0.1em] text-etheria-text-muted">
-                {t("play.settings.audio")}
-              </label>
+      <div className="px-5 py-4 space-y-5">
+        {/* Language */}
+        <div>
+          <label className="mb-2 block text-[11px] font-semibold uppercase tracking-wider text-stone-400">
+            {t("play.settings.language")}
+          </label>
+          <div className="flex gap-2">
+            {options.map((opt) => (
               <button
-                onClick={toggleMute}
-                className={`rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                  isMuted
-                    ? "border-red-500/30 bg-red-500/10 text-red-400"
-                    : "border-etheria-teal/40 bg-etheria-teal/10 text-etheria-gold-soft"
+                key={opt.code}
+                onClick={() => setLocale(opt.code)}
+                className={`flex-1 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${
+                  locale === opt.code
+                    ? "border-amber-400/60 bg-amber-50 text-amber-700"
+                    : "border-stone-200 text-stone-500 hover:text-stone-700 hover:border-stone-300"
                 }`}
               >
-                {isMuted ? t("play.settings.unmute") : t("play.settings.mute")}
+                {opt.label}
               </button>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-[11px] text-etheria-text-muted">🔈</span>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={musicVolume}
-                onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
-                className="h-1 flex-1 appearance-none rounded-full bg-etheria-border-dim accent-etheria-teal/80 cursor-pointer"
-                disabled={isMuted}
-              />
-              <span className="text-[11px] text-etheria-text-muted">🔊</span>
-            </div>
-          </div>
-
-          {/* Logout */}
-          <div className="border-t border-etheria-border pt-4">
-            <button
-              onClick={handleLogout}
-              className="w-full rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/20 hover:text-red-300"
-            >
-              {t("play.settings.logout")}
-            </button>
+            ))}
           </div>
         </div>
+
+        {/* Audio */}
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-400">
+              {t("play.settings.audio")}
+            </label>
+            <button
+              onClick={toggleMute}
+              className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                isMuted
+                  ? "border-red-200 bg-red-50 text-red-500"
+                  : "border-stone-200 text-stone-500 hover:text-stone-700"
+              }`}
+            >
+              {isMuted ? t("play.settings.unmute") : t("play.settings.mute")}
+            </button>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm">🔈</span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={musicVolume}
+              onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
+              className="h-1.5 flex-1 appearance-none rounded-full bg-stone-200 accent-amber-500 cursor-pointer"
+              disabled={isMuted}
+            />
+            <span className="text-sm">🔊</span>
+          </div>
+        </div>
+
+        {/* Logout */}
+        <div className="border-t border-stone-100 pt-4">
+          <button
+            onClick={handleLogout}
+            className="w-full rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-500 transition-colors hover:bg-red-100 hover:text-red-600"
+          >
+            {t("play.settings.logout")}
+          </button>
+        </div>
       </div>
-    </div>
+    </Modal>
   );
 }

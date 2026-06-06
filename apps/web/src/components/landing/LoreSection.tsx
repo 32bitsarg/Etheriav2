@@ -1,69 +1,63 @@
 "use client";
 
-import { useI18n } from "@/i18n";
-import { ScrollIcon } from "./MedievalIcons";
+const DISPLAY_FONT = "var(--font-fredoka, Fredoka, system-ui, sans-serif)";
+
+const FACTIONS = [
+  {
+    emoji: "☀️",
+    gradient: "linear-gradient(135deg,#fde68a,#f59e0b)",
+    name: "Aurelion",
+    subtitle: "Guardianes de la luz",
+    subtitleColor: "text-amber-600",
+    desc: "Maestros de la economía dorada y las defensas resplandecientes. Prosperan en la abundancia.",
+  },
+  {
+    emoji: "🌑",
+    gradient: "linear-gradient(135deg,#c4b5fd,#7c3aed)",
+    name: "Shadowmere",
+    subtitle: "Maestros de la intriga",
+    subtitleColor: "text-purple-600",
+    desc: "Espías, emboscadas y diplomacia astuta. Golpean cuando menos lo esperás.",
+  },
+  {
+    emoji: "❄️",
+    gradient: "linear-gradient(135deg,#bae6fd,#0ea5e9)",
+    name: "Frostborne",
+    subtitle: "Guerreros del norte",
+    subtitleColor: "text-sky-600",
+    desc: "Resisten los inviernos más duros y cargan con caballería implacable. Hierro y hielo.",
+  },
+];
 
 export function LoreSection() {
-  const { t } = useI18n();
-
   return (
-    <section id="lore" className="relative overflow-hidden px-6 py-20">
-      {/* Thematic background */}
-      <div className="absolute inset-0 bg-[url('/assets/backgrounds/world-map-ground.png')] bg-cover bg-center opacity-[0.03]" />
-      <div className="absolute inset-0 bg-gradient-to-b from-white via-stone-50/50 to-white" />
-
-      <div className="relative mx-auto max-w-2xl">
-        <div className="mb-10 text-center">
-          <div className="mx-auto mb-3 flex items-center justify-center gap-2">
-            <div className="h-px w-8 bg-amber-400" />
-            <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            <div className="h-px w-8 bg-amber-400" />
-          </div>
-          <p className="text-[13px] font-semibold uppercase tracking-[0.05em] text-amber-600">
-            {t("lore.subtitle")}
-          </p>
-          <h2
-            className="mt-2 text-3xl font-bold tracking-[-0.02em] text-stone-900 sm:text-4xl"
-            style={{ fontFamily: "Inter, system-ui, sans-serif", lineHeight: 1.15 }}
-          >
-            {t("lore.title")}
+    <section id="facciones" className="px-6 py-16" style={{ background: "#fdf7ee" }}>
+      <div className="mx-auto max-w-6xl">
+        <div className="mx-auto mb-12 max-w-2xl text-center">
+          <span className="inline-block rounded-full bg-purple-100 px-3.5 py-1 text-[13px] font-semibold text-purple-700" style={{ fontFamily: DISPLAY_FONT }}>
+            El lore
+          </span>
+          <h2 className="mt-4 text-4xl font-bold text-[#2c2118] sm:text-5xl" style={{ fontFamily: DISPLAY_FONT }}>
+            Elegí tu bando
           </h2>
+          <p className="mt-3 text-[16px] text-[#6f6052]">
+            Tres facciones dominan Etheria. ¿A quién vas a jurar lealtad?
+          </p>
         </div>
 
-        {/* Parchment-style card */}
-        <div className="relative rounded-2xl border border-amber-200/60 bg-gradient-to-br from-amber-50/40 via-white to-amber-50/30 p-6 shadow-lg shadow-amber-100/30 sm:p-8">
-          {/* Decorative corner ornaments */}
-          <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-amber-300/40 rounded-tl" />
-          <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-amber-300/40 rounded-tr" />
-          <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-amber-300/40 rounded-bl" />
-          <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-amber-300/40 rounded-br" />
-
-          {/* Scroll icon header */}
-          <div className="mb-4 flex items-center justify-center">
-            <ScrollIcon className="w-8 h-8 opacity-60" />
-          </div>
-
-          <div className="space-y-4">
-            {[
-              t("lore.paragraphs.0"),
-              t("lore.paragraphs.1"),
-            ].map((paragraph, i) => (
-              <p
-                key={i}
-                className="text-[16px] text-stone-600 leading-relaxed"
-                style={{ fontFamily: "Inter, system-ui, sans-serif", lineHeight: 1.7 }}
-              >
-                {paragraph}
-              </p>
-            ))}
-          </div>
-
-          {/* Decorative divider */}
-          <div className="mt-6 flex items-center justify-center gap-2">
-            <div className="h-px w-12 bg-amber-300/40" />
-            <div className="w-1 h-1 rounded-full bg-amber-400/60" />
-            <div className="h-px w-12 bg-amber-300/40" />
-          </div>
+        <div className="grid gap-5 md:grid-cols-3">
+          {FACTIONS.map((f) => (
+            <div key={f.name} className="overflow-hidden rounded-[1.8rem] border border-[#f6ebdb] bg-white shadow-[0_10px_26px_-14px_rgba(60,40,20,.3)]">
+              <div className="flex h-28 items-center justify-center" style={{ background: f.gradient }}>
+                <span className="text-5xl drop-shadow">{f.emoji}</span>
+              </div>
+              <div className="p-6">
+                <h3 className="text-2xl font-semibold text-[#2c2118]" style={{ fontFamily: DISPLAY_FONT }}>{f.name}</h3>
+                <p className={`mt-1 text-[13px] font-semibold uppercase tracking-wide ${f.subtitleColor}`}>{f.subtitle}</p>
+                <p className="mt-3 text-[14.5px] leading-relaxed text-[#6f6052]">{f.desc}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </section>
