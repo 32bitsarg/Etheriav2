@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useI18n } from "@/i18n";
 
 export function ScreenshotsSection() {
@@ -7,15 +8,15 @@ export function ScreenshotsSection() {
 
   const screenshots = [
     {
-      src: "/assets/landing/conquest-of-etheria/strategy-world-map.png",
+      src: "/assets/landing/conquest-of-etheria/strategy-world-map.webp",
       caption: t("screenshots.items.0.caption"),
     },
     {
-      src: "/assets/landing/conquest-of-etheria/village-growth-hud.png",
+      src: "/assets/landing/conquest-of-etheria/village-growth-hud.webp",
       caption: t("screenshots.items.1.caption"),
     },
     {
-      src: "/assets/landing/conquest-of-etheria/world-events-feed.png",
+      src: "/assets/landing/conquest-of-etheria/world-events-feed.webp",
       caption: t("screenshots.items.2.caption"),
     },
   ];
@@ -52,10 +53,13 @@ export function ScreenshotsSection() {
             >
               {/* Screenshot image */}
               <div className="relative overflow-hidden">
-                <img
+                <Image
                   src={screenshot.src}
                   alt={screenshot.caption}
+                  width={600}
+                  height={400}
                   className="w-full h-auto transition-transform duration-500 group-hover:scale-[1.03]"
+                  quality={82}
                 />
                 {/* Hover overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">

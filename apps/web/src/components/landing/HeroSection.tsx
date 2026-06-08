@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 
 export function HeroSection() {
@@ -7,10 +8,13 @@ export function HeroSection() {
     <header className="relative flex min-h-screen items-center overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0">
-        <img
-          src="/assets/landing/conquest-of-etheria/hero-conquest-of-etheria.png"
-          className="h-full w-full object-cover"
+        <Image
+          src="/assets/landing/conquest-of-etheria/hero-conquest-of-etheria.webp"
+          fill
+          className="object-cover"
           alt=""
+          priority
+          quality={82}
         />
         <div
           className="absolute inset-0"
@@ -23,10 +27,14 @@ export function HeroSection() {
       </div>
 
       <div className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-24 pt-28 text-center">
-        <img
-          src="/assets/landing/conquest-of-etheria/logo-conquest-of-etheria.png"
+        <Image
+          src="/assets/landing/conquest-of-etheria/logo-conquest-of-etheria.webp"
+          width={320}
+          height={160}
           className="animate-floaty mx-auto h-32 w-auto drop-shadow-2xl sm:h-40"
           alt="Conquest of Etheria"
+          priority
+          quality={82}
         />
 
         <div className="mx-auto mt-5 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-4 py-1.5 backdrop-blur-md">

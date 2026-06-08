@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 
 const DISPLAY_FONT = "var(--font-fredoka, Fredoka, system-ui, sans-serif)";
@@ -12,17 +13,15 @@ export function LatestVersionSection() {
         <div className="relative order-2 lg:order-1">
           <div className="absolute -inset-4 -z-10 rounded-[2.5rem] bg-gradient-to-br from-amber-100 to-[#f6ebdb]" />
           <div className="relative overflow-hidden rounded-[2rem] border-4 border-white shadow-[0_18px_40px_-16px_rgba(60,40,20,.28)]">
-            <img
-              src="/assets/backgrounds/village-fullscreen.png"
+            <Image
+              src="/assets/backgrounds/village-fullscreen.webp"
+              width={720}
+              height={480}
               className="h-full w-full object-cover"
               alt="Tu aldea"
+              quality={82}
             />
           </div>
-          <img
-            src="/assets/buildings/town-hall.png"
-            className="animate-floaty2 absolute -right-4 -top-8 h-28 w-auto drop-shadow-xl sm:h-36"
-            alt=""
-          />
           <div className="absolute -bottom-5 left-6 flex items-center gap-2.5 rounded-2xl border border-[#f6ebdb] bg-white px-4 py-2.5 shadow-[0_10px_26px_-14px_rgba(60,40,20,.3)]">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-lg">🏗️</span>
             <div>

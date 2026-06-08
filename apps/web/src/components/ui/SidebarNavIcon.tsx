@@ -3,13 +3,13 @@
 type SidebarNavIconId = "summary" | "village" | "buildings" | "army" | "research" | "map" | "quests" | "mail";
 
 const ICON_PATH: Record<SidebarNavIconId, string> = {
-  summary: "/assets/ui/nav-icons/summary.png",
-  village: "/assets/ui/nav-icons/village.png",
-  buildings: "/assets/ui/nav-icons/buildings.png",
-  army: "/assets/ui/nav-icons/army.png",
-  research: "/assets/ui/nav-icons/research.png",
-  map: "/assets/ui/nav-icons/map.png",
-  quests: "/assets/ui/nav-icons/quests.png",
+  summary: "/assets/ui/nav-icons/summary.webp",
+  village: "/assets/ui/nav-icons/village.webp",
+  buildings: "/assets/ui/nav-icons/buildings.webp",
+  army: "/assets/ui/nav-icons/army.webp",
+  research: "/assets/ui/nav-icons/research.webp",
+  map: "/assets/ui/nav-icons/map.webp",
+  quests: "/assets/ui/nav-icons/quests.webp",
   mail: "/assets/ui/sidebar/mail-seal.png",
 };
 

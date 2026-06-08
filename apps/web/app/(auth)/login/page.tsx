@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMatecitoAuth } from "@/hooks/useMatecitoAuth";
 import { useI18n } from "@/i18n";
 import Link from "next/link";
+import Image from "next/image";
 import { isEmailOrUsername } from "@/lib/authValidation";
 
 const REMEMBER_IDENTIFIER_KEY = "etheria_remember_identifier";
@@ -79,15 +80,18 @@ export default function LoginPage() {
     <div className="flex min-h-screen bg-white">
       {/* Left: imagery */}
       <div className="relative hidden w-1/2 overflow-hidden lg:block">
-        <img
-          src="/assets/landing/conquest-of-etheria/hero-conquest-of-etheria.png"
+        <Image
+          src="/assets/landing/conquest-of-etheria/hero-conquest-of-etheria.webp"
           alt=""
-          className="absolute inset-0 h-full w-full object-cover"
+          fill
+          className="object-cover"
+          priority
+          quality={82}
         />
         <div className="absolute inset-0 bg-gradient-to-tr from-stone-950/85 via-stone-900/55 to-transparent" />
         <div className="absolute inset-0 flex flex-col justify-between p-12">
           <Link href="/" className="flex items-center gap-3">
-            <img src="/assets/landing/conquest-of-etheria/logo-conquest-of-etheria.png" className="h-14 w-auto" alt="Etheria" />
+            <Image src="/assets/landing/conquest-of-etheria/logo-conquest-of-etheria.webp" width={112} height={56} className="h-14 w-auto" alt="Etheria" quality={82} />
           </Link>
           <div className="max-w-md">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-4 py-1.5 backdrop-blur-sm">
@@ -117,7 +121,7 @@ export default function LoginPage() {
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
           <Link href="/" className="mb-8 flex items-center gap-3 lg:hidden">
-            <img src="/assets/landing/conquest-of-etheria/logo-conquest-of-etheria.png" className="h-12 w-auto" alt="Etheria" />
+            <Image src="/assets/landing/conquest-of-etheria/logo-conquest-of-etheria.webp" width={96} height={48} className="h-12 w-auto" alt="Etheria" quality={82} />
           </Link>
 
           {DEV_AUTO_LOGIN && (
