@@ -3,6 +3,7 @@ import { LOCAL_WORLD_ZONE_CONFIGS, resolveWorldZone } from './worldZoneConfigDat
 import { getSeasonState } from './seasons.js';
 import { getWorldConfig } from './worldConfig.js';
 import { LOCAL_SEASON_CONFIG } from './seasonConfigData.js';
+import { getActiveEventEffect } from '../routes/events.js';
 
 export interface BaseProduction {
   goldPerHour: number;
@@ -94,7 +95,19 @@ export async function calculateEffectiveProduction(
     foodPerHour: rawProduction.foodPerHour * zoneModifier.food,
   };
 
-  // Step 5: Floor once at the end and ensure non-negative
+  // Step 5: Apply daily event production multiplier
+  const eventEffect = getActiveEventEffect();
+  if (eventEffect?.type === 'PRODUCTION_MULTIPLIER') {
+    const m = eventEffect.value;
+    rawProduction = {
+      goldPerHour: rawProduction.goldPerHour * m,
+      woodPerHour: rawProduction.woodPerHour * m,
+      stonePerHour: rawProduction.stonePerHour * m,
+      foodPerHour: rawProduction.foodPerHour * m,
+    };
+  }
+
+  // Step 6: Floor once at the end and ensure non-negative
   production = {
     goldPerHour: Math.max(0, Math.floor(rawProduction.goldPerHour)),
     woodPerHour: Math.max(0, Math.floor(rawProduction.woodPerHour)),

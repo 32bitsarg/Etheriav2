@@ -222,7 +222,7 @@ export function VillageView() {
         <div className="flex items-center gap-2 shrink-0">
           <SeasonHUD />
           <ActiveBuffsPanel />
-          {/* <DailyEventBanner /> */}
+          <DailyEventBanner />
         </div>
         <span className="flex-1 text-center text-sm font-semibold text-stone-700 tracking-wide">
           {cityName || t("play.sidebar.village")}

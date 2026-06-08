@@ -27,6 +27,7 @@ import {
 import { getCityQueueConfig, type CityQueueKind } from "./queueConfigData.js";
 import { advanceQuest } from "./quests.js";
 import { createGameReport } from "./reports.js";
+import { getActiveEventEffect } from "../routes/events.js";
 
 const genId = () => crypto.randomUUID();
 
@@ -332,7 +333,9 @@ export async function trainUnitsAction(input: {
     throw new CityActionError("Not enough resources", 400, { required: cost, available: city.resources, blockedBy: "resources" });
   }
 
-  const trainingTime = getTrainingTime(input.unitType, input.count);
+  const eventEffect = getActiveEventEffect();
+  const trainSpeedMult = eventEffect?.type === 'TRAINING_SPEED_MULTIPLIER' ? eventEffect.value : 1;
+  const trainingTime = Math.ceil(getTrainingTime(input.unitType, input.count) / trainSpeedMult);
   const now = new Date();
   const nowIso = now.toISOString();
   const schedule = scheduleSequentialQueue("training", activeTrainingQueues, trainingTime, now);
@@ -399,7 +402,9 @@ export async function startResearchAction(input: {
   if (targetLevel > cfg.maxLevel) throw new CityActionError("Max level reached", 400);
 
   const cost = getResearchCost(input.techId as any, targetLevel);
-  const researchTime = getResearchTime(input.techId as any, targetLevel);
+  const researchEventEffect = getActiveEventEffect();
+  const researchSpeedMult = researchEventEffect?.type === 'RESEARCH_SPEED_MULTIPLIER' ? researchEventEffect.value : 1;
+  const researchTime = Math.ceil(getResearchTime(input.techId as any, targetLevel) / researchSpeedMult);
   if (!canAfford(city.resources, cost)) {
     throw new CityActionError("Not enough resources", 400, { required: cost, available: city.resources, blockedBy: "resources" });
   }

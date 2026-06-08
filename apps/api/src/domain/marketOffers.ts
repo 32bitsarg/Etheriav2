@@ -3,6 +3,7 @@ import { db, COLLECTIONS } from "../infrastructure/matecito.js";
 import { mergeRecordByLogicalId, mergeRecordBySelector } from "../infrastructure/matecitoRecord.js";
 import { createGameReport } from "./reports.js";
 import { advanceQuest } from "./quests.js";
+import { getActiveEventEffect } from "../routes/events.js";
 
 const genId = () => crypto.randomUUID();
 const MARKET_FEE_RATE = Number(process.env.MARKET_OFFER_FEE_RATE ?? 0.05);
@@ -38,7 +39,9 @@ export async function createMarketOffer(userId: string, input: CreateMarketOffer
   if (!city || city.userId !== userId) return { error: "City not found", status: 404 } as const;
   if (!(await hasMarket(input.cityId))) return { error: "Market required", status: 403 } as const;
   const current = resourcesOf(city);
-  const fee = Math.ceil(input.giveAmount * MARKET_FEE_RATE);
+  const marketEventEffect = getActiveEventEffect();
+  const feeMult = marketEventEffect?.type === 'MARKET_FEE_MULTIPLIER' ? marketEventEffect.value : 1;
+  const fee = Math.ceil(input.giveAmount * MARKET_FEE_RATE * feeMult);
   const required = input.giveAmount + fee;
   if ((current as any)[input.giveResource] < required) return { error: "Not enough resources", status: 400 } as const;
 

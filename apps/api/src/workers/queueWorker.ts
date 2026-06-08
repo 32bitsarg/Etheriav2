@@ -29,6 +29,7 @@ import {
 } from '../domain/winterPressure.js';
 import type { UnitType, Season } from '@etheria/shared';
 import { finishWorkerMetric, startWorkerMetric } from '../infrastructure/perfMetrics.js';
+import { getActiveEventEffect } from '../routes/events.js';
 
 let workerRunning = false;
 let workerTickRunning = false;
@@ -486,7 +487,12 @@ async function resolveAndProcessBattle(battle: any) {
     food: defenderCityRes.data?.food ?? 0,
     gems: 0,
   };
-  const loot = calculateLoot(result.attackerSurvivors, defenderResources);
+  const baseLoot = calculateLoot(result.attackerSurvivors, defenderResources);
+  const pvpEventEffect = getActiveEventEffect();
+  const pvpLootMult = pvpEventEffect?.type === 'PVP_LOOT_MULTIPLIER' ? pvpEventEffect.value : 1;
+  const loot = pvpLootMult !== 1
+    ? { gold: Math.floor(baseLoot.gold * pvpLootMult), wood: Math.floor(baseLoot.wood * pvpLootMult), stone: Math.floor(baseLoot.stone * pvpLootMult), food: Math.floor(baseLoot.food * pvpLootMult), gems: baseLoot.gems }
+    : baseLoot;
 
   // Calculate return travel time (same distance, same slowest unit speed)
   const speeds = Object.entries(result.attackerSurvivors)
@@ -777,6 +783,11 @@ async function resolveAndProcessBarbarianBattle(battle: any) {
       const defenderPower = army.power;
       const overkillRatio = defenderPower > 0 ? attackerPower / defenderPower : 1;
       loot = calculateActualReward(camp.archetype, camp.level, season, overkillRatio);
+      const barbEventEffect = getActiveEventEffect();
+      if (barbEventEffect?.type === 'BARBARIAN_LOOT_MULTIPLIER') {
+        const m = barbEventEffect.value;
+        loot = { gold: Math.floor(loot.gold * m), wood: Math.floor(loot.wood * m), stone: Math.floor(loot.stone * m), food: Math.floor(loot.food * m) };
+      }
     }
   }
 
