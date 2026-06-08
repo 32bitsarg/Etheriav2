@@ -67,23 +67,17 @@ export function HeroSection() {
           Sin descargas · Jugá en el navegador · Tu aldea se crea sola
         </p>
 
-        {/* Stats */}
-        <div className="mx-auto mt-12 flex max-w-lg items-center justify-center gap-3 sm:gap-5">
-          {[
-            { value: "50K+", label: "Jugadores" },
-            { value: "12K+", label: "Batallas/día" },
-            { value: "4", label: "Temporadas" },
-          ].map((s) => (
-            <div key={s.label} className="flex-1 rounded-2xl border border-white/25 bg-white/12 px-4 py-3 backdrop-blur-md">
-              <div
-                className="text-2xl font-bold text-white"
-                style={{ fontFamily: "var(--font-fredoka, Fredoka, system-ui, sans-serif)" }}
-              >
-                {s.value}
-              </div>
-              <div className="text-[11px] font-medium uppercase tracking-wide text-white/70">{s.label}</div>
+        {/* Early access badge */}
+        <div className="mx-auto mt-10 max-w-lg rounded-2xl border border-amber-300/30 bg-amber-500/10 px-5 py-4 backdrop-blur-md text-left">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 text-lg">🛠️</span>
+            <div>
+              <p className="text-[13px] font-semibold text-amber-200 uppercase tracking-wide">Acceso anticipado</p>
+              <p className="mt-1 text-[13px] leading-relaxed text-white/80">
+                El juego está en desarrollo activo. La HUD, las mecánicas y el balance pueden cambiar entre versiones. Tu feedback ayuda a darle forma al mundo.
+              </p>
             </div>
-          ))}
+          </div>
         </div>
       </div>
     </header>

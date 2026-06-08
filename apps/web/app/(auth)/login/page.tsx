@@ -93,7 +93,7 @@ export default function LoginPage() {
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-4 py-1.5 backdrop-blur-sm">
               <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
               <span className="text-xs font-semibold uppercase tracking-[.05em] text-amber-200">
-                Temporada activa · El Eco de las Batallas
+                En desarrollo activo · v0.2.4
               </span>
             </div>
             <h2 className="text-4xl font-bold leading-tight text-white" style={{ letterSpacing: "-0.03em" }}>
@@ -102,13 +102,11 @@ export default function LoginPage() {
             <p className="mt-3 text-[15px] leading-relaxed text-stone-300">
               Entrá para gestionar tu economía, mover ejércitos por el mapa mundial y coordinar con tu alianza.
             </p>
-            <div className="mt-8 flex items-center gap-8">
-              {[{ v: "50K+", l: "Jugadores" }, { v: "12K+", l: "Batallas / día" }, { v: "4", l: "Temporadas" }].map((s) => (
-                <div key={s.l}>
-                  <div className="text-2xl font-bold text-white" style={{ letterSpacing: "-0.03em" }}>{s.v}</div>
-                  <div className="text-[11px] uppercase tracking-wider text-stone-400">{s.l}</div>
-                </div>
-              ))}
+            <div className="mt-8 rounded-xl border border-amber-400/20 bg-amber-500/10 px-4 py-3">
+              <p className="text-[12px] font-semibold uppercase tracking-wide text-amber-300">🛠️ Acceso anticipado</p>
+              <p className="mt-1 text-[13px] leading-relaxed text-stone-300">
+                El juego está en desarrollo. La HUD y las mecánicas pueden cambiar entre versiones.
+              </p>
             </div>
           </div>
         </div>
