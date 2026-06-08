@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 
 const DISPLAY_FONT = "var(--font-fredoka, Fredoka, system-ui, sans-serif)";
@@ -8,20 +9,25 @@ export function CtaSection() {
   return (
     <section className="px-6 py-16" style={{ background: "#fdf7ee" }}>
       <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[2.5rem] shadow-[0_18px_40px_-16px_rgba(60,40,20,.28)]">
-        <img
-          src="/assets/backgrounds/world-map.png"
-          className="absolute inset-0 h-full w-full object-cover"
+        <Image
+          src="/assets/backgrounds/world-map.webp"
+          fill
+          className="object-cover"
           alt=""
+          quality={75}
         />
         <div
           className="absolute inset-0"
           style={{ background: "linear-gradient(120deg,rgba(44,33,24,.85),rgba(44,33,24,.55))" }}
         />
         <div className="relative px-8 py-16 text-center sm:py-20">
-          <img
-            src="/assets/landing/conquest-of-etheria/logo-conquest-of-etheria.png"
+          <Image
+            src="/assets/landing/conquest-of-etheria/logo-conquest-of-etheria.webp"
+            width={160}
+            height={80}
             className="mx-auto h-20 w-auto drop-shadow-xl"
             alt=""
+            quality={82}
           />
           <h2 className="mt-5 text-4xl font-bold text-white sm:text-5xl" style={{ fontFamily: DISPLAY_FONT }}>
             El mundo de Etheria te espera

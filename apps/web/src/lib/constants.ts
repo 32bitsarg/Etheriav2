@@ -108,12 +108,12 @@ export const UNIT_INFO: Record<UnitType, { nameKey: string; icon: string; shortN
 };
 
 export const UNIT_IMAGE_PATHS: Partial<Record<UnitType, string>> = {
-  WARRIOR: "/assets/units/warrior.png",
-  ARCHER: "/assets/units/archer.png",
-  CAVALRY: "/assets/units/cavalry.png",
-  SPY: "/assets/units/spy.png",
-  PIKEMAN: "/assets/units/warrior.png",
-  CROSSBOWMAN: "/assets/units/archer.png",
+  WARRIOR: "/assets/units/warrior.webp",
+  ARCHER: "/assets/units/archer.webp",
+  CAVALRY: "/assets/units/cavalry.webp",
+  SPY: "/assets/units/spy.webp",
+  PIKEMAN: "/assets/units/warrior.webp",
+  CROSSBOWMAN: "/assets/units/archer.webp",
 };
 
 // ─── Resource Display Info ───
@@ -144,18 +144,18 @@ export const BUILDING_ATLAS_MAP: Record<string, [string, number] | null> = {
 };
 
 export const BUILDING_IMAGE_PATHS: Partial<Record<BuildingType, string>> = {
-  TOWN_HALL: "/assets/buildings/generated/town-hall.png",
-  GOLD_MINE: "/assets/buildings/generated/gold-mine.png",
-  LUMBER_MILL: "/assets/buildings/generated/lumber-mill.png",
-  QUARRY: "/assets/buildings/generated/quarry.png",
-  FARM: "/assets/buildings/generated/farm.png",
-  BARRACKS: "/assets/buildings/generated/barracks.png",
-  STABLE: "/assets/buildings/generated/stable.png",
-  STORAGE: "/assets/buildings/generated/storage.png",
-  TOWER: "/assets/buildings/generated/tower.png",
-  MARKET: "/assets/buildings/generated/market.png",
-  ALLIANCE_CENTER: "/assets/buildings/generated/alliance-center.png",
-  LIBRARY: "/assets/buildings/generated/library.png",
+  TOWN_HALL: "/assets/buildings/generated/town-hall.webp",
+  GOLD_MINE: "/assets/buildings/generated/gold-mine.webp",
+  LUMBER_MILL: "/assets/buildings/generated/lumber-mill.webp",
+  QUARRY: "/assets/buildings/generated/quarry.webp",
+  FARM: "/assets/buildings/generated/farm.webp",
+  BARRACKS: "/assets/buildings/generated/barracks.webp",
+  STABLE: "/assets/buildings/generated/stable.webp",
+  STORAGE: "/assets/buildings/generated/storage.webp",
+  TOWER: "/assets/buildings/generated/tower.webp",
+  MARKET: "/assets/buildings/generated/market.webp",
+  ALLIANCE_CENTER: "/assets/buildings/generated/alliance-center.webp",
+  LIBRARY: "/assets/buildings/generated/library.webp",
 };
 
 export const MAX_BUILDING_LEVEL = 25;
@@ -188,7 +188,7 @@ export function getBuildingVisualTier(level: number): typeof BUILDING_VISUAL_TIE
 export function getBuildingTierImagePath(type: BuildingType, level: number): string {
   const slug = BUILDING_ASSET_SLUGS[type];
   const tier = getBuildingVisualTier(level);
-  return `/assets/buildings/generated/${slug}/${slug}-lvl-${tier}.png`;
+  return `/assets/buildings/generated/${slug}/${slug}-lvl-${tier}.webp`;
 }
 
 export function getBuildingImagePath(type: BuildingType, level: number = 1): string {
@@ -345,28 +345,28 @@ export const UNIT_STATS: Record<UnitType, { attack: number; defense: number; hp:
 // ─── Tech Display Info ───
 
 export const TECH_ICON_PATHS: Record<string, string> = {
-  COLLECTION_EFFICIENT_I: "/assets/icons/techs/collection-efficient-i.png",
-  COLLECTION_EFFICIENT_II: "/assets/icons/techs/collection-efficient-ii.png",
-  COLLECTION_EFFICIENT_III: "/assets/icons/techs/collection-efficient-iii.png",
-  ADVANCED_STORAGE: "/assets/icons/techs/advanced-storage.png",
-  WARTIME_ECONOMY: "/assets/icons/techs/wartime-economy.png",
-  TRADE: "/assets/icons/techs/trade.png",
-  WEAPON_FORGE_I: "/assets/icons/techs/weapon-forge-i.png",
-  WEAPON_FORGE_II: "/assets/icons/techs/weapon-forge-ii.png",
-  REINFORCED_BOWS: "/assets/icons/techs/reinforced-bows.png",
-  HORSE_BREEDING: "/assets/icons/techs/horse-breeding.png",
-  HEAVY_CAVALRY: "/assets/icons/techs/heavy-cavalry.png",
-  SIEGE_ENGINEERING: "/assets/icons/techs/siege-engineering.png",
-  BALLISTICS: "/assets/icons/techs/ballistics.png",
-  GUERRILLA_TACTICS: "/assets/icons/techs/guerrilla-tactics.png",
-  MASONRY: "/assets/icons/techs/masonry.png",
-  STONE_WALLS: "/assets/icons/techs/stone-walls.png",
-  WATCHTOWER: "/assets/icons/techs/watchtower.png",
-  POISONED_ARROWS: "/assets/icons/techs/poisoned-arrows.png",
-  FORTIFICATIONS: "/assets/icons/techs/fortifications.png",
-  SPY_NETWORK: "/assets/icons/techs/spy-network.png",
-  SPEC_SIEGE: "/assets/icons/techs/spec-siege.png",
-  SPEC_CAVALRY: "/assets/icons/techs/spec-cavalry.png",
+  COLLECTION_EFFICIENT_I: "/assets/icons/techs/collection-efficient-i.webp",
+  COLLECTION_EFFICIENT_II: "/assets/icons/techs/collection-efficient-ii.webp",
+  COLLECTION_EFFICIENT_III: "/assets/icons/techs/collection-efficient-iii.webp",
+  ADVANCED_STORAGE: "/assets/icons/techs/advanced-storage.webp",
+  WARTIME_ECONOMY: "/assets/icons/techs/wartime-economy.webp",
+  TRADE: "/assets/icons/techs/trade.webp",
+  WEAPON_FORGE_I: "/assets/icons/techs/weapon-forge-i.webp",
+  WEAPON_FORGE_II: "/assets/icons/techs/weapon-forge-ii.webp",
+  REINFORCED_BOWS: "/assets/icons/techs/reinforced-bows.webp",
+  HORSE_BREEDING: "/assets/icons/techs/horse-breeding.webp",
+  HEAVY_CAVALRY: "/assets/icons/techs/heavy-cavalry.webp",
+  SIEGE_ENGINEERING: "/assets/icons/techs/siege-engineering.webp",
+  BALLISTICS: "/assets/icons/techs/ballistics.webp",
+  GUERRILLA_TACTICS: "/assets/icons/techs/guerrilla-tactics.webp",
+  MASONRY: "/assets/icons/techs/masonry.webp",
+  STONE_WALLS: "/assets/icons/techs/stone-walls.webp",
+  WATCHTOWER: "/assets/icons/techs/watchtower.webp",
+  POISONED_ARROWS: "/assets/icons/techs/poisoned-arrows.webp",
+  FORTIFICATIONS: "/assets/icons/techs/fortifications.webp",
+  SPY_NETWORK: "/assets/icons/techs/spy-network.webp",
+  SPEC_SIEGE: "/assets/icons/techs/spec-siege.webp",
+  SPEC_CAVALRY: "/assets/icons/techs/spec-cavalry.webp",
 };
 
 export const TECH_INFO: Record<string, { nameKey: string; icon: string; iconPath?: string; descriptionKey: string; category: "ECONOMY" | "MILITARY" | "DEFENSE"; baseCost: { gold: number; wood?: number; stone?: number; food?: number }; timeSeconds: number }> = {

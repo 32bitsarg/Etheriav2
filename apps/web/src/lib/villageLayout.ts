@@ -33,7 +33,7 @@ export interface VillageLayoutData {
 
 const DEFAULT_LAYOUT: VillageLayoutData = {
   version: 1,
-  backgroundAssetPath: "/assets/backgrounds/village-fullscreen.png",
+  backgroundAssetPath: "/assets/backgrounds/village-fullscreen.webp",
   referenceWidth: 1672,
   referenceHeight: 941,
   anchors: {},

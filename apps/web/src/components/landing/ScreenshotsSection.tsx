@@ -24,7 +24,7 @@ export function ScreenshotsSection() {
   return (
     <section id="screenshots" className="relative overflow-hidden px-6 py-20">
       {/* Thematic background */}
-      <div className="absolute inset-0 bg-[url('/assets/backgrounds/world-map-tile.png')] opacity-[0.03]" />
+      <div className="absolute inset-0 bg-[url('/assets/backgrounds/world-map-tile.webp')] opacity-[0.03]" />
       <div className="absolute inset-0 bg-gradient-to-b from-white via-stone-50/30 to-white" />
 
       <div className="relative mx-auto max-w-6xl">

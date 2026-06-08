@@ -67,7 +67,7 @@ function VillageLayoutEditorContent() {
 
   const layout = draft ?? data ?? {
     version: 1,
-    backgroundAssetPath: "/assets/backgrounds/village-fullscreen.png",
+    backgroundAssetPath: "/assets/backgrounds/village-fullscreen.webp",
     referenceWidth: 1672,
     referenceHeight: 941,
     anchors: {},

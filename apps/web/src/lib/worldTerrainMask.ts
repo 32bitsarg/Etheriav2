@@ -45,7 +45,7 @@ export const TERRAIN_KINDS: TerrainKind[] = ["PLAINS", "FOREST", "MOUNTAIN", "WA
 
 export const DEFAULT_WORLD_TERRAIN_MASK: WorldTerrainMaskData = {
   version: 1,
-  mapAssetPath: "/assets/backgrounds/world-map-terrain-v2.png",
+  mapAssetPath: "/assets/backgrounds/world-map-terrain-v2.webp",
   columns: 72,
   rows: 48,
   cells: Array.from({ length: 72 * 48 }, () => "PLAINS" as TerrainKind),

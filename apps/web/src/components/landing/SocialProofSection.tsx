@@ -15,7 +15,7 @@ export function SocialProofSection() {
   return (
     <section className="relative overflow-hidden px-6 py-20">
       {/* Thematic background */}
-      <div className="absolute inset-0 bg-[url('/assets/backgrounds/world-map-ground.png')] bg-cover bg-center opacity-[0.03]" />
+      <div className="absolute inset-0 bg-[url('/assets/backgrounds/world-map-ground.webp')] bg-cover bg-center opacity-[0.03]" />
       <div className="absolute inset-0 bg-gradient-to-r from-amber-50/40 via-white to-amber-50/40" />
 
       <div className="relative mx-auto max-w-4xl">

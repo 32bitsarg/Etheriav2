@@ -29,7 +29,7 @@ type VillagePayload = {
   editor?: VillageLayoutData["editor"];
 };
 
-const DEFAULT_VILLAGE_BG = "/assets/backgrounds/village-fullscreen.png";
+const DEFAULT_VILLAGE_BG = "/assets/backgrounds/village-fullscreen.webp";
 const DEFAULT_BG_KEY = "village-bg:default";
 const VILLAGE_BASE_SCALE = 1.34;
 const VILLAGE_GAMEPLAY_ZOOM = 0.98;
