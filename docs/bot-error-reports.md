@@ -789,3 +789,91 @@ Invalid value for argument `unitType`. Expected UnitType.
     at async Timeout._onTimeout (/home/sexs/programacion/etheria/apps/api/src/workers/botWorker.ts:24:7)
 ```
 <!-- BOT_ERROR_REPORT_END -->
+
+<!-- BOT_ERROR_REPORT_START -->
+## Bot Error - 2026-06-09T14:51:44.895Z
+
+- Bot ID: `d43625d1-e589-431c-a7a5-bfd82caa8e30`
+- City ID: `5799eed9-b39f-413c-a511-c6f094da8388`
+- Action: `TRAIN_UNITS`
+- Status: `UNEXPECTED_ERROR`
+- Error kind: `unexpected`
+- Message: 
+Invalid `model.create()` invocation in
+/home/sexs/programacion/etheria/apps/api/src/infrastructure/postgresCompat.ts:180:29
+
+  177 
+  178 async insert(collection: string, data: Record<string, any>) {
+  179   const model = modelFor(collection);
+→ 180   const row = await model.create({
+          data: {
+            id: "1897dbc3-ddab-4f91-b0f7-48a064f0ab63",
+            cityId: "5799eed9-b39f-413c-a511-c6f094da8388",
+            unitType: "PIKEMAN",
+                      ~~~~~~~~~
+            count: 2,
+            startedAt: new Date("2026-06-09T14:51:44.830Z"),
+            completesAt: new Date("2026-06-09T14:53:24.830Z"),
+            isComplete: false
+          }
+        })
+
+Invalid value for argument `unitType`. Expected UnitType.
+- Reason: MILITARIST train PIKEMAN (balance)
+
+### How To Recreate
+
+1. Use the same database state or restore a dump from around the timestamp above.
+2. Ensure `DB_PROVIDER="postgres"` and the API is running with bots enabled.
+3. Inspect bot `d43625d1-e589-431c-a7a5-bfd82caa8e30` and city `5799eed9-b39f-413c-a511-c6f094da8388` in Postgres.
+4. Re-run the bot decision for action `TRAIN_UNITS` with the payload below.
+5. If the same action fails through the HTTP route or shared action service, treat it as a gameplay/backend bug.
+
+### Payload
+
+```json
+{
+  "decision": {
+    "unitType": "PIKEMAN",
+    "count": 2
+  },
+  "details": {}
+}
+```
+
+### Stack
+
+```text
+PrismaClientValidationError: 
+Invalid `model.create()` invocation in
+/home/sexs/programacion/etheria/apps/api/src/infrastructure/postgresCompat.ts:180:29
+
+  177 
+  178 async insert(collection: string, data: Record<string, any>) {
+  179   const model = modelFor(collection);
+→ 180   const row = await model.create({
+          data: {
+            id: "1897dbc3-ddab-4f91-b0f7-48a064f0ab63",
+            cityId: "5799eed9-b39f-413c-a511-c6f094da8388",
+            unitType: "PIKEMAN",
+                      ~~~~~~~~~
+            count: 2,
+            startedAt: new Date("2026-06-09T14:51:44.830Z"),
+            completesAt: new Date("2026-06-09T14:53:24.830Z"),
+            isComplete: false
+          }
+        })
+
+Invalid value for argument `unitType`. Expected UnitType.
+    at throwValidationException (/home/sexs/programacion/etheria/node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/core/errorRendering/throwValidationException.ts:45:9)
+    at ei.handleRequestError (/home/sexs/programacion/etheria/node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:202:7)
+    at ei.handleAndLogRequestError (/home/sexs/programacion/etheria/node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+    at ei.request (/home/sexs/programacion/etheria/node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+    at async a (/home/sexs/programacion/etheria/node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+    at async Object.insert (/home/sexs/programacion/etheria/apps/api/src/infrastructure/postgresCompat.ts:180:17)
+    at async trainUnitsAction (/home/sexs/programacion/etheria/apps/api/src/domain/cityActions.ts:353:3)
+    at async processDueBots (/home/sexs/programacion/etheria/apps/api/src/domain/botService.ts:461:22)
+    at async processBotWorkerTick (/home/sexs/programacion/etheria/apps/api/src/workers/botWorker.ts:42:20)
+    at async Timeout._onTimeout (/home/sexs/programacion/etheria/apps/api/src/workers/botWorker.ts:24:7)
+```
+<!-- BOT_ERROR_REPORT_END -->

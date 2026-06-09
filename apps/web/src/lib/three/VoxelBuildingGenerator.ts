@@ -4,7 +4,7 @@ import { BUILDING_MATERIALS, type MaterialId } from "./BuildingMaterials";
 import { getRecipe, getRecipeGridSize } from "./BuildingRecipes";
 import { buildVoxelMesh } from "./VoxelMeshBuilder";
 
-const VOXEL_SIZE = 0.25;
+const VOXEL_SIZE = 0.35;
 const buildingCache = new Map<string, THREE.Group>();
 
 function getVisualTier(level: number): number {

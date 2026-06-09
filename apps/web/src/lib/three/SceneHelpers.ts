@@ -2,18 +2,22 @@ import * as THREE from "three";
 
 export function createScene(): THREE.Scene {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color("#0a110e");
+  scene.background = new THREE.Color("#1a2a20");
 
-  const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+  const ambient = new THREE.AmbientLight(0xffffff, 0.35);
   scene.add(ambient);
 
-  const sun = new THREE.DirectionalLight(0xffeedd, 1.0);
-  sun.position.set(10, 20, 5);
+  const sun = new THREE.DirectionalLight(0xffeedd, 1.4);
+  sun.position.set(15, 12, 10);
   scene.add(sun);
 
-  const bounce = new THREE.DirectionalLight(0xaaccff, 0.3);
-  bounce.position.set(-5, 3, -5);
-  scene.add(bounce);
+  const fill = new THREE.DirectionalLight(0xaaccff, 0.25);
+  fill.position.set(-8, 4, -6);
+  scene.add(fill);
+
+  const rim = new THREE.DirectionalLight(0xffffff, 0.2);
+  rim.position.set(0, 2, -10);
+  scene.add(rim);
 
   return scene;
 }

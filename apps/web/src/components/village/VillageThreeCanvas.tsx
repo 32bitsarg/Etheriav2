@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import type { BuildingType } from "@etheria/shared";
 import type * as THREE from "three";
 import { createIsometricCamera, updateIsoCameraZoom } from "@/lib/three/IsometricCamera";
-import { createScene, createGround, tileToWorld } from "@/lib/three/SceneHelpers";
+import { createScene, tileToWorld } from "@/lib/three/SceneHelpers";
 import { getBuildingGroup, getBuildingWorldSize, disposeBuildingCache } from "@/lib/three/VoxelBuildingGenerator";
 import type { VillageLayoutData } from "@/lib/villageLayout";
 
@@ -78,11 +78,19 @@ export function VillageThreeCanvas({
       if (destroyed) return;
 
       const aspect = size.w / Math.max(1, size.h);
-      const camera = createIsometricCamera(aspect, { frustumSize: 12, near: 0.1, far: 200 });
-      camera.position.set(8, 8, 8);
+      const frustum = 5.5;
+      const camera = createIsometricCamera(aspect, { frustumSize: frustum, near: 0.1, far: 200 });
+      camera.position.set(5, 6, 5);
+      camera.lookAt(0, 0, -2);
       const scene = createScene();
-      scene.background = new THREE.Color("#0a110e");
-      const ground = createGround(ISO_MAP_SIZE * 0.5, 0x1a3320);
+      scene.background = new THREE.Color("#1a2a20");
+      // Ground plane at Y=0
+      const groundGeo = new THREE.PlaneGeometry(ISO_MAP_SIZE * 0.7, ISO_MAP_SIZE * 0.7);
+      const groundMat = new THREE.MeshLambertMaterial({ color: 0x1a3320 });
+      const ground = new THREE.Mesh(groundGeo, groundMat);
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.y = -0.05;
+      ground.receiveShadow = true;
       scene.add(ground);
 
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
