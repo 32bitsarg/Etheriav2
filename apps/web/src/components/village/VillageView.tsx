@@ -7,6 +7,24 @@ import { useAudioStore } from "@/stores/audioStore";
 import { BUILDING_INFO, BUILDING_NAMES, BUILDING_SIZES, MAX_BUILDING_LEVEL, getUpgradeCost, getUpgradeTimeSeconds, UNIT_INFO, UNIT_IMAGE_PATHS, UNIT_TRAINING_COST, UNIT_STATS, applyTrainingCostReduction, getTrainingCost, getTrainingTimeSeconds, TECH_INFO, getTechCost, getTechTimeSeconds, getTechIconPath, formatTime, formatNumber, getBuildingDescriptionKey } from "@/lib/constants";
 import { BuildingSprite } from "@/components/village/BuildingIcon";
 import { VillageHTMLCanvas } from "@/components/village/VillageHTMLCanvas";
+
+const THREE_VILLAGE_KEY = "etheria_3d_village";
+const THREE_MAP_KEY = "etheria_3d_map";
+
+function useThreeToggle(key: string) {
+  const [enabled, setEnabled] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(key) === "true";
+  });
+  const toggle = useCallback(() => {
+    setEnabled((v) => {
+      const next = !v;
+      localStorage.setItem(key, String(next));
+      return next;
+    });
+  }, [key]);
+  return { enabled, toggle };
+}
 import { ResourceIconSVG } from "@/components/village/ResourceIconSVG";
 import { useAcceptMarketOffer, useActiveBattles, useAllCities, useAllianceMembership, useAttackCity, useBarbarianAttackAlerts, useBattleReports, useBreakTreaty, useCancelBuildQueue, useCancelResearchQueue, useCancelTrainingQueue, useCityRanking, useClaimQuest, useContributeAllianceObjective, useCreateAlliance, useCreateMarketOffer, useDisbandAlliance, useGameReports, useJoinAlliance, useKickAllianceMember, useLeaveAlliance, useMailMessages, useMarkGameReportRead, useMarkMailRead, useMarkMapOpened, useMarkReportRead, useMarketOffers, usePlayerQuests, useProposePeace, useRenameCity, useResearchTech, useScoutTarget, useSendMailMessage, useTechs, useTrainUnits, useTransferAllianceLeadership, useUpdateAlliance, useUpdateAllianceMemberRole, useUpgradeBuilding, useVillageLayout, useWorldMap, useWorldMovements, useWorldSeason } from "@/hooks/useCity";
 import { WorldMapHTMLCanvas } from "@/components/worldmap/WorldMapHTMLCanvas";
@@ -62,6 +80,20 @@ export function VillageView() {
   const [runtimePollingEnabled, setRuntimePollingEnabled] = useState(false);
   const upgradeLockRef = useRef<string | null>(null);
   const shellRef = useRef<HTMLDivElement>(null);
+
+  const use3DVillage = useThreeToggle(THREE_VILLAGE_KEY);
+  const use3DMap = useThreeToggle(THREE_MAP_KEY);
+  const [Village3D, setVillage3D] = useState<any>(null);
+  const [Map3D, setMap3D] = useState<any>(null);
+
+  useEffect(() => {
+    if (use3DVillage.enabled && !Village3D) {
+      import("@/components/village/VillageThreeCanvas").then((m) => setVillage3D(() => m.VillageThreeCanvas));
+    }
+    if (use3DMap.enabled && !Map3D) {
+      import("@/components/worldmap/WorldMap3D").then((m) => setMap3D(() => m.WorldMap3D));
+    }
+  }, [use3DVillage.enabled, use3DMap.enabled, Village3D, Map3D]);
 
   // Prevent wheel events from scrolling page or triggering browser navigation
   useEffect(() => {
@@ -311,6 +343,13 @@ export function VillageView() {
 
           <div className="grepolis-sidebar__divider" />
 
+          <button onClick={use3DVillage.toggle} className="grepolis-nav-item">
+            <span className="grepolis-nav-item__icon-wrap">
+              <span style={{ fontSize: 18 }}>{use3DVillage.enabled ? "🧊" : "🏘️"}</span>
+            </span>
+            <span className="grepolis-nav-item__label">{use3DVillage.enabled ? "3D ON" : "2D"}</span>
+          </button>
+
           <button onClick={() => setIsSettingsOpen(true)} className="grepolis-nav-item">
             <span className="grepolis-nav-item__icon-wrap">
               <span style={{ fontSize: 20 }}>⚙️</span>
@@ -334,6 +373,8 @@ export function VillageView() {
             onRename={() => setIsRenameOpen(true)}
             pendingUpgradeBuildingIds={pendingUpgradeBuildingIds}
             interactionsDisabled={isModalOpen}
+            use3D={use3DVillage.enabled}
+            Village3D={Village3D}
             t={t}
           />
         )}
@@ -674,7 +715,7 @@ function QueueRailItem({ icon, title, subtitle, startedAt, completesAt, cancelLa
   );
 }
 
-function PuebloView({ buildings, selectedBuildingId, onSelectBuilding, cityName, resources, storage, production, onRename, pendingUpgradeBuildingIds, interactionsDisabled, t }: {
+function PuebloView({ buildings, selectedBuildingId, onSelectBuilding, cityName, resources, storage, production, onRename, pendingUpgradeBuildingIds, interactionsDisabled, use3D, Village3D, t }: {
   buildings: any[];
   selectedBuildingId: string | null;
   onSelectBuilding: (id: string) => void;
@@ -685,6 +726,8 @@ function PuebloView({ buildings, selectedBuildingId, onSelectBuilding, cityName,
   onRename: () => void;
   pendingUpgradeBuildingIds: string[];
   interactionsDisabled: boolean;
+  use3D: boolean;
+  Village3D: any;
   t: (key: string) => string;
 }) {
   const { data: layout } = useVillageLayout();
@@ -701,6 +744,20 @@ function PuebloView({ buildings, selectedBuildingId, onSelectBuilding, cityName,
           <h2 className="text-xl font-display font-bold text-etheria-gold">Cargando aldea...</h2>
           <p className="mt-2 text-sm text-etheria-text-muted">Preparando edificios</p>
         </div>
+      </div>
+    );
+  }
+
+  if (use3D && Village3D) {
+    return (
+      <div className="relative h-full overflow-hidden">
+        <Village3D
+          layout={activeLayout}
+          buildings={placedBuildings}
+          selectedBuildingId={selectedBuildingId}
+          onSelectBuilding={onSelectBuilding}
+          interactionsDisabled={interactionsDisabled}
+        />
       </div>
     );
   }
