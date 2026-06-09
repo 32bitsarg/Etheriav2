@@ -2,9 +2,10 @@
 
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { BuildingType } from "@etheria/shared";
+import type * as THREE from "three";
 import { createIsometricCamera, updateIsoCameraZoom } from "@/lib/three/IsometricCamera";
 import { createScene, createGround, tileToWorld } from "@/lib/three/SceneHelpers";
-import { getBuildingMesh } from "@/lib/three/VoxelBuildingGenerator";
+import { getBuildingGroup, getBuildingWorldSize, disposeBuildingCache } from "@/lib/three/VoxelBuildingGenerator";
 import type { VillageLayoutData } from "@/lib/villageLayout";
 
 let THREE_IMPORT: typeof import("three") | null = null;
@@ -42,23 +43,23 @@ export function VillageThreeCanvas({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 900, h: 620 });
-  const sceneRef = useRef<any>(null);
-  const cameraRef = useRef<any>(null);
-  const rendererRef = useRef<any>(null);
-  const buildingObjs = useRef(new Map<string, any>());
-  const camState = useRef({ x: 0, y: 0, zoom: 1 });
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const cameraRef = useRef<THREE.OrthographicCamera | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const buildingGroups = useRef(new Map<string, THREE.Group>());
+  const camState = useRef({ zoom: 1 });
   const pointerState = useRef<{
     startClientX: number; startClientY: number;
-    startCamX: number; startCamY: number;
+    startCamX: number; startCamZ: number;
     pointerId: number; hasPanned: boolean;
   } | null>(null);
-  const raycasterRef = useRef<any>(null);
+  const raycasterRef = useRef<THREE.Raycaster | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const selectionRing = useRef<THREE.Mesh | null>(null);
 
   const calculateSize = useCallback(() => {
     const bounds = containerRef.current?.getBoundingClientRect();
-    if (!bounds) return { w: 900, h: 620 };
-    return { w: Math.floor(bounds.width), h: Math.floor(bounds.height) };
+    return bounds ? { w: Math.floor(bounds.width), h: Math.floor(bounds.height) } : { w: 900, h: 620 };
   }, []);
 
   useLayoutEffect(() => {
@@ -77,15 +78,16 @@ export function VillageThreeCanvas({
       if (destroyed) return;
 
       const aspect = size.w / Math.max(1, size.h);
-      const camera = createIsometricCamera(aspect);
+      const camera = createIsometricCamera(aspect, { frustumSize: 12, near: 0.1, far: 200 });
+      camera.position.set(8, 8, 8);
       const scene = createScene();
-      const ground = createGround(ISO_MAP_SIZE);
+      scene.background = new THREE.Color("#0a110e");
+      const ground = createGround(ISO_MAP_SIZE * 0.5, 0x1a3320);
       scene.add(ground);
 
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setSize(size.w, size.h);
-      renderer.setClearColor("#0a110e");
       renderer.shadowMap.enabled = true;
       containerRef.current!.appendChild(renderer.domElement);
 
@@ -103,45 +105,83 @@ export function VillageThreeCanvas({
       setLoaded(true);
     })();
 
-    return () => { destroyed = true; };
+    return () => {
+      destroyed = true;
+      disposeBuildingCache();
+    };
   }, []);
 
   useEffect(() => {
     if (!loaded || !sceneRef.current) return;
     rendererRef.current?.setSize(size.w, size.h);
-    if (cameraRef.current) {
-      const aspect = size.w / Math.max(1, size.h);
-      updateIsoCameraZoom(cameraRef.current, aspect, camState.current.zoom);
-    }
+    if (cameraRef.current) updateIsoCameraZoom(cameraRef.current, size.w / Math.max(1, size.h), camState.current.zoom);
   }, [size, loaded]);
 
   useEffect(() => {
     if (!loaded || !sceneRef.current) return;
     const scene = sceneRef.current;
 
-    for (const [id, obj] of buildingObjs.current.entries()) {
-      scene.remove(obj);
-      buildingObjs.current.delete(id);
-    }
+    for (const [, group] of buildingGroups.current) scene.remove(group);
+    buildingGroups.current.clear();
+    if (selectionRing.current) scene.remove(selectionRing.current);
 
     for (const building of buildings) {
       const w = tileToWorld(building.positionX, building.positionY, ISO_MAP_SIZE);
-      const mesh = getBuildingMesh(building.type, building.level);
-      mesh.position.set(w.x, 0, w.z);
-      mesh.userData = { id: building.id, type: building.type };
-      scene.add(mesh);
-      buildingObjs.current.set(building.id, mesh);
+      const group = getBuildingGroup(building.type, building.level);
+      group.position.set(w.x, 0, w.z);
+      group.userData = { id: building.id, type: building.type, level: building.level };
+      scene.add(group);
+
+      for (const child of group.children) {
+        (child as THREE.Mesh).userData = { id: building.id, type: building.type };
+      }
+
+      buildingGroups.current.set(building.id, group);
     }
   }, [buildings, loaded]);
 
+  useEffect(() => {
+    if (!loaded) return;
+    if (selectionRing.current && sceneRef.current) sceneRef.current.remove(selectionRing.current);
+    selectionRing.current = null;
+
+    if (!selectedBuildingId) return;
+
+    const group = buildingGroups.current.get(selectedBuildingId);
+    if (!group || !sceneRef.current) return;
+
+    const THREE = THREE_IMPORT;
+    if (!THREE) return;
+
+    const box = new THREE.Box3().setFromObject(group);
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+
+    const size = getBuildingWorldSize(
+      (group.userData?.type ?? "TOWN_HALL") as BuildingType,
+      group.userData?.level ?? 1
+    );
+    const radius = Math.max(size.w, size.d) / 2 + 0.3;
+
+    const ringGeo = new THREE.RingGeometry(radius - 0.05, radius + 0.05, 32);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x2ec7c9, side: THREE.DoubleSide, transparent: true, opacity: 0.6 });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.copy(center);
+    ring.position.y = 0.02;
+    ring.name = "selection-ring";
+    sceneRef.current.add(ring);
+    selectionRing.current = ring;
+  }, [selectedBuildingId, loaded]);
+
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 && e.pointerType !== "touch") return;
+    const cam = cameraRef.current;
     pointerState.current = {
       startClientX: e.clientX, startClientY: e.clientY,
-      startCamX: camState.current.x, startCamY: camState.current.y,
+      startCamX: cam?.position.x ?? 0, startCamZ: cam?.position.z ?? 0,
       pointerId: e.pointerId, hasPanned: false,
     };
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
   }, []);
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -153,22 +193,21 @@ export function VillageThreeCanvas({
     ps.hasPanned = true;
     if (cameraRef.current) {
       const cam = cameraRef.current;
-      const s = 0.008 / camState.current.zoom;
+      const s = 0.015 / camState.current.zoom;
       cam.position.x = ps.startCamX - dx * s * (cam.position.x > 0 ? 1 : -1);
-      cam.position.z = ps.startCamY + dy * s;
+      cam.position.z = ps.startCamZ + dy * s * (cam.position.z > 0 ? 1 : -1);
     }
   }, []);
 
-  const onPointerUp = useCallback(async (e: React.PointerEvent<HTMLDivElement>) => {
-    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+  const onPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (pointerState.current?.hasPanned) { pointerState.current = null; return; }
     pointerState.current = null;
+    if (interactionsDisabled || !onSelectBuilding || !cameraRef.current || !raycasterRef.current) return;
 
-    if (interactionsDisabled || !onSelectBuilding) return;
-
-    const THREE = await getTHREE();
     const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect || !cameraRef.current || !raycasterRef.current || !sceneRef.current) return;
+    if (!rect) return;
+    const THREE = THREE_IMPORT;
+    if (!THREE) return;
 
     const mouse = new THREE.Vector2(
       ((e.clientX - rect.left) / rect.width) * 2 - 1,
@@ -176,27 +215,27 @@ export function VillageThreeCanvas({
     );
 
     raycasterRef.current.setFromCamera(mouse, cameraRef.current);
-    const targets = buildingObjs.current;
-    const hits = raycasterRef.current.intersectObjects(
-      Array.from(targets.values()).filter((o: any) => o.isMesh || o.isInstancedMesh)
-    );
+    const targets: THREE.Object3D[] = [];
+    for (const group of buildingGroups.current.values()) {
+      for (const child of group.children) targets.push(child as THREE.Object3D);
+    }
 
-    if (hits.length > 0) {
-      let obj = hits[0].object;
+    const hits = raycasterRef.current.intersectObjects(targets, true);
+    for (const hit of hits) {
+      let obj: THREE.Object3D | null = hit.object;
       while (obj && !obj.userData?.id) obj = obj.parent;
-      if (obj?.userData?.id) onSelectBuilding(obj.userData.id);
+      if (obj?.userData?.id) {
+        onSelectBuilding(obj.userData.id);
+        return;
+      }
     }
   }, [interactionsDisabled, onSelectBuilding]);
 
   const onWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
     const factor = e.deltaY < 0 ? 1.06 : 0.94;
-    const z = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, camState.current.zoom * factor));
-    camState.current.zoom = z;
-    if (cameraRef.current) {
-      const aspect = size.w / Math.max(1, size.h);
-      updateIsoCameraZoom(cameraRef.current, aspect, z);
-    }
+    camState.current.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, camState.current.zoom * factor));
+    if (cameraRef.current) updateIsoCameraZoom(cameraRef.current, size.w / Math.max(1, size.h), camState.current.zoom);
   }, [size]);
 
   useEffect(() => {
@@ -207,14 +246,10 @@ export function VillageThreeCanvas({
   }, [onWheel]);
 
   return (
-    <div
-      ref={containerRef}
-      className="relative h-full w-full overflow-hidden bg-[#0a110e]"
+    <div ref={containerRef} className="relative h-full w-full overflow-hidden bg-[#0a110e]"
       style={{ touchAction: "none" }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
+      onPointerDown={onPointerDown} onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
     />
   );
 }
