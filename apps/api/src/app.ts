@@ -4,7 +4,7 @@ import { cityRouter } from './routes/city.js';
 import { chatRouter } from './routes/chat.js';
 import { allianceRouter } from './routes/alliance.js';
 import { mailRouter } from './routes/mail.js';
-import { worldRouter } from './routes/world.js';
+import { worldRouter, worldsRouter } from './routes/world.js';
 import { reportsRouter } from './routes/reports.js';
 import { questsRouter } from './routes/quests.js';
 import { marketRouter } from './routes/market.js';
@@ -20,9 +20,11 @@ import { eventsRouter } from './routes/events.js';
 import { wonderRouter } from './routes/wonder.js';
 import { achievementsRouter } from './routes/achievements.js';
 import { activityFeedRouter } from './routes/activityFeed.js';
+import { adminBotsRouter } from './routes/adminBots.js';
 import { loadBuildingConfigs } from './domain/buildings.js';
 import { loadUnitConfigs } from './domain/units.js';
 import { loadTechConfigs } from './domain/techs.js';
+import { ensureDefaultWorld } from './domain/worldService.js';
 import { recordRequestMetric } from './infrastructure/perfMetrics.js';
 
 let configPromise: Promise<void> | null = null;
@@ -32,6 +34,7 @@ export function ensureGameConfigsLoaded() {
     loadBuildingConfigs(),
     loadUnitConfigs(),
     loadTechConfigs(),
+    ensureDefaultWorld(),
   ]).then(() => undefined);
   return configPromise;
 }
@@ -76,6 +79,7 @@ export function createApiApp() {
   app.route('/chat', chatRouter);
   app.route('/alliances', allianceRouter);
   app.route('/mail', mailRouter);
+  app.route('/worlds', worldsRouter);
   app.route('/world', worldRouter);
   app.route('/reports', reportsRouter);
   app.route('/quests', questsRouter);
@@ -91,6 +95,7 @@ export function createApiApp() {
   app.route('/wonder', wonderRouter);
   app.route('/achievements', achievementsRouter);
   app.route('/activity', activityFeedRouter);
+  app.route('/admin/bots', adminBotsRouter);
 
   return app;
 }

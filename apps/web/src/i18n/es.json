@@ -169,7 +169,7 @@
       }
     ],
     "copyright": "© 2026 Etheria. Todos los derechos reservados.",
-    "developer": "Desarrollado con 💛 por el Equipo Etheria"
+    "developer": "Desarrollado con 💛 por el Equipo Etheria · Powered by matecito.dev"
   },
   "login": {
     "title": "Bienvenido de vuelta",
@@ -1166,6 +1166,50 @@
         "plains": "Llanura"
       },
       "title": "Buffs"
+    }
+  },
+  "race": {
+    "title": "Elige tu raza",
+    "subtitle": "Cada raza otorga bonificaciones únicas que definirán tu estilo de juego. Esta elección es permanente.",
+    "selectPrompt": "Seleccioná una raza para continuar",
+    "confirmPrefix": "Fundar como",
+    "creating": "Creando ciudad...",
+    "permanentChoice": "Esta decisión no se puede cambiar después.",
+    "human": {
+      "name": "Humanos",
+      "description": "Versátiles y diplomáticos. Se adaptan a cualquier terreno con bonificaciones equilibradas en producción y comercio."
+    },
+    "elf": {
+      "name": "Elfos",
+      "description": "Maestros del bosque y el arco. Producen más madera y comida, y sus arqueros son letales."
+    },
+    "orc": {
+      "name": "Orcos",
+      "description": "Brutales guerreros nacidos para la batalla. Producen más piedra y sus unidades son más resistentes."
+    },
+    "dwarf": {
+      "name": "Enanos",
+      "description": "Forjadores insuperables. Extraen oro y piedra más rápido, y sus defensas son impenetrables."
+    },
+    "bonus": {
+      "goldProduction": "Producción de oro",
+      "woodProduction": "Producción de madera",
+      "stoneProduction": "Producción de piedra",
+      "foodProduction": "Producción de comida",
+      "attack": "Ataque",
+      "defense": "Defensa",
+      "hp": "Vida",
+      "extraWarriors": "Guerreros extra",
+      "extraArchers": "Arqueros extra",
+      "extraSiege": "Asedio extra",
+      "marketLevel": "Mercado inicial",
+      "lumberMillLevel": "Aserradero inicial",
+      "barracksLevel": "Cuartel inicial",
+      "goldMineLevel": "Mina de oro inicial",
+      "towerLevel": "Torre inicial",
+      "startingGold": "Oro inicial",
+      "startingWood": "Madera inicial",
+      "startingStone": "Piedra inicial"
     }
   }
 }

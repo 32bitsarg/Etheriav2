@@ -9,7 +9,7 @@ import { BuildingSprite } from "@/components/village/BuildingIcon";
 import { VillageHTMLCanvas } from "@/components/village/VillageHTMLCanvas";
 import { ResourceIconSVG } from "@/components/village/ResourceIconSVG";
 import { useAcceptMarketOffer, useActiveBattles, useAllCities, useAllianceMembership, useAttackCity, useBarbarianAttackAlerts, useBattleReports, useBreakTreaty, useCancelBuildQueue, useCancelResearchQueue, useCancelTrainingQueue, useCityRanking, useClaimQuest, useContributeAllianceObjective, useCreateAlliance, useCreateMarketOffer, useDisbandAlliance, useGameReports, useJoinAlliance, useKickAllianceMember, useLeaveAlliance, useMailMessages, useMarkGameReportRead, useMarkMailRead, useMarkMapOpened, useMarkReportRead, useMarketOffers, usePlayerQuests, useProposePeace, useRenameCity, useResearchTech, useScoutTarget, useSendMailMessage, useTechs, useTrainUnits, useTransferAllianceLeadership, useUpdateAlliance, useUpdateAllianceMemberRole, useUpgradeBuilding, useVillageLayout, useWorldMap, useWorldMovements, useWorldSeason } from "@/hooks/useCity";
-import { WorldMapCanvas } from "@/components/worldmap/WorldMapCanvas";
+import { WorldMapHTMLCanvas } from "@/components/worldmap/WorldMapHTMLCanvas";
 import { BarbarianAttackAlertBanner } from "@/components/barbarians/BarbarianAttackAlertBanner";
 import { WinterPressureBanner } from "@/components/barbarians/WinterPressureBanner";
 import { BarbarianCampModal } from "@/components/barbarians/BarbarianCampModal";
@@ -102,7 +102,8 @@ export function VillageView() {
   const { data: barbarianAlerts } = useBarbarianAttackAlerts(cityId, runtimePollingEnabled);
   const { data: worldMoves } = useWorldMovements(activeView === "mapa");
   // Prefetch map data so it's ready when user switches to map view
-  const { data: worldMap } = useWorldMap();
+  const worldId = useGameStore((s) => s.worldId);
+  const { data: worldMap } = useWorldMap(worldId);
   const { data: seasonData } = useWorldSeason();
 
   useEffect(() => {
@@ -218,16 +219,22 @@ export function VillageView() {
       <WinterPressureBanner />
 
       {/* Top Bar — full width, grid row 1 */}
-      <header className="village-topbar pointer-events-auto col-span-3 row-start-1 flex items-center gap-2 px-4 z-50 h-12">
-        <div className="flex items-center gap-2 shrink-0">
-          <SeasonHUD />
-          <ActiveBuffsPanel />
-          <DailyEventBanner />
+      <header className="village-topbar pointer-events-auto col-span-3 row-start-1 flex items-center gap-1 px-2 sm:gap-2 sm:px-4 z-50 h-12">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <span className="hidden sm:contents">
+            <SeasonHUD />
+            <ActiveBuffsPanel />
+            <DailyEventBanner />
+          </span>
         </div>
-        <span className="flex-1 text-center text-sm font-semibold text-stone-700 tracking-wide">
+        <span
+          className="flex-1 text-center text-xs sm:text-sm font-semibold text-stone-700 tracking-wide truncate cursor-pointer hover:text-amber-600 select-none"
+          onDoubleClick={() => setIsRenameOpen(true)}
+          title="Doble click para renombrar"
+        >
           {cityName || t("play.sidebar.village")}
         </span>
-        <div className="shrink-0 flex items-center gap-2">
+        <div className="shrink-0 flex items-center gap-1 sm:gap-2">
           <ResourceBar />
           <NotificationBell />
         </div>
@@ -760,7 +767,7 @@ function MapaView({ cityName, resources, storage, production, allianceData, move
     <div className="relative h-full overflow-hidden">
       {isEntering && <div className="etheria-map-enter-zoom pointer-events-none absolute inset-0 z-50" />}
       <div className="absolute inset-0">
-        <WorldMapCanvas
+        <WorldMapHTMLCanvas
           cities={cities.map((city: any) => ({
             ...city,
             relation: getMapRelation(city, allianceData),
@@ -773,10 +780,6 @@ function MapaView({ cityName, resources, storage, production, allianceData, move
           onSelectCityId={(cityId, position) => {
             setSelectedCityId(cityId);
             setRadialPosition(position);
-          }}
-          onCenterMyCity={() => {
-            const evt = new CustomEvent("etheria:center-my-city");
-            window.dispatchEvent(evt);
           }}
           onSelectCamp={(camp) => {
             setSelectedCamp(camp as any);
@@ -1038,7 +1041,7 @@ function MailModal({ onClose, t }: { onClose: () => void; t: (key: string) => st
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/62 px-4 backdrop-blur-[4px]" onClick={onClose} onPointerDown={(e) => e.stopPropagation()}>
-      <div className="relative grid h-[min(640px,calc(100vh-36px))] w-full max-w-[920px] overflow-hidden rounded-[30px] border border-etheria-border bg-[#0b1111] shadow-[0_28px_90px_rgba(0,0,0,.58)] lg:grid-cols-[310px_1fr]" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+      <div className="relative grid h-[min(640px,calc(100vh-36px))] w-full max-w-[920px] max-sm:max-w-[calc(100vw-24px)] overflow-hidden rounded-[30px] border border-etheria-border bg-[#0b1111] shadow-[0_28px_90px_rgba(0,0,0,.58)] lg:grid-cols-[310px_1fr]" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
         <button onClick={onClose} className="absolute right-5 top-5 z-10 text-etheria-gold-soft">✕</button>
         <aside className="border-r border-white/5 p-4 overflow-y-auto">
           <div className="font-serif text-lg text-etheria-gold-soft mb-4 uppercase tracking-widest">{t("play.mail.title")}</div>
@@ -1856,7 +1859,7 @@ function ReportsModal({ onClose, t }: any) {
   const markRead = useMarkGameReportRead();
   return (
     <div className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="max-h-[84vh] w-full max-w-3xl overflow-hidden rounded-2xl border border-etheria-border bg-[#0b1111]" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[84vh] w-full max-w-3xl max-sm:max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-etheria-border bg-[#0b1111]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-white/5 p-5">
           <h2 className="font-serif text-2xl text-etheria-gold-soft">{t("play.reports.title")}</h2>
           <button onClick={onClose} className="text-white/45 hover:text-white">{t("play.building.close")}</button>
@@ -1888,7 +1891,7 @@ function QuestsModal({ cityId, onClose, t }: any) {
   const claim = useClaimQuest();
   return (
     <div className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="max-h-[84vh] w-full max-w-3xl overflow-hidden rounded-2xl border border-etheria-border bg-[#0b1111]" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[84vh] w-full max-w-3xl max-sm:max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-etheria-border bg-[#0b1111]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-white/5 p-5">
           <h2 className="font-serif text-2xl text-etheria-gold-soft">{t("play.quests.title")}</h2>
           <button onClick={onClose} className="text-white/45 hover:text-white">{t("play.building.close")}</button>
@@ -1914,7 +1917,7 @@ function QuestsModal({ cityId, onClose, t }: any) {
 function MarketModal({ cityId, onClose, t }: any) {
   return (
     <div className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="max-h-[88vh] w-full max-w-4xl overflow-hidden rounded-2xl border border-etheria-border bg-[#0b1111]" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[88vh] w-full max-w-4xl max-sm:max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-etheria-border bg-[#0b1111]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-white/5 p-5">
           <h2 className="font-serif text-2xl text-etheria-gold-soft">{t("play.market.title")}</h2>
           <button onClick={onClose} className="text-white/45 hover:text-white">{t("play.building.close")}</button>

@@ -23,10 +23,30 @@ import { getUnitStats } from '../domain/units.js';
 import { calculateTechBonuses } from '../domain/techs.js';
 import { calculateEffectiveProduction } from '../domain/production.js';
 import { scoutTarget } from '../domain/scouting.js';
+import { listActiveWorlds, getWorldById, ensureDefaultWorld } from '../domain/worldService.js';
+import { prisma } from '@etheria/database';
 
 const genId = () => crypto.randomUUID();
 
 export const worldRouter = new Hono();
+
+export const worldsRouter = new Hono();
+
+// ─── GET /worlds — list available worlds ───
+
+worldsRouter.get('/', async (c) => {
+  const worlds = await listActiveWorlds();
+  return c.json({ worlds });
+});
+
+// ─── GET /worlds/:id/config — get world config ───
+
+worldsRouter.get('/:id/config', async (c) => {
+  const id = c.req.param('id');
+  const world = await getWorldById(id);
+  if (!world) return c.json({ error: 'World not found' }, 404);
+  return c.json({ config: world.config });
+});
 
 worldRouter.post('/scout', requireMatecitoAuth(), zValidator('json', ScoutTargetRequestSchema), async (c) => {
   const result = await scoutTarget(c.get('userId'), c.req.valid('json'));
@@ -37,9 +57,10 @@ worldRouter.post('/scout', requireMatecitoAuth(), zValidator('json', ScoutTarget
 // ─── GET /world/season ───
 
 worldRouter.get('/season', async (c) => {
-  let state = await getSeasonState();
+  const worldId = c.req.query('worldId');
+  let state = worldId ? await getSeasonState(worldId) : await getSeasonState();
   if (!state) {
-    state = await initializeSeasonState();
+    state = await initializeSeasonState(worldId);
   }
 
   return c.json({ season: state });
@@ -48,12 +69,13 @@ worldRouter.get('/season', async (c) => {
 // ─── GET /world/state ───
 
 worldRouter.get('/state', async (c) => {
-  let state = await getSeasonState();
+  const worldId = c.req.query('worldId');
+  let state = worldId ? await getSeasonState(worldId) : await getSeasonState();
   if (!state) {
-    state = await initializeSeasonState();
+    state = await initializeSeasonState(worldId);
   }
 
-  const worldConfig = await getWorldConfig();
+  const worldConfig = await getWorldConfig(worldId);
   const zones: WorldZoneSnapshot[] = LOCAL_WORLD_ZONE_CONFIGS.map((zone) => ({
     id: zone.id,
     name: zone.name,
@@ -61,7 +83,7 @@ worldRouter.get('/state', async (c) => {
     terrainTags: zone.terrainTags,
   }));
 
-  const camps = await getAllActiveCamps();
+  const camps = await getAllActiveCamps(worldId);
   const barbarianCamps = camps.map((camp) => ({
     id: camp.id,
     name: camp.name,
@@ -78,6 +100,56 @@ worldRouter.get('/state', async (c) => {
     zones,
     barbarianCamps,
   });
+});
+
+// ─── POST /admin/world — create world (admin) ───
+
+worldRouter.post('/admin/world', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '') : null;
+  if (!slug || slug.length < 2) return c.json({ error: 'Invalid slug' }, 400);
+  const name = typeof body.name === 'string' ? body.name.trim() : slug;
+  const description = typeof body.description === 'string' ? body.description.trim() : null;
+
+  await ensureDefaultWorld();
+
+  const world = await prisma.world.create({
+    data: {
+      id: crypto.randomUUID(),
+      slug,
+      name,
+      description,
+      status: body.status ?? 'ACTIVE',
+      config: body.config ?? {},
+      sortOrder: typeof body.sortOrder === 'number' ? body.sortOrder : 99,
+      playerCount: 0,
+    },
+  });
+
+  return c.json({ world: { id: world.id, slug: world.slug, name: world.name } }, 201);
+});
+
+// ─── PUT /admin/world/:id/config — update world config (admin) ───
+
+worldRouter.put('/admin/world/:id/config', async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  if (!body.config) return c.json({ error: 'Missing config' }, 400);
+
+  const existing = await prisma.world.findUnique({ where: { id } });
+  if (!existing) return c.json({ error: 'World not found' }, 404);
+
+  await prisma.world.update({
+    where: { id },
+    data: {
+      config: body.config,
+      name: typeof body.name === 'string' ? body.name : existing.name,
+      description: typeof body.description === 'string' ? body.description : existing.description,
+      status: typeof body.status === 'string' ? body.status : existing.status,
+    },
+  });
+
+  return c.json({ success: true });
 });
 
 // ─── POST /admin/world/season/advance ───
@@ -109,9 +181,11 @@ worldRouter.post(
 // ─── GET /world/config ───
 
 worldRouter.get('/config', async (c) => {
-  const worldConfig = await getWorldConfig();
+  const worldId = c.req.query('worldId');
+  const worldConfig = await getWorldConfig(worldId);
 
   return c.json({
+    worldId: worldId ?? null,
     map: worldConfig.map,
     spawn: worldConfig.spawn,
     seasonConfig: {

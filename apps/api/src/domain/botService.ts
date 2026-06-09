@@ -5,7 +5,7 @@ import { mergeRecordByLogicalId } from "../infrastructure/matecitoRecord.js";
 import { createStarterCityForUser } from "./cityCreation.js";
 import { getBotSimulationConfig, type BotSimulationConfig } from "./botConfigData.js";
 import { botActionType, decideBotAction, type BotActionType, type BotDecision, updateBotMemory } from "./botDecisionEngine.js";
-import { createBotRecord, listBots, listDueBots, listRecentBotLogs, logBotAction, updateBotRecord, writeBotMetrics } from "./botRepository.js";
+import { createBotRecord, deleteBotRecord, listBots, listDueBots, listRecentBotLogs, logBotAction, updateBotRecord, writeBotMetrics } from "./botRepository.js";
 import {
   attackCityAction,
   CityActionError,
@@ -24,6 +24,7 @@ import { createAllianceForUser, joinAlliance } from "./alliances.js";
 import { createChatMessage } from "./chat.js";
 import { sendMailMessage } from "./mail.js";
 import { prisma } from "@etheria/database";
+import { listActiveWorlds } from "./worldService.js";
 
 type BotActionStatus = "SUCCESS" | "EXPECTED_BLOCKED" | "VALIDATION_ERROR" | "UNEXPECTED_ERROR";
 type BotGlobalSnapshot = {
@@ -67,8 +68,8 @@ async function logAction(input: {
   await logBotAction(input);
 }
 
-export async function ensureBotPopulation(config = getBotSimulationConfig()) {
-  const existing = await listBots();
+export async function ensureBotPopulation(config = getBotSimulationConfig(), worldId = "default") {
+  const existing = await listBots(worldId);
   for (const bot of existing) {
     const [userRes, cityRes] = await Promise.all([
       db.from(COLLECTIONS.USERS).eq("id", bot.userId).getFirst() as any,
@@ -101,7 +102,7 @@ export async function ensureBotPopulation(config = getBotSimulationConfig()) {
       updatedAt: now,
     });
 
-    const city = await createStarterCityForUser({ userId, cityName: generateCityName(userId) });
+    const city = await createStarterCityForUser({ userId, cityName: generateCityName(userId), worldId });
     if ("error" in city) {
       throw new Error(city.error);
     }
@@ -110,6 +111,7 @@ export async function ensureBotPopulation(config = getBotSimulationConfig()) {
       id: crypto.randomUUID(),
       userId,
       cityId: city.cityId,
+      worldId,
       profile,
       status: "ACTIVE",
       state: {},
@@ -123,13 +125,13 @@ export async function ensureBotPopulation(config = getBotSimulationConfig()) {
   return created;
 }
 
-async function loadGlobalBotSnapshot(): Promise<BotGlobalSnapshot> {
+async function loadGlobalBotSnapshot(worldId: string): Promise<BotGlobalSnapshot> {
   const [targetsRes, barbarianCampsRes, recentGlobalBattlesRes, seasonRes, alliancesRes, marketOffersRes] = await Promise.all([
-    db.from(COLLECTIONS.CITIES).limit(200).get() as any,
-    db.from(COLLECTIONS.BARBARIAN_CAMPS).eq("status", "ACTIVE").get() as any,
+    db.from(COLLECTIONS.CITIES).eq("worldId", worldId).limit(200).get() as any,
+    db.from(COLLECTIONS.BARBARIAN_CAMPS).eq("worldId", worldId).eq("status", "ACTIVE").get() as any,
     db.from(COLLECTIONS.BATTLES).limit(200).get() as any,
-    db.from(COLLECTIONS.WORLD_SEASON_STATE).getFirst() as any,
-    db.from(COLLECTIONS.ALLIANCES).limit(100).get() as any,
+    db.from(COLLECTIONS.WORLD_SEASON_STATE).eq("worldId", worldId).getFirst() as any,
+    db.from(COLLECTIONS.ALLIANCES).eq("worldId", worldId).limit(100).get() as any,
     db.from(COLLECTIONS.MARKET_OFFERS).eq("status", "OPEN").limit(100).get() as any,
   ]);
   return {
@@ -423,14 +425,14 @@ function updateStateAfterDecision(state: any, decision: BotDecision, now: Date) 
   };
 }
 
-export async function processDueBots(config = getBotSimulationConfig()) {
+export async function processDueBots(config = getBotSimulationConfig(), worldId = "default") {
   if (!config.enabled) return { processed: 0, errors: 0 };
 
-  await ensureBotPopulation(config);
+  await ensureBotPopulation(config, worldId);
   const now = new Date();
 
   // Recover ERROR bots after cooldown (with backoff)
-  const allBots = await listBots();
+  const allBots = await listBots(worldId);
   const baseCooldownMs = config.errorRecoveryMinutes * 60 * 1000;
   for (const bot of allBots) {
     if (bot.status !== "ERROR") continue;
@@ -446,8 +448,8 @@ export async function processDueBots(config = getBotSimulationConfig()) {
     });
   }
 
-  const bots = await listDueBots(now, config.maxBotsPerTick);
-  const globalSnapshot = await loadGlobalBotSnapshot();
+  const bots = await listDueBots(now, config.maxBotsPerTick, worldId);
+  const globalSnapshot = await loadGlobalBotSnapshot(worldId);
 
   let errors = 0;
   for (const bot of bots) {

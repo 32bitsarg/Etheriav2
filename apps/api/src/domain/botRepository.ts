@@ -5,6 +5,7 @@ export type BotRecord = {
   id: string;
   userId: string;
   cityId: string;
+  worldId: string;
   profile: string;
   status: "ACTIVE" | "PAUSED" | "ERROR";
   state?: any;
@@ -20,21 +21,24 @@ function normalizeDateValue(value: unknown) {
 export function normalizeBotRecord(bot: any): BotRecord {
   return {
     ...bot,
+    worldId: bot.worldId ?? "default",
     createdAt: normalizeDateValue(bot.createdAt),
     lastTickAt: normalizeDateValue(bot.lastTickAt) ?? null,
     nextTickAt: normalizeDateValue(bot.nextTickAt),
   };
 }
 
-export async function listBots() {
-  const res = await db.from(COLLECTIONS.BOT_PLAYERS).limit(5000).get() as any;
+export async function listBots(worldId?: string) {
+  let query = db.from(COLLECTIONS.BOT_PLAYERS).limit(5000);
+  if (worldId) query = query.eq("worldId", worldId);
+  const res = await query.get() as any;
   return (res.data ?? []).map(normalizeBotRecord).sort((a: BotRecord, b: BotRecord) =>
     new Date(String(a.createdAt ?? 0)).getTime() - new Date(String(b.createdAt ?? 0)).getTime()
   );
 }
 
-export async function listDueBots(now: Date, limit: number) {
-  const bots = (await listBots())
+export async function listDueBots(now: Date, limit: number, worldId?: string) {
+  const bots = (await listBots(worldId))
     .filter((bot: BotRecord) => bot.status === "ACTIVE" && new Date(String(bot.nextTickAt)).getTime() <= now.getTime())
     .sort((a: BotRecord, b: BotRecord) => new Date(String(a.nextTickAt)).getTime() - new Date(String(b.nextTickAt)).getTime());
   return bots.slice(0, limit);
@@ -43,6 +47,7 @@ export async function listDueBots(now: Date, limit: number) {
 export async function createBotRecord(bot: BotRecord) {
   await db.from(COLLECTIONS.BOT_PLAYERS).insert({
     ...bot,
+    worldId: bot.worldId ?? "default",
     createdAt: bot.createdAt ?? new Date().toISOString(),
     lastTickAt: bot.lastTickAt ?? null,
     nextTickAt: normalizeDateValue(bot.nextTickAt),
@@ -54,6 +59,10 @@ export async function updateBotRecord(botId: string, patch: Record<string, unkno
   return mergeRecordByLogicalId(COLLECTIONS.BOT_PLAYERS, botId, Object.fromEntries(
     Object.entries(patch).map(([key, value]) => [key, normalizeDateValue(value)])
   ));
+}
+
+export async function deleteBotRecord(botId: string) {
+  await db.from(COLLECTIONS.BOT_PLAYERS).eq("id", botId).delete().execute();
 }
 
 export async function logBotAction(input: {

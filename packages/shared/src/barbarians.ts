@@ -19,6 +19,7 @@ export type BarbarianArchetype = z.infer<typeof BarbarianArchetypeSchema>;
 
 export const BarbarianCampSchema = z.object({
   id: z.string().uuid(),
+  worldId: z.string().optional(),
   name: z.string(),
   level: z.number().int().min(1).max(10),
   archetype: BarbarianArchetypeSchema,

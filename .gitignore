@@ -56,3 +56,4 @@ tmp_*
 Thumbs.db
 .idea/
 .vscode/
+.env.local

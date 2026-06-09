@@ -5,9 +5,18 @@ if (!process.env.NEXT_PUBLIC_MATECITO_URL) {
 
 import { serve } from '@hono/node-server';
 import { app, ensureGameConfigsLoaded } from './app.js';
+import { startQueueWorker } from './workers/queueWorker.js';
+import { startSeasonWorker } from './workers/seasonWorker.js';
+import { startBarbarianSpawnWorker } from './workers/barbarianSpawnWorker.js';
+import { startBotWorker } from './workers/botWorker.js';
 
 async function bootstrap() {
   await ensureGameConfigsLoaded();
+
+  startQueueWorker();
+  startSeasonWorker();
+  startBarbarianSpawnWorker();
+  startBotWorker();
 
   const port = process.env.PORT ? parseInt(process.env.PORT) : 4000;
   serve({ fetch: app.fetch, port });

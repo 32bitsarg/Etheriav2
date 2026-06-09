@@ -116,7 +116,7 @@ export const landingContent: LandingContent = {
     brand: "Conquest of Etheria",
     tagline: "Construye. Alía. Conquista.",
     copyright: "© 2026 Conquest of Etheria",
-    developer: "Desarrollado por 32bitsarg <3",
+    developer: "Desarrollado por 32bitsarg <3 · Powered by matecito.dev",
     links: [
       { label: "Changelog", href: "/changelog" },
       { label: "Iniciar Sesión", href: "/login" },

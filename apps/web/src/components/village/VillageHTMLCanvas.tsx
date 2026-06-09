@@ -43,7 +43,7 @@ export interface VillageHTMLCanvasProps {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ZOOM_MIN = 0.55;
+const ZOOM_MIN = 1.0;
 const ZOOM_MAX = 2.4;
 const ZOOM_STEP = 0.06;
 const EDITOR_ZOOM_MIN = 0.3;
@@ -157,14 +157,17 @@ export function VillageHTMLCanvas({
   }, []);
 
   const clampCamera = useCallback(
-    (x: number, y: number, zoom: number, w: number, h: number) => {
-      const margin = 0.3;
-      const ww = w * zoom;
-      const wh = h * zoom;
+    (x: number, y: number, zoom: number, vw: number, vh: number) => {
+      const z = Math.min(zMax, Math.max(zMin, zoom));
+      const rw = vw * z;
+      const rh = vh * z;
+      if (z < 1) {
+        return { x: (vw - rw) / 2, y: (vh - rh) / 2, zoom: z };
+      }
       return {
-        x: Math.min(ww * margin, Math.max(-(ww * (1 + margin) - w), x)),
-        y: Math.min(wh * margin, Math.max(-(wh * (1 + margin) - h), y)),
-        zoom: Math.min(zMax, Math.max(zMin, zoom)),
+        x: Math.max(vw - rw, Math.min(0, x)),
+        y: Math.max(vh - rh, Math.min(0, y)),
+        zoom: z,
       };
     },
     [zMin, zMax]
@@ -245,7 +248,7 @@ export function VillageHTMLCanvas({
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.button !== 0 && e.pointerType !== "touch") return;
-      e.currentTarget.setPointerCapture(e.pointerId);
+      if (editorMode) e.currentTarget.setPointerCapture(e.pointerId);
 
       // Check if a building button registered itself before this event bubbled up
       const dragging = draggingBuildingRef.current;

@@ -15,6 +15,7 @@ export type PhaseCurve = z.infer<typeof PhaseCurveSchema>;
 
 export const WorldSeasonStateSchema = z.object({
   id: z.string().uuid(),
+  worldId: z.string().optional(),
   currentSeason: SeasonSchema,
   nextSeason: SeasonSchema,
   phase: SeasonPhaseSchema,

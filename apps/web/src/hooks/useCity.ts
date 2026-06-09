@@ -499,11 +499,12 @@ export interface WorldSpawnConfig {
   maxPlacementAttempts: number;
 }
 
-export function useWorldMap() {
+export function useWorldMap(worldId?: string | null) {
   return useQuery({
-    queryKey: ["world", "map"],
+    queryKey: ["world", "map", worldId],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/city/world-map`);
+      const params = worldId ? `?worldId=${encodeURIComponent(worldId)}` : "";
+      const res = await fetch(`${API_BASE}/city/world-map${params}`);
       if (!res.ok) throw new Error("Failed to fetch world map");
       const data = await res.json();
       return {

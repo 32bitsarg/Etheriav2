@@ -2,7 +2,6 @@
 
 import { useI18n } from "@/i18n";
 import { useMatecitoAuth } from "@/hooks/useMatecitoAuth";
-import { useRouter } from "next/navigation";
 import { useAudioStore } from "@/stores/audioStore";
 import { Modal } from "@/components/ui/Modal";
 
@@ -13,12 +12,16 @@ interface Props {
 export function SettingsModal({ onClose }: Props) {
   const { t, locale, setLocale } = useI18n();
   const auth = useMatecitoAuth();
-  const router = useRouter();
   const { musicVolume, isMuted, setMusicVolume, toggleMute } = useAudioStore();
 
   const handleLogout = async () => {
     await auth.signOut();
-    router.replace("/");
+    localStorage.removeItem("etheria_world_id");
+    localStorage.removeItem("etheria_pending_race");
+    localStorage.removeItem("etheria_pending_city_name");
+    setTimeout(() => {
+      window.location.replace("/");
+    }, 200);
   };
 
   const options = [

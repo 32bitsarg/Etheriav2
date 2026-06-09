@@ -1,5 +1,6 @@
 import { getBotSimulationConfig } from "../domain/botConfigData.js";
 import { processDueBots, writeBotMetricsSnapshot } from "../domain/botService.js";
+import { listActiveWorlds } from "../domain/worldService.js";
 
 let workerRunning = false;
 let tickRunning = false;
@@ -33,13 +34,24 @@ export async function processBotWorkerTick() {
   const config = getBotSimulationConfig();
   if (!config.enabled) return { processed: 0, errors: 0, disabled: true };
 
-  const result = await processDueBots(config);
-  if (result.processed > 0 || result.errors > 0) {
-    console.log(`🤖 Bot tick processed=${result.processed} errors=${result.errors}`);
+  const worlds = await listActiveWorlds();
+  let totalProcessed = 0;
+  let totalErrors = 0;
+
+  for (const world of worlds) {
+    const result = await processDueBots(config, world.id);
+    totalProcessed += result.processed;
+    totalErrors += result.errors;
   }
+
+  if (totalProcessed > 0 || totalErrors > 0) {
+    console.log(`🤖 Bot tick processed=${totalProcessed} errors=${totalErrors} worlds=${worlds.length}`);
+  }
+
   if (Date.now() - lastMetricsAt > config.metricsWindowMinutes * 60_000) {
     lastMetricsAt = Date.now();
     await writeBotMetricsSnapshot();
   }
-  return result;
+
+  return { processed: totalProcessed, errors: totalErrors };
 }

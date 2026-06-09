@@ -1073,22 +1073,35 @@ h1, h2, h3, h4, .font-display, .font-serif {
   }
 }
 
+@media (max-width: 640px) {
+  .village-topbar {
+    padding-left: 6px;
+    padding-right: 6px;
+    gap: 4px;
+  }
+
+  .village-shell .fixed.inset-0.z-\[100\] {
+    padding: 8px;
+  }
+
+  .village-queue-card {
+    font-size: 9px;
+  }
+
+  .grepolis-nav-item__icon-wrap {
+    height: 28px;
+    flex: 0 0 28px;
+  }
+
+  .grepolis-nav-item__label {
+    font-size: 7.5px;
+  }
+}
+
 @media (max-width: 860px) and (orientation: landscape) {
-  .grepolis-sidebar {
-    width: min(620px, calc(100vw - 28px));
-    bottom: max(10px, env(safe-area-inset-bottom));
-  }
-
-  .grepolis-sidebar__nav {
-    justify-content: center;
-  }
-
-  .grepolis-nav-item {
-    flex: 0 0 68px;
-  }
-
-  .village-main {
-    padding-bottom: 76px;
+  .village-shell .fixed.inset-0.z-\[100\] > div {
+    max-height: 92dvh;
+    overflow-y: auto;
   }
 }
 

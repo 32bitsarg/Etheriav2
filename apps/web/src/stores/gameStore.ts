@@ -77,6 +77,10 @@ export interface CityState {
 }
 
 interface GameState extends CityState {
+  // World selection
+  worldId: string | null;
+  setWorldId: (worldId: string) => void;
+
   // Loading
   isLoading: boolean;
   error: string | null;
@@ -145,6 +149,8 @@ interface GameState extends CityState {
 export const useGameStore = create<GameState>((set, get) => ({
   // Initial state
   cityId: null,
+  worldId: null,
+  setWorldId: (worldId) => set({ worldId }),
   name: '',
   resources: { gold: 0, wood: 0, stone: 0, food: 0, gems: 0 },
   production: { goldPerHour: 0, woodPerHour: 0, stonePerHour: 0, foodPerHour: 0 },

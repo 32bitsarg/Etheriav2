@@ -180,11 +180,14 @@ export function getEffectiveMaxDensity(zoneId: string, seasonState: WorldSeasonS
   return Math.ceil(zoneConfig.maxDensity * multiplier);
 }
 
-export async function getAllActiveCamps(): Promise<BarbarianCamp[]> {
-  const campsRes = await db
+export async function getAllActiveCamps(worldId?: string): Promise<BarbarianCamp[]> {
+  let query = db
     .from(COLLECTIONS.BARBARIAN_CAMPS)
-    .eq('status', 'ACTIVE')
-    .get() as any;
+    .eq('status', 'ACTIVE');
+  if (worldId) {
+    query = query.eq('worldId', worldId);
+  }
+  const campsRes = await query.get() as any;
   assertDbOk(campsRes, 'BARBARIAN_CAMPS.eq(status=ACTIVE).get()');
   return campsRes.data ?? [];
 }

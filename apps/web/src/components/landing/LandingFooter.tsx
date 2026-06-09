@@ -25,7 +25,7 @@ export function LandingFooter() {
       </div>
 
       <div className="mx-auto mt-8 max-w-6xl border-t border-[#f6ebdb] pt-6 text-center text-[12px] text-[#6f6052]">
-        © 2026 Etheria · Desarrollado con 💛 por el Equipo Etheria
+        © 2026 Etheria · Desarrollado con 💛 por el Equipo Etheria · Powered by <a href="https://matecito.dev" target="_blank" rel="noopener" className="underline hover:text-[#2c2118]">matecito.dev</a>
       </div>
     </footer>
   );

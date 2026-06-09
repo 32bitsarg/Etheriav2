@@ -29,14 +29,18 @@ function getSeasonDisplayName(season: Season): string {
   return names[season];
 }
 
-export async function getSeasonState(): Promise<WorldSeasonState | null> {
-  const res = await db.from(COLLECTIONS.WORLD_SEASON_STATE).getFirst() as any;
+export async function getSeasonState(worldId?: string): Promise<WorldSeasonState | null> {
+  let query = db.from(COLLECTIONS.WORLD_SEASON_STATE);
+  if (worldId) {
+    query = query.eq('worldId', worldId);
+  }
+  const res = await query.getFirst() as any;
   assertDbOk(res, 'WORLD_SEASON_STATE.getFirst()');
   return res.data ?? null;
 }
 
-export async function initializeSeasonState(): Promise<WorldSeasonState> {
-  const existing = await getSeasonState();
+export async function initializeSeasonState(worldId?: string): Promise<WorldSeasonState> {
+  const existing = await getSeasonState(worldId);
   if (existing) return existing;
 
   const now = new Date();
@@ -50,6 +54,7 @@ export async function initializeSeasonState(): Promise<WorldSeasonState> {
 
   const state: WorldSeasonState = {
     id: crypto.randomUUID(),
+    worldId: worldId ?? undefined,
     currentSeason,
     nextSeason,
     phase: 'START',

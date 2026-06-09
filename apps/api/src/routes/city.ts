@@ -660,7 +660,9 @@ cityRouter.post("/bootstrap", requireMatecitoAuth(), async (c) => {
 
     let cityId = existingCityId as string | null;
     if (!cityId) {
-      const created = await createStarterCityForUser({ userId, cityName: desiredCityName });
+      const race = typeof body.race === "string" && body.race.length > 0 ? body.race : undefined;
+      const worldId = typeof body.worldId === "string" && body.worldId.length > 0 ? body.worldId : undefined;
+      const created = await createStarterCityForUser({ userId, cityName: desiredCityName, race, worldId });
       if ("error" in created) return c.json({ error: created.error, code: "CITY_CREATE_FAILED" }, 503);
       cityId = created.cityId;
     }
@@ -791,9 +793,12 @@ cityRouter.patch("/:id/name", async (c) => {
 
 // World map endpoints must be registered before "/:id" to avoid route capture.
 cityRouter.get("/world-map", async (c) => {
+  const worldId = c.req.query('worldId');
   const [config, cities, camps] = await Promise.all([
-    getWorldConfig(),
-    db.from(COLLECTIONS.CITIES).limit(WORLD_MAP_CITY_LIMIT).get() as any,
+    getWorldConfig(worldId),
+    worldId
+      ? (db.from(COLLECTIONS.CITIES).eq("worldId", worldId).limit(WORLD_MAP_CITY_LIMIT).get() as any)
+      : (db.from(COLLECTIONS.CITIES).limit(WORLD_MAP_CITY_LIMIT).get() as any),
     db.from(COLLECTIONS.BARBARIAN_CAMPS).eq("status", "ACTIVE").get() as any,
   ]);
 

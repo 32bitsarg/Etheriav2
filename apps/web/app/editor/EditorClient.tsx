@@ -24,6 +24,7 @@ import {
   type TerrainKind,
   type WorldTerrainMaskData,
 } from "@/lib/worldTerrainMask";
+import { BotAdminPanel } from "./BotAdminPanel";
 
 type EditorBuilding = {
   id: string;
@@ -54,7 +55,8 @@ function VillageLayoutEditorContent() {
   const saveTerrainMutation = useSaveWorldTerrainMask();
   const panelDragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
 
-  const [editorMode, setEditorMode] = useState<"village" | "world-terrain">("village");
+  const [editorMode, setEditorMode] = useState<"village" | "world-terrain" | "bots">("village");
+  const [apiTarget, setApiTarget] = useState<"local" | "prod">("local");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<VillageLayoutData | null>(null);
   const [terrainDraft, setTerrainDraft] = useState<WorldTerrainMaskData | null>(null);
@@ -228,13 +230,26 @@ function VillageLayoutEditorContent() {
 
         {!panelCollapsed && (
           <div className="overflow-auto p-4">
-            <h1 className="mt-2 font-serif text-2xl text-etheria-gold-soft">/editor</h1>
-            <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl border border-etheria-border-dim bg-black/20 p-1">
+            <div className="flex items-center justify-between">
+              <h1 className="font-serif text-2xl text-etheria-gold-soft">/editor</h1>
+              <select
+                value={apiTarget}
+                onChange={(e) => setApiTarget(e.target.value as any)}
+                className="rounded-lg border border-amber-500/30 bg-black/40 px-3 py-1.5 text-xs text-amber-300"
+              >
+                <option value="local">🖥️ Local</option>
+                <option value="prod">🌐 Producción</option>
+              </select>
+            </div>
+            <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl border border-etheria-border-dim bg-black/20 p-1">
               <button onClick={() => setEditorMode("village")} className={`rounded-lg px-3 py-2 text-xs ${editorMode === "village" ? "bg-etheria-gold text-black" : "text-etheria-text"}`}>{t("editor.tabs.village")}</button>
               <button onClick={() => setEditorMode("world-terrain")} className={`rounded-lg px-3 py-2 text-xs ${editorMode === "world-terrain" ? "bg-etheria-gold text-black" : "text-etheria-text"}`}>{t("editor.tabs.mask")}</button>
+              <button onClick={() => setEditorMode("bots")} className={`rounded-lg px-3 py-2 text-xs ${editorMode === "bots" ? "bg-etheria-gold text-black" : "text-etheria-text"}`}>🤖 Bots</button>
             </div>
 
-            {editorMode === "village" ? (
+            {editorMode === "bots" ? (
+              <BotAdminPanel apiTarget={apiTarget} />
+            ) : editorMode === "village" ? (
               <>
                 <p className="mt-4 text-sm text-etheria-text-muted">{t("editor.village.description")}</p>
                 <div className="mt-4 flex flex-wrap gap-2">

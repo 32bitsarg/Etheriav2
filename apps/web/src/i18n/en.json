@@ -169,7 +169,7 @@
       }
     ],
     "copyright": "© 2026 Etheria. All rights reserved.",
-    "developer": "Made with 💛 by the Etheria Team"
+    "developer": "Made with 💛 by the Etheria Team · Powered by matecito.dev"
   },
   "login": {
     "title": "Welcome Back",
@@ -1166,6 +1166,50 @@
         "plains": "Plains"
       },
       "title": "Buffs"
+    }
+  },
+  "race": {
+    "title": "Choose your race",
+    "subtitle": "Each race grants unique bonuses that will define your playstyle. This choice is permanent.",
+    "selectPrompt": "Select a race to continue",
+    "confirmPrefix": "Found as",
+    "creating": "Creating city...",
+    "permanentChoice": "This decision cannot be changed later.",
+    "human": {
+      "name": "Humans",
+      "description": "Versatile and diplomatic. They adapt to any terrain with balanced production and trade bonuses."
+    },
+    "elf": {
+      "name": "Elves",
+      "description": "Masters of the forest and the bow. They produce more wood and food, and their archers are lethal."
+    },
+    "orc": {
+      "name": "Orcs",
+      "description": "Brutal warriors born for battle. They produce more stone and their units are tougher."
+    },
+    "dwarf": {
+      "name": "Dwarves",
+      "description": "Unmatched forgers. They extract gold and stone faster, and their defenses are impenetrable."
+    },
+    "bonus": {
+      "goldProduction": "Gold production",
+      "woodProduction": "Wood production",
+      "stoneProduction": "Stone production",
+      "foodProduction": "Food production",
+      "attack": "Attack",
+      "defense": "Defense",
+      "hp": "HP",
+      "extraWarriors": "Extra warriors",
+      "extraArchers": "Extra archers",
+      "extraSiege": "Extra siege",
+      "marketLevel": "Starting market",
+      "lumberMillLevel": "Starting lumber mill",
+      "barracksLevel": "Starting barracks",
+      "goldMineLevel": "Starting gold mine",
+      "towerLevel": "Starting tower",
+      "startingGold": "Starting gold",
+      "startingWood": "Starting wood",
+      "startingStone": "Starting stone"
     }
   }
 }

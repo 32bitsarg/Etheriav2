@@ -110,6 +110,7 @@ export function GameInitializer() {
   const setUnreadCounts = useGameStore((s) => s.setUnreadCounts);
   const setSeasonState = useGameStore((s) => s.setSeasonState);
   const setPlayInitialLoadedAt = useGameStore((s) => s.setPlayInitialLoadedAt);
+  const setWorldId = useGameStore((s) => s.setWorldId);
 
   const currentPhase: InitPhase = !auth.ready
     ? "auth"
@@ -211,6 +212,20 @@ export function GameInitializer() {
     if (!auth.ready || !auth.isLoggedIn || !auth.token) return;
     if (bootstrapInFlightRef.current) return;
 
+    // Check if world is selected — only required for new cities
+    const worldId = localStorage.getItem("etheria_world_id");
+    if (worldId) setWorldId(worldId);
+
+    const pendingRace = localStorage.getItem("etheria_pending_race");
+    if (!localCityId && !worldId) {
+      router.replace("/play/select-world");
+      return;
+    }
+    if (!localCityId && worldId && !pendingRace) {
+      router.replace("/play/select-race");
+      return;
+    }
+
     let cancelled = false;
     bootstrapInFlightRef.current = true;
     setBootstrapPending(true);
@@ -219,10 +234,17 @@ export function GameInitializer() {
     (async () => {
       try {
         const pendingCityName = localStorage.getItem("etheria_pending_city_name") ?? "Etheria";
+        const body: Record<string, unknown> = {
+          cityName: pendingCityName,
+          email: auth.user?.email ?? null,
+          name: auth.user?.name ?? null,
+        };
+        if (pendingRace) body.race = pendingRace;
+        if (worldId) body.worldId = worldId;
         const res = await fetchWithTimeout("/api/city/bootstrap", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cityName: pendingCityName, email: auth.user?.email ?? null, name: auth.user?.name ?? null }),
+          body: JSON.stringify(body),
         }, BOOTSTRAP_TIMEOUT_MS);
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -235,6 +257,7 @@ export function GameInitializer() {
         setCityId(data.city.id);
         setLocalCityId(data.city.id);
         localStorage.removeItem("etheria_pending_city_name");
+        localStorage.removeItem("etheria_pending_race");
         if (Array.isArray(data.city.buildings)) {
           setCity(mapCityToStore(data.city));
           queryClient.setQueryData(["city", data.city.id], data.city);
@@ -265,7 +288,7 @@ export function GameInitializer() {
     return () => {
       cancelled = true;
     };
-  }, [auth, auth.isLoggedIn, auth.ready, auth.token, auth.user?.email, auth.user?.name, mounted, pathname, queryClient, router, setCity]);
+  }, [auth, auth.isLoggedIn, auth.ready, auth.token, auth.user?.email, auth.user?.name, localCityId, mounted, pathname, queryClient, router, setCity]);
 
   useEffect(() => {
     if (!error) return;
@@ -284,9 +307,10 @@ export function GameInitializer() {
     });
   }, [effectiveCityId, error]);
 
-  // Create city if no cityId exists (guest fallback)
+  // Create city if no cityId exists (guest fallback — only when NOT authenticated)
   useEffect(() => {
-    if (!auth.isLoggedIn && !cityId && !createCity.isPending && !hasCreatedCity) {
+    if (!auth.ready || auth.isLoggedIn) return;
+    if (!cityId && !createCity.isPending && !hasCreatedCity) {
       setHasCreatedCity(true);
       createCity.mutate("Etheria", {
         onSuccess: (data) => {
@@ -298,7 +322,7 @@ export function GameInitializer() {
         },
       });
     }
-  }, [auth.isLoggedIn, cityId, createCity, setCity, hasCreatedCity, queryClient]);
+  }, [auth.ready, auth.isLoggedIn, cityId, createCity, setCity, hasCreatedCity, queryClient]);
 
   // Prevent hydration mismatch
   if (!mounted) return null;

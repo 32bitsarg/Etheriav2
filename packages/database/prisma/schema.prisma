@@ -49,6 +49,7 @@ model BotPlayer {
   id         String    @id
   userId     String    @unique
   cityId     String    @unique
+  worldId    String    @default("default")
   profile    BotProfile
   status     BotStatus @default(ACTIVE)
   state      Json?
@@ -56,11 +57,13 @@ model BotPlayer {
   lastTickAt DateTime?
   nextTickAt DateTime
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  logs BotActionLog[]
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  world World @relation(fields: [worldId], references: [id])
+  logs  BotActionLog[]
 
   @@index([status, nextTickAt])
   @@index([profile])
+  @@index([worldId])
   @@map("bot_players")
 }
 
@@ -113,6 +116,7 @@ model City {
   posY      Int      @default(0)
   islandId  String?
   slotId    String?
+  worldId   String   @default("default")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -139,8 +143,10 @@ model City {
   power              Int      @default(0)
   lastAttackAt       DateTime?
   shieldExpiresAt    DateTime?
+  race               String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  world World @relation(fields: [worldId], references: [id])
 
   buildings      Building[]
   units          CityUnit[]
@@ -154,6 +160,7 @@ model City {
   @@index([posX, posY])
   @@index([lastResourceUpdate])
   @@index([createdAt])
+  @@index([worldId])
   @@map("cities")
 }
 
@@ -462,10 +469,38 @@ enum AllianceEffectType {
   DISHONOR_ATTACK
 }
 
+// ─── World / Multi-server ───
+
+model World {
+  id          String      @id @default(uuid())
+  slug        String      @unique
+  name        String
+  description String?
+  status      WorldStatus @default(ACTIVE)
+  config      Json
+  playerCount Int         @default(0)
+  sortOrder   Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  cities City[]
+  seasons WorldSeasonState[]
+  bots    BotPlayer[]
+
+  @@map("worlds")
+}
+
+enum WorldStatus {
+  ACTIVE
+  INACTIVE
+  COMING_SOON
+}
+
 // ─── Season System ───
 
 model WorldSeasonState {
   id            String   @id
+  worldId       String   @default("default")
   currentSeason SeasonType
   nextSeason    SeasonType
   phase         SeasonPhaseType
@@ -476,6 +511,9 @@ model WorldSeasonState {
   endsAt        DateTime
   updatedAt     DateTime
 
+  world World @relation(fields: [worldId], references: [id])
+
+  @@unique([worldId])
   @@map("world_season_state")
 }
 

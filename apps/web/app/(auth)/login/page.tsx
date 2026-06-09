@@ -7,6 +7,7 @@ import { useI18n } from "@/i18n";
 import Link from "next/link";
 import Image from "next/image";
 import { isEmailOrUsername } from "@/lib/authValidation";
+import { setCityId } from "@/lib/guestAuth";
 
 const REMEMBER_IDENTIFIER_KEY = "etheria_remember_identifier";
 
@@ -67,7 +68,13 @@ export default function LoginPage() {
     if (idError || passError) return;
     try {
       const res = await auth.signIn(identifier.trim(), password);
-      if ((res as any)?.error) throw new Error((res as any).error.message ?? "Login failed");
+      if (res.error) throw new Error(res.error.message ?? "Login failed");
+      if (res.data?.cityId) {
+        setCityId(res.data.cityId);
+      }
+      if (res.data?.worldId) {
+        localStorage.setItem("etheria_world_id", res.data.worldId);
+      }
       if (remember) localStorage.setItem(REMEMBER_IDENTIFIER_KEY, identifier.trim().toLowerCase());
       else localStorage.removeItem(REMEMBER_IDENTIFIER_KEY);
       router.replace("/play");

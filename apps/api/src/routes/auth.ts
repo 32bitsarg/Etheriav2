@@ -24,25 +24,30 @@ const RegisterSchema = z.object({
 });
 
 authRouter.post("/register", zValidator("json", RegisterSchema), async (c) => {
-  const data = c.req.valid("json");
-  const result = await registerUser({
-    email: data.email,
-    password: data.password,
-    name: (data.name ?? generatePlayerName(data.email)).trim(),
-    cityName: (data.cityName ?? generateCityName(data.email)).trim(),
-    remember: data.remember,
-  });
-  if ("error" in result) return c.json({ error: result.error }, (result as any).status ?? 500);
+  try {
+    const data = c.req.valid("json");
+    const result = await registerUser({
+      email: data.email,
+      password: data.password,
+      name: (data.name ?? generatePlayerName(data.email)).trim(),
+      cityName: (data.cityName ?? generateCityName(data.email)).trim(),
+      remember: data.remember,
+    });
+    if ("error" in result) return c.json({ error: result.error }, (result as any).status ?? 500);
 
-  const session = result.session;
-  setCookie(c, SESSION_COOKIE, session.token, {
-    httpOnly: true,
-    sameSite: "Lax",
-    path: "/",
-    maxAge: Math.floor(session.ttlMs / 1000),
-  });
+    const session = result.session;
+    setCookie(c, SESSION_COOKIE, session.token, {
+      httpOnly: true,
+      sameSite: "Lax",
+      path: "/",
+      maxAge: Math.floor(session.ttlMs / 1000),
+    });
 
   return c.json({ user: result.user, cityId: result.cityId });
+  } catch (error) {
+    console.error("[register] unexpected error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
 });
 
 const LoginSchema = z.object({
@@ -64,7 +69,7 @@ authRouter.post("/login", zValidator("json", LoginSchema), async (c) => {
     maxAge: Math.floor(session.ttlMs / 1000),
   });
 
-  return c.json({ user: result.user, cityId: result.cityId });
+  return c.json({ user: result.user, cityId: result.cityId, worldId: result.worldId });
 });
 
 authRouter.post("/logout", async (c) => {
@@ -72,11 +77,12 @@ authRouter.post("/logout", async (c) => {
   if (token) {
     await deleteSessionByToken(token);
   }
-  deleteCookie(c, SESSION_COOKIE, { path: "/" });
+  deleteCookie(c, SESSION_COOKIE, { path: "/", httpOnly: true, sameSite: "Lax" });
   return c.json({ success: true });
 });
 
 authRouter.get("/me", async (c) => {
+  c.header("Cache-Control", "no-cache, no-store, must-revalidate");
   const token = getCookie(c, SESSION_COOKIE) ?? null;
   const userId = await getSessionUserId(token);
   if (!userId) return c.json({ user: null }, 401);

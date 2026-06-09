@@ -13,6 +13,7 @@ async function apiFetch(path: string, options?: RequestInit) {
   return fetch(`/api${path}`, {
     ...options,
     credentials: "include",
+    cache: "no-store",
     headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) },
   });
 }
@@ -67,7 +68,7 @@ export function useMatecitoAuth() {
   }, []);
 
   useEffect(() => {
-    apiFetch("/auth/me")
+    apiFetch(`/auth/me?_t=${Date.now()}`)
       .then((r) => (r.ok ? r.json() : null))
       .then(async (data) => {
         if (data?.user) {
