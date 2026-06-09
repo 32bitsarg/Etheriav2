@@ -15,11 +15,13 @@ type BotRecord = {
   lastTickAt?: string | null;
 };
 
+function adminFetch(path: string, options?: RequestInit) {
+  const url = `/api/editor/admin?path=${encodeURIComponent(path)}`;
+  return fetch(url, { ...options, headers: { "Content-Type": "application/json", ...options?.headers } });
+}
+
 export function BotAdminPanel({ apiTarget }: { apiTarget: "local" | "prod" }) {
-  const API_BASE = apiTarget === "prod" ? "https://api.conquestofetheria.com" : "/api";
-  const ADMIN_SECRET = apiTarget === "prod"
-    ? (process.env.NEXT_PUBLIC_ADMIN_SECRET ?? "matecitodevetheria2026!")
-    : "matecitodevetheria2026!";
+  void apiTarget;
 
   const { data: worlds } = useWorlds();
   const [selectedWorld, setSelectedWorld] = useState("default");
@@ -33,9 +35,7 @@ export function BotAdminPanel({ apiTarget }: { apiTarget: "local" | "prod" }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/admin/bots?worldId=${selectedWorld}`, {
-        headers: { "x-admin-secret": ADMIN_SECRET },
-      });
+      const res = await adminFetch(`admin/bots?worldId=${selectedWorld}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to fetch bots");
       setBots(data.bots ?? []);
@@ -53,9 +53,8 @@ export function BotAdminPanel({ apiTarget }: { apiTarget: "local" | "prod" }) {
   const createBot = async () => {
     setCreating(true);
     try {
-      const res = await fetch(`${API_BASE}/admin/bots`, {
+      const res = await adminFetch("admin/bots", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-secret": ADMIN_SECRET },
         body: JSON.stringify({ worldId: selectedWorld, profile: newProfile }),
       });
       const data = await res.json();
@@ -71,10 +70,7 @@ export function BotAdminPanel({ apiTarget }: { apiTarget: "local" | "prod" }) {
   const deleteBot = async (botId: string) => {
     if (!confirm("Eliminar este bot? Esto borra su ciudad y usuario.")) return;
     try {
-      const res = await fetch(`${API_BASE}/admin/bots/${botId}`, {
-        method: "DELETE",
-        headers: { "x-admin-secret": ADMIN_SECRET },
-      });
+      const res = await adminFetch(`admin/bots/${botId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete bot");
       await fetchBots();
     } catch (e: any) {
@@ -84,9 +80,8 @@ export function BotAdminPanel({ apiTarget }: { apiTarget: "local" | "prod" }) {
 
   const toggleBot = async (botId: string, newStatus: string) => {
     try {
-      const res = await fetch(`${API_BASE}/admin/bots/${botId}`, {
+      const res = await adminFetch(`admin/bots/${botId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", "x-admin-secret": ADMIN_SECRET },
         body: JSON.stringify({ status: newStatus }),
       });
       if (!res.ok) throw new Error("Failed to update bot");
@@ -98,10 +93,7 @@ export function BotAdminPanel({ apiTarget }: { apiTarget: "local" | "prod" }) {
 
   const runTick = async () => {
     try {
-      const res = await fetch(`${API_BASE}/admin/bots/tick`, {
-        method: "POST",
-        headers: { "x-admin-secret": ADMIN_SECRET },
-      });
+      const res = await adminFetch("admin/bots/tick", { method: "POST" });
       const data = await res.json();
       if (res.ok) {
         await fetchBots();

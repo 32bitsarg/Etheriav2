@@ -172,17 +172,7 @@ export const TrainingQueueSchema = z.object({
 
 export type TrainingQueue = z.infer<typeof TrainingQueueSchema>;
 
-export const ResearchQueueSchema = z.object({
-  id: z.string().uuid(),
-  cityId: z.string().uuid(),
-  techId: z.string(),
-  targetLevel: z.number().int().min(1),
-  startedAt: z.string().datetime(),
-  completesAt: z.string().datetime(),
-  isComplete: z.boolean().default(false),
-});
-
-export type ResearchQueue = z.infer<typeof ResearchQueueSchema>;
+// ResearchQueueSchema + ResearchQueue are exported from ./tech (typed techId)
 
 export const ChatChannelSchema = z.enum(["GLOBAL", "ALLIANCE"]);
 

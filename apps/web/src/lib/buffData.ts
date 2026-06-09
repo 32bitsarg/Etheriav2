@@ -233,9 +233,12 @@ export function getZoneBuffs(posX: number, posY: number, t: TFunc): ActiveBuff[]
   }];
 }
 
+const DEFAULT_MAP_WIDTH = 3600;
+const DEFAULT_MAP_HEIGHT = 2400;
+
 function resolveZone(posX: number, posY: number): string {
-  const mapW = 3600;
-  const mapH = 2400;
+  const mapW = DEFAULT_MAP_WIDTH;
+  const mapH = DEFAULT_MAP_HEIGHT;
   const x = posX / mapW;
   const y = posY / mapH;
 

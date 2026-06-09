@@ -8,22 +8,16 @@ import { generatePlayerName, generateCityName } from "../domain/nameGenerator.js
 import { createStarterCityForUser } from "../domain/cityCreation.js";
 import { db, COLLECTIONS } from "../infrastructure/matecito.js";
 import { prisma } from "@etheria/database";
+import { requireAdmin } from "../infrastructure/adminMiddleware.js";
 
 const genId = () => crypto.randomUUID();
 
-function requireAdminSecret(c: any) {
-  const expected = process.env.ADMIN_SECRET;
-  if (!expected) return c.json({ error: "ADMIN_SECRET is not configured" }, 503);
-  const received = c.req.header("x-admin-secret");
-  if (!received || received !== expected) return c.json({ error: "Unauthorized" }, 401);
-  return null;
-}
-
 export const adminBotsRouter = new Hono();
 
+adminBotsRouter.use("*", requireAdmin());
+
 adminBotsRouter.get("/", async (c) => {
-  const secretCheck = requireAdminSecret(c);
-  if (secretCheck) return secretCheck;
+
 
   const worldId = c.req.query("worldId") ?? undefined;
   const bots = await listBots(worldId);
@@ -36,8 +30,7 @@ const CreateBotSchema = z.object({
 });
 
 adminBotsRouter.post("/", zValidator("json", CreateBotSchema), async (c) => {
-  const secretCheck = requireAdminSecret(c);
-  if (secretCheck) return secretCheck;
+
 
   const { worldId, profile } = c.req.valid("json");
 
@@ -82,8 +75,7 @@ adminBotsRouter.post("/", zValidator("json", CreateBotSchema), async (c) => {
 });
 
 adminBotsRouter.delete("/:id", async (c) => {
-  const secretCheck = requireAdminSecret(c);
-  if (secretCheck) return secretCheck;
+
 
   const botId = c.req.param("id");
   const allBots = await listBots();
@@ -102,8 +94,7 @@ adminBotsRouter.delete("/:id", async (c) => {
 });
 
 adminBotsRouter.patch("/:id", zValidator("json", z.object({ status: z.enum(["ACTIVE", "PAUSED"]) })), async (c) => {
-  const secretCheck = requireAdminSecret(c);
-  if (secretCheck) return secretCheck;
+
 
   const botId = c.req.param("id");
   const { status } = c.req.valid("json");
@@ -112,8 +103,7 @@ adminBotsRouter.patch("/:id", zValidator("json", z.object({ status: z.enum(["ACT
 });
 
 adminBotsRouter.post("/tick", async (c) => {
-  const secretCheck = requireAdminSecret(c);
-  if (secretCheck) return secretCheck;
+
 
   const result = await processBotWorkerTick();
   return c.json(result);

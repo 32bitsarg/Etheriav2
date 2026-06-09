@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
+import { useI18n } from "@/i18n";
 
 interface EventInfo {
   id: string;
@@ -39,6 +40,7 @@ function useCountdownStr(target: string | undefined) {
 }
 
 export function DailyEventBanner() {
+  const { locale } = useI18n();
   const { data } = useQuery<EventsResponse>({
     queryKey: ["daily-events"],
     queryFn: async () => {
@@ -81,7 +83,7 @@ export function DailyEventBanner() {
   }
 
   if (nextEvent) {
-    const tomorrow = new Date(nextEvent.startsAt).toLocaleDateString("es", { weekday: "short" });
+    const tomorrow = new Date(nextEvent.startsAt).toLocaleDateString(locale, { weekday: "short" });
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-stone-100 text-stone-500 text-xs">
         <span>{nextEvent.icon}</span>

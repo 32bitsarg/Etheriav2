@@ -1166,6 +1166,38 @@
         "plains": "Plains"
       },
       "title": "Buffs"
+    },
+    "activityFeed": {
+      "title": "Global Feed",
+      "subtitle": "What's happening in the world",
+      "loading": "Loading...",
+      "empty": "No activity yet",
+      "conquered": "conquered the city of",
+      "wonder": "captured The Wonder",
+      "rally": "launched an alliance rally",
+      "action": "performed an action",
+      "now": "now",
+      "minutesAgo": "{m}m ago",
+      "hoursAgo": "{h}h ago",
+      "daysAgo": "{d}d ago"
+    },
+    "achievements": {
+      "title": "Achievements",
+      "unlocked": "unlocked",
+      "points": "points",
+      "loading": "Loading...",
+      "unlockedSection": "Unlocked",
+      "lockedSection": "Locked"
+    },
+    "rallyBanner": {
+      "launching": "Launching!",
+      "title": "Alliance Rally!",
+      "participants": "participants",
+      "join": "Join",
+      "joined": "Joined",
+      "joinTitle": "Join Rally",
+      "troopsPrompt": "How many troops to send?",
+      "confirmJoin": "Join Rally"
     }
   },
   "race": {

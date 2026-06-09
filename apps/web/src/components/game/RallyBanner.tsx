@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useGameStore } from "@/stores/gameStore";
 import { useState, useEffect } from "react";
 import { useToastStore } from "@/stores/toastStore";
+import { useI18n } from "@/i18n";
 
 interface Rally {
   id: string;
@@ -15,28 +16,29 @@ interface Rally {
   participants: { cityId: string; units: { type: string; count: number }[] }[];
 }
 
-function useCountdown(target: string) {
+function useCountdown(target: string, launchingText: string) {
   const [diff, setDiff] = useState(new Date(target).getTime() - Date.now());
   useEffect(() => {
     const id = setInterval(() => setDiff(new Date(target).getTime() - Date.now()), 1000);
     return () => clearInterval(id);
   }, [target]);
-  if (diff <= 0) return "¡Lanzando!";
+  if (diff <= 0) return launchingText;
   const m = Math.floor(diff / 60000);
   const s = Math.floor((diff % 60000) / 1000);
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 function RallyCountdown({ rally, cityId, onJoin }: { rally: Rally; cityId: string; onJoin: (r: Rally) => void }) {
-  const timer = useCountdown(rally.launchAt);
+  const { t } = useI18n();
+  const timer = useCountdown(rally.launchAt, t("play.rallyBanner.launching"));
   const alreadyJoined = rally.participants.some((p) => p.cityId === cityId);
 
   return (
     <div className="flex items-center gap-3 px-4 py-2 bg-red-600 text-white rounded-xl">
       <span className="text-lg">🚩</span>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-bold">¡Rally de Alianza!</p>
-        <p className="text-[10px] opacity-80">{rally.participants.length} participantes</p>
+        <p className="text-xs font-bold">{t("play.rallyBanner.title")}</p>
+        <p className="text-[10px] opacity-80">{rally.participants.length} {t("play.rallyBanner.participants")}</p>
       </div>
       <span className="font-mono font-bold text-sm tabular-nums">{timer}</span>
       {!alreadyJoined && (
@@ -44,17 +46,18 @@ function RallyCountdown({ rally, cityId, onJoin }: { rally: Rally; cityId: strin
           onClick={() => onJoin(rally)}
           className="px-3 py-1 bg-white text-red-600 text-xs font-bold rounded-lg hover:bg-red-50 transition-colors"
         >
-          Unirme
+          {t("play.rallyBanner.join")}
         </button>
       )}
       {alreadyJoined && (
-        <span className="px-3 py-1 bg-white/20 text-white text-xs font-bold rounded-lg">✓ Unido</span>
+        <span className="px-3 py-1 bg-white/20 text-white text-xs font-bold rounded-lg">✓ {t("play.rallyBanner.joined")}</span>
       )}
     </div>
   );
 }
 
 export function RallyBanner() {
+  const { t } = useI18n();
   const cityId = useGameStore((s) => s.cityId);
   const addToast = useToastStore((s) => s.addToast);
   const qc = useQueryClient();
@@ -93,7 +96,7 @@ export function RallyBanner() {
           onSuccess={() => {
             setJoiningRally(null);
             qc.invalidateQueries({ queryKey: ["active-rallies", cityId] });
-            addToast({ title: "Rally", message: "¡Te uniste al rally!", type: "success" });
+            addToast({ title: "Rally", message: t("play.rallyBanner.joined"), type: "success" });
           }}
         />
       )}
@@ -107,6 +110,7 @@ function JoinRallyModal({ rally, cityId, onClose, onSuccess }: {
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { t } = useI18n();
   const [units, setUnits] = useState<{ type: string; count: number }[]>([]);
   const { mutate, isPending } = useMutation({
     mutationFn: () =>
@@ -128,11 +132,11 @@ function JoinRallyModal({ rally, cityId, onClose, onSuccess }: {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-xs bg-white rounded-2xl shadow-xl overflow-hidden">
         <div className="px-4 py-3 bg-red-600 text-white flex items-center justify-between">
-          <span className="font-bold">Unirse al Rally</span>
+          <span className="font-bold">{t("play.rallyBanner.joinTitle")}</span>
           <button onClick={onClose} className="opacity-70 hover:opacity-100">✕</button>
         </div>
         <div className="p-4 space-y-3">
-          <p className="text-sm text-stone-600">¿Cuántas tropas envías?</p>
+          <p className="text-sm text-stone-600">{t("play.rallyBanner.troopsPrompt")}</p>
           {UNIT_TYPES.map((type) => {
             const u = units.find((x) => x.type === type);
             return (
@@ -159,7 +163,7 @@ function JoinRallyModal({ rally, cityId, onClose, onSuccess }: {
             disabled={isPending || units.length === 0}
             className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-xl disabled:opacity-50"
           >
-            Unirme al Rally
+            {t("play.rallyBanner.confirmJoin")}
           </button>
         </div>
       </div>
