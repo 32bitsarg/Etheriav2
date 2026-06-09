@@ -16,10 +16,10 @@ type BotRecord = {
 };
 
 export function BotAdminPanel({ apiTarget }: { apiTarget: "local" | "prod" }) {
-  const API_BASE = apiTarget === "prod" ? "https://api.conquestofetheria.com" : "/api";
-  const ADMIN_SECRET = apiTarget === "prod"
-    ? (process.env.NEXT_PUBLIC_ADMIN_SECRET ?? "matecitodevetheria2026!")
-    : "matecitodevetheria2026!";
+  const API_BASE = apiTarget === "prod"
+    ? "https://api.conquestofetheria.com"
+    : "/api";
+  const ADMIN_SECRET = "matecitodevetheria2026!";
 
   const { data: worlds } = useWorlds();
   const [selectedWorld, setSelectedWorld] = useState("default");
