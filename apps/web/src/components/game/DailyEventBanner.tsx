@@ -74,10 +74,10 @@ export function DailyEventBanner() {
 
   if (todayEvent && countdownStarts) {
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-stone-100 text-stone-600 text-xs font-medium">
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 text-white/70 text-xs font-medium">
         <span className="text-base">{todayEvent.icon}</span>
         <span className="hidden sm:inline">{todayEvent.name} en</span>
-        <span className="font-bold text-stone-700">{countdownStarts}</span>
+        <span className="font-bold text-white/85">{countdownStarts}</span>
       </div>
     );
   }
@@ -85,7 +85,7 @@ export function DailyEventBanner() {
   if (nextEvent) {
     const tomorrow = new Date(nextEvent.startsAt).toLocaleDateString(locale, { weekday: "short" });
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-stone-100 text-stone-500 text-xs">
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 text-white/60 text-xs">
         <span>{nextEvent.icon}</span>
         <span className="hidden sm:inline">{nextEvent.name} — {tomorrow} 20:00</span>
       </div>

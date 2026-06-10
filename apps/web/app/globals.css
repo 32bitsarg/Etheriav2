@@ -176,11 +176,11 @@ h1, h2, h3, h4, .font-display, .font-serif {
   width: 68px;
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(10, 14, 12, 0.8);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(214, 211, 209, 0.7);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   overflow: hidden;
   padding: 6px;
 }
@@ -188,11 +188,11 @@ h1, h2, h3, h4, .font-display, .font-serif {
 .resource-bar-shell {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(209, 213, 219, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   padding: 6px 12px;
-  background: rgba(248, 250, 252, 0.85);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: none;
 }
 
 .resource-bar-shell::before {
@@ -294,17 +294,18 @@ h1, h2, h3, h4, .font-display, .font-serif {
   cursor: pointer;
   position: relative;
   transition: background 0.13s ease, color 0.13s ease;
-  color: rgba(120, 113, 108, 0.9);
+  color: rgba(255, 255, 255, 0.6);
   gap: 2px;
 }
 
 .grepolis-nav-item:hover {
-  background: rgba(245, 245, 244, 0.8);
+  background: rgba(255, 255, 255, 0.09);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .grepolis-nav-item.active {
-  background: #1c1917;
-  color: #ffffff;
+  background: rgba(245, 158, 11, 0.16);
+  color: #fcd34d;
 }
 
 .grepolis-nav-item.active::before { display: none; }
@@ -357,7 +358,7 @@ h1, h2, h3, h4, .font-display, .font-serif {
   padding: 0 3px;
   border-radius: 8px;
   background: #ef4444;
-  border: 2px solid #ffffff;
+  border: 2px solid rgba(10, 14, 12, 0.9);
   font-size: 8px;
   font-weight: 700;
   color: #ffffff;
@@ -369,7 +370,7 @@ h1, h2, h3, h4, .font-display, .font-serif {
 .grepolis-sidebar__divider {
   height: 1px;
   margin: 4px 0;
-  background: rgba(214, 211, 209, 0.6);
+  background: rgba(255, 255, 255, 0.1);
   box-shadow: none;
 }
 
@@ -410,11 +411,11 @@ h1, h2, h3, h4, .font-display, .font-serif {
 .village-topbar {
   position: relative;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(10, 14, 12, 0.78);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(209, 213, 219, 0.7);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
 }
 
 .village-topbar::before {
