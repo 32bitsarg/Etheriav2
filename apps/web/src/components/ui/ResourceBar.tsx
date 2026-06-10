@@ -83,9 +83,10 @@ export function ResourceBar({ compact = false, dark = false }: { compact?: boole
           const max = storage[storageKey as keyof typeof storage] ?? 0;
           const pct = max > 0 ? Math.round((value / max) * 100) : 0;
           const near = pct >= 90;
+          const hoursToFull = prod > 0 && max > value ? (max - value) / prod : null;
 
           return (
-            <div key={key} className="flex items-center shrink-0 gap-1.5">
+            <div key={key} className="group relative flex items-center shrink-0 gap-1.5">
               <ResourceIconSVG type={key as any} size={14} />
               <span className={`font-bold tabular-nums text-[13px] ${near ? "text-rose-300" : "text-white/90"}`}>
                 {formatNumber(Math.floor(value))}
@@ -93,6 +94,24 @@ export function ResourceBar({ compact = false, dark = false }: { compact?: boole
               <span className={`text-[10px] font-semibold ${near ? "text-rose-300" : "text-emerald-400"}`}>
                 +{prod}/h
               </span>
+              {/* Detail tooltip: storage, fill %, time to full */}
+              <div className="pointer-events-none absolute left-1/2 top-full z-[60] mt-2 hidden w-44 -translate-x-1/2 rounded-xl border border-white/10 bg-[#0b0f0e]/95 p-2.5 shadow-xl backdrop-blur-xl group-hover:block">
+                <div className="mb-1.5 flex items-center justify-between text-[11px]">
+                  <span className="text-white/60">{formatNumber(Math.floor(value))} / {formatNumber(max)}</span>
+                  <span className={`font-bold ${near ? "text-rose-300" : "text-white/85"}`}>{pct}%</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className={`h-full rounded-full ${near ? "bg-rose-400" : "bg-amber-400"}`}
+                    style={{ width: `${Math.min(100, pct)}%` }}
+                  />
+                </div>
+                {hoursToFull !== null && (
+                  <div className="mt-1.5 text-[10px] text-white/45">
+                    ⏳ {hoursToFull >= 1 ? `${Math.floor(hoursToFull)}h ${Math.round((hoursToFull % 1) * 60)}m` : `${Math.round(hoursToFull * 60)}m`}
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}

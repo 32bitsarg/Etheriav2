@@ -44,7 +44,7 @@ export function WinterPressureBanner() {
 
   if (collapsed) {
     return (
-      <div className="fixed top-[calc(var(--topbar-height)+8px)] left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+      <div className="fixed top-[calc(var(--topbar-height)+8px)] md:top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
         <button
           onClick={() => setCollapsed(false)}
           className={`pointer-events-auto rounded-2xl border ${borderColor} ${bgColor} px-3 py-1.5 text-xs ${titleColor} shadow-lg backdrop-blur-xl hover:opacity-80`}
@@ -56,7 +56,7 @@ export function WinterPressureBanner() {
   }
 
   return (
-    <div className="fixed top-[calc(var(--topbar-height)+8px)] left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+    <div className="fixed top-[calc(var(--topbar-height)+8px)] md:top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
       <div className={`pointer-events-auto flex items-center gap-3 rounded-2xl border ${borderColor} ${bgColor} px-4 py-2.5 shadow-lg shadow-stone-900/8 backdrop-blur-xl`}>
         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconBg} text-white text-lg`}>
           {isCritical ? "⚠️" : "❄️"}

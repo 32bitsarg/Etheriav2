@@ -187,7 +187,6 @@ h1, h2, h3, h4, .font-display, .font-serif {
 
 .resource-bar-shell {
   position: relative;
-  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   padding: 6px 12px;
@@ -366,6 +365,17 @@ h1, h2, h3, h4, .font-display, .font-serif {
   pointer-events: none;
 }
 
+/* ─── Group label (HUD v3) ─── */
+.grepolis-sidebar__group-label {
+  padding: 4px 0 2px;
+  text-align: center;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(252, 211, 77, 0.5);
+}
+
 /* ─── Divider ─── */
 .grepolis-sidebar__divider {
   height: 1px;
@@ -406,6 +416,14 @@ h1, h2, h3, h4, .font-display, .font-serif {
 .village-shell {
   grid-template-columns: 1fr;
   grid-template-rows: var(--topbar-height) minmax(0, 1fr);
+}
+
+/* HUD v3 desktop: no full-width topbar — the game takes the whole viewport
+   and the HUD floats in corner clusters. Mobile keeps its 48px topbar. */
+@media (min-width: 768px) {
+  .village-shell {
+    --topbar-height: 0px;
+  }
 }
 
 .village-topbar {

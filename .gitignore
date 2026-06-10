@@ -58,3 +58,8 @@ Thumbs.db
 .vscode/
 .env.local
 apps/web/public/version.json
+
+# Internal/ops files — never publish (repo is public)
+CONTEXT.md
+scratch/
+**/scratch/

@@ -11,6 +11,8 @@ import { SidebarNavIcon } from "@/components/ui/SidebarNavIcon";
 import { ChecklistIcon, WonderIcon, LaurelsIcon, FeedIcon, GearIcon, SpeechIcon } from "./HudIcons";
 import type { HudActions } from "./hudTypes";
 
+// HUD v3 (desktop): no full-width topbar — the game takes the whole viewport
+// and the HUD floats in three corner clusters plus a grouped sidebar.
 export function DesktopHUD({
   activeView,
   onViewChange,
@@ -44,107 +46,104 @@ export function DesktopHUD({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onViewChange]);
 
+  const navGroups: {
+    label: string;
+    items: { key: string; icon: React.ReactNode; label: string; onClick: () => void; active?: boolean; badge?: number; title?: string }[];
+  }[] = [
+    {
+      label: t("play.hud.groups.views"),
+      items: [
+        { key: "pueblo", icon: <SidebarNavIcon id="village" size={22} />, label: t("play.sidebar.village"), onClick: () => onViewChange("pueblo"), active: activeView === "pueblo", title: `${t("play.sidebar.village")} (V)` },
+        { key: "mapa", icon: <SidebarNavIcon id="map" size={22} />, label: t("play.sidebar.map"), onClick: () => onViewChange("mapa"), active: activeView === "mapa", title: `${t("play.sidebar.map")} (M)` },
+      ],
+    },
+    {
+      label: t("play.hud.groups.social"),
+      items: [
+        { key: "mail", icon: <SidebarNavIcon id="mail" size={22} />, label: t("play.sidebar.mail"), onClick: onOpenMail, badge: unreadCount },
+        { key: "chat", icon: <SpeechIcon className="h-[22px] w-[22px]" />, label: t("play.chat.title"), onClick: onOpenChat },
+        { key: "alliance", icon: <SidebarNavIcon id="army" size={22} />, label: t("play.sidebar.alliances"), onClick: onOpenAlliance },
+      ],
+    },
+    {
+      label: t("play.hud.groups.progress"),
+      items: [
+        { key: "quests", icon: <SidebarNavIcon id="quests" size={22} />, label: t("play.quests.title"), onClick: onOpenQuests },
+        { key: "daily", icon: <ChecklistIcon className="h-[22px] w-[22px]" />, label: t("play.sidebar.dailyQuests"), onClick: onOpenDailyQuests },
+        { key: "achievements", icon: <LaurelsIcon className="h-[22px] w-[22px]" />, label: t("play.sidebar.achievements"), onClick: onOpenAchievements },
+        { key: "wonder", icon: <WonderIcon className="h-[22px] w-[22px]" />, label: t("play.sidebar.wonder"), onClick: onOpenWonder },
+      ],
+    },
+    {
+      label: t("play.hud.groups.world"),
+      items: [
+        { key: "ranking", icon: <SidebarNavIcon id="summary" size={22} />, label: t("play.sidebar.ranking"), onClick: onOpenRankings },
+        { key: "feed", icon: <FeedIcon className="h-[22px] w-[22px]" />, label: t("play.sidebar.feed"), onClick: onOpenActivityFeed },
+      ],
+    },
+  ];
+
   return (
     <>
-      {/* Top Bar — full width, grid row 1 */}
-      <header className="village-topbar pointer-events-auto col-span-3 row-start-1 flex items-center gap-2 px-4 z-50 h-12">
-        <div className="flex items-center gap-2 shrink-0">
-          <SeasonHUD />
-          <ActiveBuffsPanel />
-          <DailyEventBanner />
-        </div>
-        <span
-          className="flex-1 text-center text-sm font-semibold text-amber-100/90 tracking-wide truncate cursor-pointer hover:text-amber-300 select-none"
+      {/* Top-left: city plaque + season + buffs/event */}
+      <div className="pointer-events-none absolute left-[88px] top-3 z-50 flex items-center gap-2">
+        <button
           onDoubleClick={onRename}
           title={t("play.sidebar.renameHint")}
+          className="pointer-events-auto flex items-center gap-2 rounded-xl border border-white/10 bg-[#0b0f0e]/80 px-3.5 py-2 backdrop-blur-xl"
         >
-          {cityName || t("play.sidebar.village")}
-        </span>
-        <div className="shrink-0 flex items-center gap-2">
-          <ResourceBar />
-          <NotificationBell />
-        </div>
-      </header>
+          <span className="max-w-[220px] truncate text-[13px] font-bold tracking-wide text-amber-100">
+            {cityName || t("play.sidebar.village")}
+          </span>
+        </button>
+        <SeasonHUD />
+        <ActiveBuffsPanel />
+        <DailyEventBanner />
+      </div>
 
+      {/* Top-center: floating resources with hover detail */}
+      <div className="pointer-events-none absolute left-1/2 top-3 z-50 hidden -translate-x-1/2 xl:block">
+        <span className="pointer-events-auto inline-block rounded-2xl bg-[#0b0f0e]/80 backdrop-blur-xl"><ResourceBar /></span>
+      </div>
+
+      {/* Top-right: resources (smaller screens) + bell + settings */}
+      <div className="pointer-events-none absolute right-3 top-3 z-50 flex items-center gap-2">
+        <span className="pointer-events-auto inline-block rounded-2xl bg-[#0b0f0e]/80 backdrop-blur-xl xl:hidden"><ResourceBar /></span>
+        <span className="pointer-events-auto"><NotificationBell /></span>
+        <button
+          onClick={onOpenSettings}
+          title={t("play.settings.title")}
+          className="pointer-events-auto grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-[#0b0f0e]/80 backdrop-blur-xl transition-colors hover:bg-white/15"
+        >
+          <GearIcon className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Left sidebar: grouped navigation */}
       <aside className="grepolis-sidebar village-sidebar">
         <nav className="grepolis-sidebar__nav relative pb-2">
-          {/* View switchers */}
-          <button onClick={() => onViewChange("pueblo")} title={`${t("play.sidebar.village")} (V)`} className={`grepolis-nav-item ${activeView === "pueblo" ? "active" : ""}`}>
-            <span className="grepolis-nav-item__icon-wrap">
-              <SidebarNavIcon id="village" size={22} />
-            </span>
-            <span className="grepolis-nav-item__label">{t("play.sidebar.village")}</span>
-          </button>
-          <button onClick={() => onViewChange("mapa")} title={`${t("play.sidebar.map")} (M)`} className={`grepolis-nav-item ${activeView === "mapa" ? "active" : ""}`}>
-            <span className="grepolis-nav-item__icon-wrap">
-              <SidebarNavIcon id="map" size={22} />
-            </span>
-            <span className="grepolis-nav-item__label">{t("play.sidebar.map")}</span>
-          </button>
-
-          <div className="grepolis-sidebar__divider" />
-
-          <button onClick={onOpenRankings} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap">
-              <SidebarNavIcon id="summary" size={22} />
-            </span>
-            <span className="grepolis-nav-item__label">{t("play.sidebar.ranking")}</span>
-          </button>
-          <button onClick={onOpenMail} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap relative">
-              <SidebarNavIcon id="mail" size={22} />
-              {unreadCount > 0 && (
-                <span className="grepolis-nav-item__badge">{unreadCount}</span>
-              )}
-            </span>
-            <span className="grepolis-nav-item__label">{t("play.sidebar.mail")}</span>
-          </button>
-          <button onClick={onOpenQuests} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap">
-              <SidebarNavIcon id="quests" size={22} />
-            </span>
-            <span className="grepolis-nav-item__label">{t("play.quests.title")}</span>
-          </button>
-          <button onClick={onOpenAlliance} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap">
-              <SidebarNavIcon id="army" size={22} />
-            </span>
-            <span className="grepolis-nav-item__label">{t("play.sidebar.alliances")}</span>
-          </button>
-          <button onClick={onOpenChat} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap">
-              <SpeechIcon className="h-[22px] w-[22px]" />
-            </span>
-            <span className="grepolis-nav-item__label">{t("play.chat.title")}</span>
-          </button>
-
-          <div className="grepolis-sidebar__divider" />
-
-          <button onClick={onOpenDailyQuests} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap"><ChecklistIcon className="h-[22px] w-[22px]" /></span>
-            <span className="grepolis-nav-item__label">{t("play.sidebar.dailyQuests")}</span>
-          </button>
-          <button onClick={onOpenWonder} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap"><WonderIcon className="h-[22px] w-[22px]" /></span>
-            <span className="grepolis-nav-item__label">{t("play.sidebar.wonder")}</span>
-          </button>
-          <button onClick={onOpenAchievements} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap"><LaurelsIcon className="h-[22px] w-[22px]" /></span>
-            <span className="grepolis-nav-item__label">{t("play.sidebar.achievements")}</span>
-          </button>
-          <button onClick={onOpenActivityFeed} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap"><FeedIcon className="h-[22px] w-[22px]" /></span>
-            <span className="grepolis-nav-item__label">{t("play.sidebar.feed")}</span>
-          </button>
-
-          <div className="grepolis-sidebar__divider" />
-
-          <button onClick={onOpenSettings} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap">
-              <GearIcon className="h-[22px] w-[22px]" />
-            </span>
-            <span className="grepolis-nav-item__label">{t("play.settings.title")}</span>
-          </button>
+          {navGroups.map((group, gi) => (
+            <div key={group.label}>
+              {gi > 0 && <div className="grepolis-sidebar__divider" />}
+              <div className="grepolis-sidebar__group-label">{group.label}</div>
+              {group.items.map((item) => (
+                <button
+                  key={item.key}
+                  onClick={item.onClick}
+                  title={item.title ?? item.label}
+                  className={`grepolis-nav-item ${item.active ? "active" : ""}`}
+                >
+                  <span className="grepolis-nav-item__icon-wrap relative">
+                    {item.icon}
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <span className="grepolis-nav-item__badge">{item.badge}</span>
+                    )}
+                  </span>
+                  <span className="grepolis-nav-item__label">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          ))}
         </nav>
       </aside>
     </>
