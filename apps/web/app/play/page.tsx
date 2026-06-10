@@ -3,6 +3,7 @@
 import { I18nProvider } from "@/i18n";
 import { GameInitializer } from "@/components/game/GameInitializer";
 import { GameNotificationWatcher } from "@/components/game/GameNotificationWatcher";
+import { UpdateNotifier } from "@/components/game/UpdateNotifier";
 import { ToastContainer } from "@/components/ui/ToastContainer";
 import { VillageView } from "@/components/village/VillageView";
 import { useMatecitoAuth } from "@/hooks/useMatecitoAuth";
@@ -22,6 +23,7 @@ function PlayContent() {
           <VillageView />
         </>
       )}
+      <UpdateNotifier />
       <ToastContainer />
     </main>
   );

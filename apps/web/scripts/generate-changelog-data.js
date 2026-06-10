@@ -165,6 +165,16 @@ fs.mkdirSync(path.dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, generateDataFile(releases));
 
 console.log(`✓ Generated ${outPath}`);
+
+// version.json: polled by the game client to detect new deploys
+const latest = releases[0];
+const versionOut = path.join(__dirname, '..', 'public', 'version.json');
+fs.writeFileSync(
+  versionOut,
+  JSON.stringify({ version: latest?.version ?? '0.0.0', date: latest?.date ?? '' }) + '\n'
+);
+console.log(`✓ Generated ${versionOut}`);
+
 console.log('\nTip: Add translations to en.json and es.json under "changelog" key.');
 console.log('Release names: changelog.releases.<version>');
 console.log('Items: changelog.items.<version>.<section>.<index>');

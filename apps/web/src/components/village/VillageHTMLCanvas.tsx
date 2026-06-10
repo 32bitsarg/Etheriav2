@@ -62,7 +62,7 @@ const AMBIENT_GLINTS = [
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function VillageHTMLCanvas({
+export const VillageHTMLCanvas = memo(function VillageHTMLCanvas({
   layout,
   buildings,
   selectedBuildingId,
@@ -549,7 +549,7 @@ export function VillageHTMLCanvas({
       </div>
     </div>
   );
-}
+});
 
 // ─── BuildingButton (memoized — only re-renders when its own props change) ────
 

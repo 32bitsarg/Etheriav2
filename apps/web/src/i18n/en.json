@@ -249,6 +249,14 @@
       "strong": "Strong"
     }
   },
+  "update": {
+    "available": "New version available!",
+    "description": "Etheria was updated to v{version}. Refresh to keep playing smoothly.",
+    "button": "Update",
+    "later": "Later",
+    "whatsNewTitle": "What's new",
+    "whatsNewClose": "Let's play!"
+  },
   "changelog": {
     "title": "Changelog",
     "subtitle": "Change history of Conquest of Etheria",

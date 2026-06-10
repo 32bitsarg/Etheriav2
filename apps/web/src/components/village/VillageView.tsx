@@ -27,7 +27,7 @@ import { RallyBanner } from "@/components/game/RallyBanner";
 import { WonderPanel } from "@/components/game/WonderPanel";
 import { AchievementsPanel } from "@/components/game/AchievementsPanel";
 import { ActivityFeedPanel } from "@/components/game/ActivityFeedPanel";
-import { useState, useMemo, useCallback, useEffect, useRef, type ReactNode } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, memo, type ReactNode } from "react";
 import { useI18n } from "@/i18n";
 import { normalizeVillageLayout, resolveVillageRenderableBuildings } from "@/lib/villageLayout";
 import type { VillageLayoutData } from "@/lib/villageLayout";
@@ -114,6 +114,7 @@ export function VillageView() {
   const myBattles = activeBattles ?? [];
   const unreadBattleReports = (battleReportsData ?? []).filter((report) => !report.read).length;
   const myName = useGameStore((s) => s.name);
+  const worldMovesList = useMemo(() => worldMoves ?? [], [worldMoves]);
   const myTradeMoves = (worldMoves ?? []).filter(
     (m) => m.type === "TRADE" && (m.from.name === myName || m.to.name === myName)
   );
@@ -152,6 +153,7 @@ export function VillageView() {
     setActiveView(view);
     setSelectedBuildingId(null);
   }, []);
+  const handleEnterVillage = useCallback(() => setActiveView("pueblo"), []);
   const hudProps: HudActions = {
     activeView,
     onViewChange: handleViewChange,
@@ -304,12 +306,6 @@ export function VillageView() {
             buildings={uniqueBuildings}
             selectedBuildingId={selectedBuildingId}
             onSelectBuilding={setSelectedBuildingId}
-            cityName={cityName}
-            resources={resources}
-            storage={storage}
-            production={production}
-            onRename={() => setIsRenameOpen(true)}
-            pendingUpgradeBuildingIds={pendingUpgradeBuildingIds}
             interactionsDisabled={isModalOpen}
             t={t}
           />
@@ -317,15 +313,11 @@ export function VillageView() {
         {activeView === "mapa" && (
           <MapaView
             cityName={cityName}
-            resources={resources}
-            storage={storage}
-            production={production}
             allianceData={allianceData}
-            movements={worldMoves ?? []}
+            movements={worldMovesList}
             worldMap={worldMap}
             seasonData={seasonData}
-            onRename={() => setIsRenameOpen(true)}
-            onEnterVillage={() => setActiveView("pueblo")}
+            onEnterVillage={handleEnterVillage}
             t={t}
           />
         )}
@@ -658,16 +650,10 @@ function QueueRailItem({ icon, title, subtitle, startedAt, completesAt, cancelLa
   );
 }
 
-function PuebloView({ buildings, selectedBuildingId, onSelectBuilding, cityName, resources, storage, production, onRename, pendingUpgradeBuildingIds, interactionsDisabled, t }: {
+const PuebloView = memo(function PuebloView({ buildings, selectedBuildingId, onSelectBuilding, interactionsDisabled, t }: {
   buildings: any[];
   selectedBuildingId: string | null;
   onSelectBuilding: (id: string) => void;
-  cityName: string;
-  resources: any;
-  storage: any;
-  production: { goldPerHour: number; woodPerHour: number; stonePerHour: number; foodPerHour: number };
-  onRename: () => void;
-  pendingUpgradeBuildingIds: string[];
   interactionsDisabled: boolean;
   t: (key: string) => string;
 }) {
@@ -676,7 +662,7 @@ function PuebloView({ buildings, selectedBuildingId, onSelectBuilding, cityName,
     ...building,
     displayName: t(BUILDING_NAMES[building.type as BuildingType] ?? building.type),
   })), [buildings, t]);
-  const activeLayout: VillageLayoutData = normalizeVillageLayout(layout);
+  const activeLayout: VillageLayoutData = useMemo(() => normalizeVillageLayout(layout), [layout]);
 
   if (placedBuildings.length === 0) {
     return (
@@ -696,23 +682,18 @@ function PuebloView({ buildings, selectedBuildingId, onSelectBuilding, cityName,
         buildings={placedBuildings}
         selectedBuildingId={selectedBuildingId}
         onSelectBuilding={onSelectBuilding}
-        queues={pendingUpgradeBuildingIds.map(id => ({ buildingId: id }))}
         interactionsDisabled={interactionsDisabled}
       />
     </div>
   );
-}
+});
 
-function MapaView({ cityName, resources, storage, production, allianceData, movements, worldMap, seasonData, onRename, onEnterVillage, t }: {
+const MapaView = memo(function MapaView({ cityName, allianceData, movements, worldMap, seasonData, onEnterVillage, t }: {
   cityName: string;
-  resources: any;
-  storage: any;
-  production: { goldPerHour: number; woodPerHour: number; stonePerHour: number; foodPerHour: number };
   allianceData: any;
   movements: any[];
   worldMap: any;
   seasonData: any;
-  onRename: () => void;
   onEnterVillage: () => void;
   t: (key: string) => string;
 }) {
@@ -731,6 +712,28 @@ function MapaView({ cityName, resources, storage, production, allianceData, move
   const markMapOpened = useMarkMapOpened();
   const cities = worldMap?.cities ?? [];
   const barbarianCamps = worldMap?.barbarianCamps ?? [];
+  // Stable identities: the canvas memoizes hundreds of markers on these
+  const citiesWithRelation = useMemo(
+    () => cities.map((city: any) => ({ ...city, relation: getMapRelation(city, allianceData) })),
+    [cities, allianceData]
+  );
+  const movementsWithRelation = useMemo(
+    () => movements.map((m: any) => ({
+      ...m,
+      relation: m.from.name === cityName || m.to.name === cityName
+        ? "own"
+        : getMapRelation({ allianceId: m.allianceId }, allianceData),
+    })),
+    [movements, cityName, allianceData]
+  );
+  const handleSelectCityId = useCallback((cityId: string, position: { x: number; y: number }) => {
+    setSelectedCityId(cityId);
+    setRadialPosition(position);
+  }, []);
+  const handleSelectCamp = useCallback((camp: any) => {
+    setSelectedCamp(camp);
+    setShowCampModal(true);
+  }, [setSelectedCamp, setShowCampModal]);
   const selectedCity = cities.find((city: any) => city.id === selectedCityId) ?? null;
   const isOwnCity = selectedCityId != null && selectedCityId === myCityId;
 
@@ -752,28 +755,14 @@ function MapaView({ cityName, resources, storage, production, allianceData, move
       {isEntering && <div className="etheria-map-enter-zoom pointer-events-none absolute inset-0 z-50" />}
       <div className="absolute inset-0">
         <WorldMapHTMLCanvas
-          cities={cities.map((city: any) => ({
-            ...city,
-            relation: getMapRelation(city, allianceData),
-          }))}
+          cities={citiesWithRelation}
           mapConfig={worldMap?.map ?? null}
           myCityId={myCityId}
           barbarianCamps={barbarianCamps}
-          movements={movements.map((m: any) => ({
-            ...m,
-            relation: m.from.name === cityName || m.to.name === cityName
-              ? "own"
-              : getMapRelation({ allianceId: m.allianceId }, allianceData),
-          }))}
+          movements={movementsWithRelation}
           seasonState={seasonData?.season ?? null}
-          onSelectCityId={(cityId, position) => {
-            setSelectedCityId(cityId);
-            setRadialPosition(position);
-          }}
-          onSelectCamp={(camp) => {
-            setSelectedCamp(camp as any);
-            setShowCampModal(true);
-          }}
+          onSelectCityId={handleSelectCityId}
+          onSelectCamp={handleSelectCamp}
         />
       </div>
       {selectedCity && (
@@ -811,7 +800,7 @@ function MapaView({ cityName, resources, storage, production, allianceData, move
       )}
     </div>
   );
-}
+});
 
 function AttackCityModal({ targetCityId, targetCityName, units, cityId, attackCity, t, addToast, onClose }: {
   targetCityId: string;
