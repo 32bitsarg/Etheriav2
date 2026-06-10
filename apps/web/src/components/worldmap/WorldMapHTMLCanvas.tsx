@@ -521,7 +521,7 @@ export function WorldMapHTMLCanvas({
                 />
                 {isMe && (
                   <div
-                    className="absolute rounded-full pointer-events-none"
+                    className="absolute rounded-full pointer-events-none animate-pulse"
                     style={{
                       width: 28, height: 28, top: -4,
                       border: `2px solid ${color}`,
@@ -575,6 +575,32 @@ export function WorldMapHTMLCanvas({
                 </button>
               );
             })}
+
+          {/* March trail for the hovered movement */}
+          {(() => {
+            const hovered = movements.find((m) => m.id === hoveredMovementId);
+            if (!hovered) return null;
+            const from = worldToLocal(hovered.from.x, hovered.from.y);
+            const to = worldToLocal(hovered.to.x, hovered.to.y);
+            const color = MOVEMENT_RELATION_COLORS[hovered.relation ?? "neutral"];
+            return (
+              <svg
+                className="absolute inset-0 pointer-events-none"
+                width={worldW}
+                height={worldH}
+                style={{ zIndex: 7 }}
+              >
+                <line
+                  x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+                  stroke={color} strokeWidth={1.5} strokeDasharray="6 5"
+                  strokeLinecap="round" opacity={0.8}
+                  style={{ animation: "march-trail-dash 0.8s linear infinite" }}
+                />
+                <circle cx={from.x} cy={from.y} r={3} fill="none" stroke={color} strokeWidth={1.2} opacity={0.7} />
+                <circle cx={to.x} cy={to.y} r={4} fill={color} opacity={0.55} />
+              </svg>
+            );
+          })()}
 
           {/* Movement markers */}
           {movements.map((m) => {

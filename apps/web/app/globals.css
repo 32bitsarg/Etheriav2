@@ -1256,3 +1256,42 @@ h1, h2, h3, h4, .font-display, .font-serif {
     display: none;
   }
 }
+
+/* ─── Seasonal ambient particles (SeasonalParticles.tsx) ─── */
+@keyframes season-snow {
+  0%   { transform: translate3d(0, -10vh, 0); }
+  100% { transform: translate3d(4vw, 110vh, 0); }
+}
+
+@keyframes season-leaf {
+  0%   { transform: translate3d(0, -10vh, 0) rotate(0deg); }
+  25%  { transform: translate3d(-3vw, 20vh, 0) rotate(120deg); }
+  50%  { transform: translate3d(3vw, 50vh, 0) rotate(220deg); }
+  75%  { transform: translate3d(-2vw, 80vh, 0) rotate(300deg); }
+  100% { transform: translate3d(2vw, 110vh, 0) rotate(420deg); }
+}
+
+@keyframes season-firefly {
+  0%, 100% { transform: translate3d(0, 0, 0); opacity: 0; }
+  20%      { opacity: 1; }
+  50%      { transform: translate3d(2.5vw, -4vh, 0); opacity: 0.35; }
+  70%      { opacity: 1; }
+  80%      { transform: translate3d(-1.5vw, 2vh, 0); }
+}
+
+@keyframes season-petal {
+  0%   { transform: translate3d(0, -8vh, 0) rotate(0deg); }
+  50%  { transform: translate3d(5vw, 50vh, 0) rotate(160deg); }
+  100% { transform: translate3d(-2vw, 110vh, 0) rotate(320deg); }
+}
+
+@keyframes march-trail-dash {
+  to { stroke-dashoffset: -16; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [style*="season-snow"], [style*="season-leaf"],
+  [style*="season-firefly"], [style*="season-petal"] {
+    animation: none !important;
+  }
+}

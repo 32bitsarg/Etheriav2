@@ -20,6 +20,7 @@ import { DesktopHUD } from "@/components/hud/DesktopHUD";
 import type { HudActions } from "@/components/hud/hudTypes";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { OrientationLock } from "@/components/game/OrientationLock";
+import { SeasonalParticles } from "@/components/game/SeasonalParticles";
 import { DailyQuestsPanel } from "@/components/game/DailyQuestsPanel";
 import { RankingsPanel } from "@/components/game/RankingsPanel";
 import { RallyBanner } from "@/components/game/RallyBanner";
@@ -301,6 +302,10 @@ export function VillageView() {
             t={t}
           />
         )}
+        <SeasonalParticles
+          season={seasonData?.season?.currentSeason}
+          intensity={seasonData?.season?.intensity}
+        />
       </main>
 
       {/* Bottom dock — queues */}
