@@ -8,7 +8,7 @@ import { ActiveBuffsPanel } from "@/components/game/ActiveBuffsPanel";
 import { DailyEventBanner } from "@/components/game/DailyEventBanner";
 import { NotificationBell } from "@/components/game/NotificationBell";
 import { SidebarNavIcon } from "@/components/ui/SidebarNavIcon";
-import { ChecklistIcon, WonderIcon, LaurelsIcon, FeedIcon, GearIcon } from "./HudIcons";
+import { ChecklistIcon, WonderIcon, LaurelsIcon, FeedIcon, GearIcon, SpeechIcon } from "./HudIcons";
 import type { HudActions } from "./hudTypes";
 
 export function DesktopHUD({
@@ -26,6 +26,7 @@ export function DesktopHUD({
   onOpenAchievements,
   onOpenActivityFeed,
   onOpenSettings,
+  onOpenChat,
 }: HudActions) {
   const { t } = useI18n();
 
@@ -109,6 +110,12 @@ export function DesktopHUD({
               <SidebarNavIcon id="army" size={22} />
             </span>
             <span className="grepolis-nav-item__label">{t("play.sidebar.alliances")}</span>
+          </button>
+          <button onClick={onOpenChat} className="grepolis-nav-item">
+            <span className="grepolis-nav-item__icon-wrap">
+              <SpeechIcon className="h-[22px] w-[22px]" />
+            </span>
+            <span className="grepolis-nav-item__label">{t("play.chat.title")}</span>
           </button>
 
           <div className="grepolis-sidebar__divider" />

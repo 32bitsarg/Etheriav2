@@ -662,6 +662,16 @@
       "achievements": "Logros",
       "feed": "Feed"
     },
+    "chat": {
+      "title": "Chat",
+      "global": "Global",
+      "alliance": "Alianza",
+      "placeholder": "Escribí un mensaje...",
+      "send": "Enviar",
+      "empty": "Todavía no hay mensajes. ¡Rompé el hielo!",
+      "needAlliance": "Necesitás pertenecer a una alianza para usar este canal.",
+      "close": "Cerrar chat"
+    },
     "queues": {
       "title": "Colas",
       "empty": "No hay acciones activas.",

@@ -17,4 +17,5 @@ export type HudActions = {
   onOpenAchievements: () => void;
   onOpenActivityFeed: () => void;
   onOpenSettings: () => void;
+  onOpenChat: () => void;
 };
