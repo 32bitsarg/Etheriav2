@@ -36,7 +36,7 @@ export function UpdateNotifier() {
 
   const checkVersion = useCallback(async () => {
     try {
-      const res = await fetch(`/version.json?t=${Date.now()}`, { cache: "no-store" });
+      const res = await fetch(`/version?t=${Date.now()}`, { cache: "no-store" });
       if (!res.ok) return;
       const data = (await res.json()) as { version?: string; buildId?: string | null };
       if (typeof data.version === "string" && data.version.length > 0) {
@@ -125,7 +125,13 @@ export function UpdateNotifier() {
               </div>
               <div className="flex shrink-0 flex-col gap-1.5">
                 <button
-                  onClick={() => window.location.reload()}
+                  onClick={() => {
+                    // Query-busting replace: a plain reload() can serve cached
+                    // HTML in Android WebViews, leaving the stale bundle running
+                    const url = new URL(window.location.href);
+                    url.searchParams.set("upd", String(Date.now()));
+                    window.location.replace(url.toString());
+                  }}
                   className="rounded-full bg-amber-500 px-4 py-1.5 text-[12.5px] font-bold text-white shadow-sm transition-colors hover:bg-amber-600"
                 >
                   {t("update.button")}
