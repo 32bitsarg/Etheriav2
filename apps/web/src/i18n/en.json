@@ -556,13 +556,17 @@
       },
       "v0_5_4": {
         "added": [
+          "Illustrated portraits for every race on race selection and the landing page.",
           "Custom illustrated icons across the HUD: quests, wonder, achievements, feed and settings."
         ],
         "changed": [
+          "Redesigned mobile HUD: dark top bar with village name, all resources and season always visible; lower bottom bar that covers less of the map.",
           "Polished desktop and mobile HUD: no emojis, consistent icons and translatable labels.",
-          "Sidebar icons rebuilt: now with transparent background and 60x lighter."
+          "Sidebar icons rebuilt: now with transparent background and 60x lighter.",
+          "Much faster loading on mobile: buildings and heavy images reduced (over 13MB less when entering the village)."
         ],
         "fixed": [
+          "Music now starts correctly on mobile (the audio unlock failed on some Android devices and stayed silent forever).",
           "Season effects: snow, leaves and petals now actually fall on the map and also show in the village (they used to freeze or stay invisible).",
           "Season effects no longer restart on their own every time the game refreshes data.",
           "Sidebar icons that showed up with a white square background."

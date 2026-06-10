@@ -95,16 +95,32 @@ function createContext() {
   syncVolume();
 }
 
+// Gesture-qualifying events: touchstart does NOT count as a user gesture for
+// AudioContext.resume() on some Android WebViews — touchend/click/pointerup do.
+const UNLOCK_EVENTS: Array<keyof DocumentEventMap> = ["click", "touchend", "pointerup", "keydown"];
+
+function removeUnlockListeners() {
+  for (const evt of UNLOCK_EVENTS) document.removeEventListener(evt, handleUnlockEvent);
+}
+
 function handleUnlockEvent() {
+  if (unlocked) {
+    removeUnlockListeners();
+    return;
+  }
   if (!ctx) createContext();
-  if (ctx && ctx.state === "suspended") {
-    ctx.resume().then(() => {
-      unlocked = true;
-      useAudioStore.getState().unlock();
-    });
-  } else {
+  if (!ctx) return;
+  const finish = () => {
     unlocked = true;
     useAudioStore.getState().unlock();
+    removeUnlockListeners();
+  };
+  if (ctx.state === "suspended") {
+    // If resume() is rejected (gesture not accepted), keep the listeners and
+    // retry on the next interaction instead of staying silent forever.
+    ctx.resume().then(finish).catch(() => {});
+  } else {
+    finish();
   }
 }
 
@@ -113,9 +129,8 @@ export const AudioEngine = {
     if (initialized) return;
     initialized = true;
 
-    const events: Array<keyof HTMLElementEventMap> = ["click", "touchstart", "keydown"];
-    for (const evt of events) {
-      document.addEventListener(evt, handleUnlockEvent, { once: true });
+    for (const evt of UNLOCK_EVENTS) {
+      document.addEventListener(evt, handleUnlockEvent);
     }
 
     // Pause audio when page goes to background (mobile rotation / tab switch / lock screen)

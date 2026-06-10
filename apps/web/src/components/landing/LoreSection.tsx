@@ -93,9 +93,16 @@ export function LoreSection() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {RACES.map((race) => (
             <div key={race.id} className="group overflow-hidden rounded-[1.8rem] border border-[#f6ebdb] bg-white shadow-[0_10px_26px_-14px_rgba(60,40,20,.3)] transition-transform hover:-translate-y-1">
-              <div className="flex h-32 items-center justify-center relative overflow-hidden" style={{ background: race.gradient }}>
-                <RaceEmblem race={race.id} className="h-20 w-20 drop-shadow-lg" />
-                <div className="absolute inset-0 bg-white/5" />
+              <div className="relative h-44 overflow-hidden">
+                <img
+                  src={`/assets/races/${race.id}.webp`}
+                  alt={t(race.nameKey)}
+                  className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
+                  draggable={false}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                <RaceEmblem race={race.id} className="absolute bottom-2 right-2 h-10 w-10 drop-shadow-lg" />
               </div>
 
               <div className="p-5">
