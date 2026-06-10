@@ -14,6 +14,7 @@ import { BarbarianAttackAlertBanner } from "@/components/barbarians/BarbarianAtt
 import { WinterPressureBanner } from "@/components/barbarians/WinterPressureBanner";
 import { BarbarianCampModal } from "@/components/barbarians/BarbarianCampModal";
 import { SettingsModal } from "@/components/village/SettingsModal";
+import { ModalBase } from "@/components/ui/ModalBase";
 import { VillageImmersiveDock } from "@/components/village/VillageImmersiveDock";
 import { MobileHUD } from "@/components/hud/MobileHUD";
 import { DesktopHUD } from "@/components/hud/DesktopHUD";
@@ -1222,57 +1223,59 @@ function BuildingModal({ building, resources, onUpgrade, onTrain, onResearch, is
   }
 
   return (
-    <div className="fixed inset-0 z-[80] grid place-items-center bg-black/75 backdrop-blur-md p-4" onClick={onClose} onPointerDownCapture={(e) => e.stopPropagation()}>
-      <div className="relative w-full max-w-4xl max-sm:max-w-[calc(100vw-16px)] max-h-[90vh] overflow-hidden rounded-[40px] max-sm:rounded-2xl border border-etheria-border bg-[#0b1111] shadow-[0_0_100px_rgba(0,0,0,0.5)] flex flex-col md:flex-row" onClick={(e) => e.stopPropagation()} onPointerDownCapture={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute right-4 top-4 z-10 min-h-[44px] min-w-[44px] flex items-center justify-center text-white/40 hover:text-white rounded-full hover:bg-white/10">✕</button>
-        
-        {/* Left Side: Visuals */}
-        <div className="w-full md:w-[400px] bg-black/40 p-8 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-white/5">
-          <div className="mb-6 scale-125">
-            <BuildingSprite type={building.type as BuildingType} level={building.level} size={300} />
-          </div>
-          <div className="text-center">
-            <div className="text-etheria-gold-soft font-serif text-3xl mb-1">{name}</div>
-            <div className="text-white/40 text-sm uppercase tracking-widest">{t("play.building.level")} {building.level}</div>
+    <ModalBase
+      isOpen={true}
+      onClose={onClose}
+      variant="desktop"
+      size="xl"
+      title={name}
+      subtitle={`${t("play.building.level")} ${building.level}`}
+      headerGradient="from-amber-900/60 to-stone-900"
+    >
+      <div className="flex flex-col md:flex-row gap-6 -mx-5 -mt-4">
+        {/* Left: Visual */}
+        <div className="w-full md:w-[320px] shrink-0 bg-white/5 p-6 flex flex-col items-center justify-center rounded-b-2xl md:rounded-r-none md:rounded-bl-2xl">
+          <div className="scale-110">
+            <BuildingSprite type={building.type as BuildingType} level={building.level} size={220} />
           </div>
         </div>
 
-        {/* Right Side: Actions */}
-        <div className="flex-1 p-8 overflow-y-auto">
-          <p className="text-white/70 leading-relaxed mb-8">{t(getBuildingDescriptionKey(building.type))}</p>
+        {/* Right: Actions */}
+        <div className="flex-1 min-w-0 pb-4 pr-4 max-md:px-4">
+          <p className="text-white/60 text-sm leading-relaxed mb-6">{t(getBuildingDescriptionKey(building.type))}</p>
           
-          <div className="space-y-6">
-            <section className="bg-white/5 rounded-3xl p-6 border border-white/5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-serif text-lg text-white uppercase tracking-widest">{t("play.building.upgrade")}</h3>
-                <span className="font-mono text-etheria-success">{formatTime(timeSeconds)}</span>
+          <div className="space-y-4">
+            <div className="bg-white/5 rounded-2xl p-5 border border-white/5">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-sm text-white uppercase tracking-wider">{t("play.building.upgrade")}</h3>
+                <span className="font-mono text-xs text-emerald-400">{formatTime(timeSeconds)}</span>
               </div>
-              <div className="grid grid-cols-2 gap-2 mb-6">
+              <div className="grid grid-cols-2 gap-2 mb-4">
                 {Object.entries(cost).map(([res, val]) => (
                   <div key={res} className="bg-black/40 rounded-xl p-2 flex items-center gap-2 border border-white/5">
-                    <ResourceIconSVG type={res as any} size={16} />
-                    <span className="font-mono text-sm text-white/80">{formatNumber(val)}</span>
+                    <ResourceIconSVG type={res as any} size={14} />
+                    <span className="font-mono text-xs text-white/80">{formatNumber(val)}</span>
                   </div>
                 ))}
               </div>
               <button 
                 onClick={() => onUpgrade(building.id, building.type, building.level)}
                 disabled={isMaxLevel || isUpgrading || pendingUpgradeBuildingIds.includes(building.id)}
-                className="w-full bg-etheria-gold text-black font-bold py-4 rounded-2xl hover:bg-white transition-all disabled:opacity-30"
+                className="w-full bg-amber-500 text-black font-bold py-3 rounded-xl hover:bg-amber-400 transition-all disabled:opacity-30 text-sm"
               >
                 {isMaxLevel ? t("play.building.maxLevel") : pendingUpgradeBuildingIds.includes(building.id) ? t("play.building.inQueue") : isUpgrading ? t("play.building.upgrading") : `${t("play.building.upgradeTo")} ${building.level + 1}`}
               </button>
-            </section>
+            </div>
 
             {showMarket && (
-              <section className="rounded-3xl border border-white/5 bg-white/5">
+              <div className="rounded-2xl border border-white/5 bg-white/5">
                 <MarketPanel cityId={cityId} t={t} />
-              </section>
+              </div>
             )}
           </div>
         </div>
       </div>
-    </div>
+    </ModalBase>
   );
 }
 
@@ -1296,23 +1299,15 @@ function BarracksModal({ building, resources, onUpgrade, onTrain, isUpgrading, p
   const unitTime = getTrainingTimeSeconds(activeUnit, count);
 
   return (
-    <div className="fixed inset-0 z-[80] grid place-items-center bg-black/75 backdrop-blur-md p-4" onClick={onClose}>
-      <div className="relative w-full max-w-[640px] max-sm:max-w-[calc(100vw-16px)] overflow-hidden rounded-[40px] max-sm:rounded-2xl border border-etheria-border bg-[#0b1111] shadow-[0_0_100px_rgba(0,0,0,0.5)]" onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute right-4 top-4 z-10 min-h-[44px] min-w-[44px] flex items-center justify-center text-white/40 hover:text-white rounded-full hover:bg-white/10">✕</button>
-
-        {/* Header */}
-        <div className="px-8 pt-8 pb-4">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center">
-              <BuildingSprite type={building.type as BuildingType} level={building.level} size={60} />
-            </div>
-            <div>
-              <div className="font-serif text-2xl text-etheria-gold-soft">{name}</div>
-              <div className="text-xs text-white/40">{t("play.building.level")} {building.level}</div>
-            </div>
-          </div>
-          <p className="text-sm text-white/50 mt-2">{t(getBuildingDescriptionKey(building.type))}</p>
-        </div>
+    <ModalBase
+      isOpen={true}
+      onClose={onClose}
+      variant="desktop"
+      size="lg"
+      title={name}
+      subtitle={`${t("play.building.level")} ${building.level}`}
+      headerGradient="from-amber-900/60 to-stone-900"
+    >
 
         {/* Unit Tabs */}
         <div className="px-8">
@@ -1463,8 +1458,7 @@ function BarracksModal({ building, resources, onUpgrade, onTrain, isUpgrading, p
             </button>
           </div>
         </div>
-      </div>
-    </div>
+        </ModalBase>
   );
 }
 
@@ -1488,23 +1482,15 @@ function LibraryModal({ building, resources, onUpgrade, onResearch, isUpgrading,
   const bonusSummary = techBonuses ?? {};
 
   return (
-    <div className="fixed inset-0 z-[80] grid place-items-center bg-black/75 backdrop-blur-md p-4" onClick={onClose}>
-      <div className="relative w-full max-w-[720px] max-sm:max-w-[calc(100vw-16px)] overflow-hidden rounded-[40px] max-sm:rounded-2xl border border-etheria-border bg-[#0b1111] shadow-[0_0_100px_rgba(0,0,0,0.5)]" style={{ maxHeight: "calc(100vh - 40px)" }} onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute right-4 top-4 z-10 min-h-[44px] min-w-[44px] flex items-center justify-center text-white/40 hover:text-white rounded-full hover:bg-white/10">✕</button>
-
-        {/* Header */}
-        <div className="px-8 pt-8 pb-4">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center">
-              <BuildingSprite type={building.type as BuildingType} level={building.level} size={60} />
-            </div>
-            <div>
-              <div className="font-serif text-2xl text-etheria-gold-soft">{name}</div>
-              <div className="text-xs text-white/40">{t("play.building.level")} {building.level}</div>
-            </div>
-          </div>
-        </div>
-
+    <ModalBase
+      isOpen={true}
+      onClose={onClose}
+      variant="desktop"
+      size="lg"
+      title={name}
+      subtitle={`${t("play.building.level")} ${building.level}`}
+      headerGradient="from-violet-900/60 to-stone-900"
+    >
         <div className="flex" style={{ minHeight: 0 }}>
           {/* Right side - Tech list */}
           <div className="flex-1 px-8 pb-4 overflow-y-auto" style={{ maxHeight: "calc(100vh - 340px)" }}>
@@ -1661,8 +1647,7 @@ function LibraryModal({ building, resources, onUpgrade, onResearch, isUpgrading,
             </button>
           </div>
         </div>
-      </div>
-    </div>
+        </ModalBase>
   );
 }
 
