@@ -33,6 +33,7 @@ chatRouter.post('/messages', requireMatecitoAuth(), zValidator('json', SendChatM
     channel: data.channel,
     message: data.message,
     rateLimitWindowMs: config.chatRateLimitWindowMs,
+    recipientUserId: data.recipientUserId,
   });
   if (result.error !== null) {
     const status = result.error.includes('wait') ? 429 : 403;

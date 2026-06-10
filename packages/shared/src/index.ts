@@ -174,7 +174,7 @@ export type TrainingQueue = z.infer<typeof TrainingQueueSchema>;
 
 // ResearchQueueSchema + ResearchQueue are exported from ./tech (typed techId)
 
-export const ChatChannelSchema = z.enum(["GLOBAL", "ALLIANCE"]);
+export const ChatChannelSchema = z.enum(["GLOBAL", "ALLIANCE", "PRIVATE"]);
 
 export type ChatChannel = z.infer<typeof ChatChannelSchema>;
 
@@ -212,6 +212,9 @@ export const ChatMessageSchema = z.object({
   senderName: z.string().min(1).max(40),
   message: z.string().min(1).max(280),
   allianceId: z.string().uuid().nullable().optional(),
+  worldId: z.string().nullable().optional(),
+  recipientUserId: z.string().uuid().nullable().optional(),
+  recipientName: z.string().nullable().optional(),
   createdAt: z.string().datetime(),
 });
 
@@ -237,6 +240,8 @@ export const ProposePeaceRequestSchema = z.object({
 export const SendChatMessageRequestSchema = z.object({
   channel: ChatChannelSchema,
   message: z.string().trim().min(1).max(280),
+  // Required when channel is PRIVATE
+  recipientUserId: z.string().uuid().optional(),
 });
 
 export type SendChatMessageRequest = z.infer<typeof SendChatMessageRequestSchema>;

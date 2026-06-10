@@ -393,12 +393,20 @@ model ChatMessage {
   senderName   String
   message      String
   allianceId   String?
+  // World scoping: global chat is per-world. Nullable so legacy rows survive
+  // `prisma db push` without data loss; new messages always stamp it.
+  worldId      String?
+  // PRIVATE channel: direct messages between players of the same world.
+  recipientUserId String?
+  recipientName   String?
   createdAt    DateTime    @default(now())
 
   alliance Alliance? @relation(fields: [allianceId], references: [id], onDelete: Cascade)
 
   @@index([channel, createdAt])
   @@index([allianceId, createdAt])
+  @@index([worldId, channel, createdAt])
+  @@index([recipientUserId, createdAt])
   @@map("chat_messages")
 }
 
@@ -457,6 +465,7 @@ enum BattleStatus {
 enum ChatChannel {
   GLOBAL
   ALLIANCE
+  PRIVATE
 }
 
 enum DiplomacyStatus {
