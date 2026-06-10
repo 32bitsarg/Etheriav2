@@ -87,19 +87,19 @@ export function ResourceBar({ compact = false, dark = false }: { compact?: boole
           return (
             <div key={key} className="flex items-center shrink-0 gap-1.5">
               <ResourceIconSVG type={key as any} size={14} />
-              <span className={`font-bold tabular-nums text-[13px] ${near ? "text-rose-600" : "text-stone-800"}`}>
+              <span className={`font-bold tabular-nums text-[13px] ${near ? "text-rose-300" : "text-white/90"}`}>
                 {formatNumber(Math.floor(value))}
               </span>
-              <span className={`text-[10px] font-semibold ${near ? "text-rose-600" : "text-emerald-600"}`}>
+              <span className={`text-[10px] font-semibold ${near ? "text-rose-300" : "text-emerald-400"}`}>
                 +{prod}/h
               </span>
             </div>
           );
         })}
 
-        <div className="flex items-center shrink-0 border-l border-stone-200 gap-1.5 pl-3">
+        <div className="flex items-center shrink-0 border-l border-white/15 gap-1.5 pl-3">
           <ResourceIconSVG type="gems" size={14} />
-          <span className="font-bold tabular-nums text-stone-800 text-[13px]">
+          <span className="font-bold tabular-nums text-white/90 text-[13px]">
             {formatNumber(Math.floor(liveResources.gems))}
           </span>
         </div>

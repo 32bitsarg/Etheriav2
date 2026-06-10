@@ -53,7 +53,7 @@ export function DesktopHUD({
           <DailyEventBanner />
         </div>
         <span
-          className="flex-1 text-center text-sm font-semibold text-stone-700 tracking-wide truncate cursor-pointer hover:text-amber-600 select-none"
+          className="flex-1 text-center text-sm font-semibold text-amber-100/90 tracking-wide truncate cursor-pointer hover:text-amber-300 select-none"
           onDoubleClick={onRename}
           title={t("play.sidebar.renameHint")}
         >
