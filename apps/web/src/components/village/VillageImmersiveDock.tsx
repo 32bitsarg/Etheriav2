@@ -146,23 +146,46 @@ export function VillageImmersiveDock() {
     { label: t("play.dock.training"), emoji: "🛡️", items: trainingItems },
     { label: t("play.dock.research"), emoji: "📚", items: researchItems },
   ];
+  const allItems = [...constructionItems, ...trainingItems, ...researchItems];
 
   return (
-    <aside className="pointer-events-auto absolute inset-x-3 bottom-3 max-md:bottom-[calc(52px+env(safe-area-inset-bottom,0px))] z-40 flex items-center gap-1.5 rounded-2xl border border-stone-200/70 bg-white/82 px-3 py-2 shadow-lg shadow-stone-900/5 backdrop-blur-xl">
-      {sections.map((section, i) => (
-        <React.Fragment key={section.label}>
-          {i > 0 && <div className={`mx-1 h-8 w-px shrink-0 bg-stone-200 max-md:hidden`} />}
-          <QueueSection
-            label={section.label}
-            emoji={section.emoji}
-            items={section.items}
-            cancellingId={cancellingId}
+    <>
+      {/* Desktop: horizontal three-section rail */}
+      <aside className="pointer-events-auto absolute inset-x-3 bottom-3 z-40 hidden items-center gap-1.5 rounded-2xl border border-white/10 bg-[#0b0f0e]/85 px-3 py-2 shadow-lg shadow-black/30 backdrop-blur-xl md:flex">
+        {sections.map((section, i) => (
+          <React.Fragment key={section.label}>
+            {i > 0 && <div className="mx-1 h-8 w-px shrink-0 bg-white/10" />}
+            <QueueSection
+              label={section.label}
+              emoji={section.emoji}
+              items={section.items}
+              cancellingId={cancellingId}
+              onCancel={handleCancel}
+              cancelLabel={t("play.dock.cancel")}
+            />
+          </React.Fragment>
+        ))}
+      </aside>
+
+      {/* Mobile: compact vertical stack bottom-left — readable rows, no crushing */}
+      <div
+        className="pointer-events-auto absolute left-2 z-40 flex w-[min(64vw,270px)] flex-col gap-1 md:hidden"
+        style={{ bottom: "calc(50px + env(safe-area-inset-bottom, 0px))" }}
+      >
+        {allItems.slice(0, 4).map((item) => (
+          <QueueSlot
+            key={item.id}
+            item={item}
+            isCancelling={cancellingId === item.id}
             onCancel={handleCancel}
             cancelLabel={t("play.dock.cancel")}
           />
-        </React.Fragment>
-      ))}
-    </aside>
+        ))}
+        {allItems.length > 4 && (
+          <span className="pl-1 text-[10px] font-semibold text-white/50">+{allItems.length - 4}</span>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -187,7 +210,7 @@ function QueueSection({
       {/* Section label */}
       <div className="flex shrink-0 flex-col items-center gap-0.5 pr-1">
         <span className="text-[15px] leading-none">{emoji}</span>
-        <span className="text-[8px] font-bold uppercase tracking-wider text-stone-400">{label}</span>
+        <span className="text-[8px] font-bold uppercase tracking-wider text-white/40">{label}</span>
       </div>
 
       {/* 3 horizontal slots (empty placeholders are desktop-only) */}
@@ -237,7 +260,7 @@ function QueueSlot({
   }, [seconds <= 0, cityId]);
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-stone-200 bg-white/90 px-2 py-1.5">
+    <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-white/10 bg-[#101513]/90 px-2 py-1.5 backdrop-blur-md">
       {/* Icon */}
       <div
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg overflow-hidden"
@@ -253,14 +276,14 @@ function QueueSlot({
       {/* Text + progress */}
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-1">
-          <span className="truncate text-[11px] font-semibold text-stone-800 leading-tight">
+          <span className="truncate text-[11px] font-semibold text-white/90 leading-tight">
             {item.label}
           </span>
           <span className="shrink-0 text-[10px] font-bold tabular-nums" style={{ color: item.color }}>
             {isWaiting ? "—" : formatTime(seconds)}
           </span>
         </div>
-        <div className="mt-1 h-0.5 overflow-hidden rounded-full bg-stone-100">
+        <div className="mt-1 h-0.5 overflow-hidden rounded-full bg-white/15">
           <div
             className="h-full rounded-full"
             style={{ width: `${isWaiting ? 0 : progress(item.startedAt)}%`, background: item.color }}
@@ -274,7 +297,7 @@ function QueueSlot({
         onClick={() => onCancel(item)}
         disabled={isCancelling}
         title={cancelLabel}
-        className="shrink-0 flex h-5 w-5 items-center justify-center rounded text-stone-300 hover:bg-rose-50 hover:text-rose-500 transition-colors disabled:opacity-40"
+        className="shrink-0 flex h-5 w-5 items-center justify-center rounded text-white/35 hover:bg-rose-500/15 hover:text-rose-300 transition-colors disabled:opacity-40"
       >
         <svg className="h-2.5 w-2.5" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M1 1l8 8M9 1L1 9" />
@@ -286,11 +309,11 @@ function QueueSlot({
 
 function EmptySlot() {
   return (
-    <div className="max-md:hidden flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-dashed border-stone-150 px-2 py-1.5 opacity-30">
-      <div className="h-7 w-7 shrink-0 rounded-lg bg-stone-100" />
+    <div className="max-md:hidden flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-dashed border-white/15 px-2 py-1.5 opacity-30">
+      <div className="h-7 w-7 shrink-0 rounded-lg bg-white/10" />
       <div className="flex-1">
-        <div className="h-2 w-12 rounded bg-stone-100" />
-        <div className="mt-1.5 h-0.5 rounded-full bg-stone-100" />
+        <div className="h-2 w-12 rounded bg-white/10" />
+        <div className="mt-1.5 h-0.5 rounded-full bg-white/10" />
       </div>
     </div>
   );
