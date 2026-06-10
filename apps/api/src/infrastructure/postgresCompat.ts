@@ -36,6 +36,7 @@ const MODEL_BY_COLLECTION: Record<string, string> = {
   bot_action_logs: "botActionLog",
   bot_metrics_snapshots: "botMetricsSnapshot",
   sessions: "session",
+  notifications: "notification",
 };
 
 function modelFor(collection: string): any {
@@ -99,6 +100,8 @@ class PostgresQueryBuilder {
   private take = 50;
   private mode: "select" | "merge" | "delete" = "select";
   private patch: Record<string, any> = {};
+  private orderField: string | null = null;
+  private orderDir: "asc" | "desc" = "desc";
 
   constructor(private readonly collection: string) {}
 
@@ -109,6 +112,12 @@ class PostgresQueryBuilder {
 
   limit(count: number) {
     this.take = Math.max(1, Math.min(5000, count));
+    return this;
+  }
+
+  order(field: string, opts?: { ascending?: boolean }) {
+    this.orderField = toPrismaField(field);
+    this.orderDir = opts?.ascending ? "asc" : "desc";
     return this;
   }
 
@@ -123,13 +132,24 @@ class PostgresQueryBuilder {
     return this;
   }
 
+  private getOrderBy(): Record<string, "asc" | "desc"> | undefined {
+    if (this.orderField) {
+      return { [this.orderField]: this.orderDir };
+    }
+    // Default ordering for time-ordered collections
+    if (this.collection === "chat_messages" || this.collection === "mail_messages" || this.collection === "notifications") {
+      return { createdAt: "desc" };
+    }
+    return undefined;
+  }
+
   async get() {
     try {
       const model = modelFor(this.collection);
       const rows = await model.findMany({
         where: buildWhere(this.filters),
         take: this.take,
-        orderBy: this.collection === "chat_messages" || this.collection === "mail_messages" ? { createdAt: "desc" } : undefined,
+        orderBy: this.getOrderBy(),
       });
       return { data: rows.map(normalizeRecord), error: null };
     } catch (error) {
