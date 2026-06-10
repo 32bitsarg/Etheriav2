@@ -220,7 +220,7 @@ worldRouter.get('/barbarians/:id', async (c) => {
 
 // ─── POST /world/barbarians/:id/attack ───
 
-worldRouter.post('/barbarians/:id/attack', zValidator('json', AttackBarbarianRequestSchema), async (c) => {
+worldRouter.post('/barbarians/:id/attack', requireMatecitoAuth(), zValidator('json', AttackBarbarianRequestSchema), async (c) => {
   const campId = c.req.param('id');
   const data = c.req.valid('json');
 
@@ -228,6 +228,7 @@ worldRouter.post('/barbarians/:id/attack', zValidator('json', AttackBarbarianReq
   const cityRes = await db.from(COLLECTIONS.CITIES).eq('id', data.cityId).getFirst() as any;
   const city = cityRes.data;
   if (!city) return c.json({ error: 'City not found' }, 404);
+  if (city.userId !== c.get('userId')) return c.json({ error: 'Not your city' }, 403);
 
   // Fetch barbarian camp
   const campRes = await db.from(COLLECTIONS.BARBARIAN_CAMPS).eq('id', campId).getFirst() as any;
@@ -298,8 +299,12 @@ worldRouter.post('/barbarians/:id/attack', zValidator('json', AttackBarbarianReq
 
 // ─── GET /world/barbarian-alerts/:cityId ───
 
-worldRouter.get('/barbarian-alerts/:cityId', async (c) => {
+worldRouter.get('/barbarian-alerts/:cityId', requireMatecitoAuth(), async (c) => {
   const cityId = c.req.param('cityId');
+
+  const ownerRes = await db.from(COLLECTIONS.CITIES).eq('id', cityId).getFirst() as any;
+  if (!ownerRes.data) return c.json({ error: 'City not found' }, 404);
+  if (ownerRes.data.userId !== c.get('userId')) return c.json({ error: 'Not your city' }, 403);
 
   const alertsRes = await db.from(COLLECTIONS.BARBARIAN_ATTACK_ALERTS)
     .eq('cityId', cityId)
@@ -322,8 +327,13 @@ worldRouter.get('/barbarian-alerts/:cityId', async (c) => {
 
 // ─── POST /world/barbarian-alerts/:id/read ───
 
-worldRouter.post('/barbarian-alerts/:id/read', async (c) => {
+worldRouter.post('/barbarian-alerts/:id/read', requireMatecitoAuth(), async (c) => {
   const id = c.req.param('id');
+
+  const alertRes = await db.from(COLLECTIONS.BARBARIAN_ATTACK_ALERTS).eq('id', id).getFirst() as any;
+  if (!alertRes.data) return c.json({ error: 'Alert not found' }, 404);
+  const alertCityRes = await db.from(COLLECTIONS.CITIES).eq('id', alertRes.data.cityId).getFirst() as any;
+  if (alertCityRes.data?.userId !== c.get('userId')) return c.json({ error: 'Not your alert' }, 403);
 
   await db.from(COLLECTIONS.BARBARIAN_ATTACK_ALERTS)
     .eq('id', id)
@@ -335,12 +345,13 @@ worldRouter.post('/barbarian-alerts/:id/read', async (c) => {
 
 // ─── GET /world/winter-pressure/:cityId ───
 
-worldRouter.get('/winter-pressure/:cityId', async (c) => {
+worldRouter.get('/winter-pressure/:cityId', requireMatecitoAuth(), async (c) => {
   const cityId = c.req.param('cityId');
 
   const cityRes = await db.from(COLLECTIONS.CITIES).eq('id', cityId).getFirst() as any;
   const city = cityRes.data;
   if (!city) return c.json({ error: 'City not found' }, 404);
+  if (city.userId !== c.get('userId')) return c.json({ error: 'Not your city' }, 403);
 
   const worldConfig = await getWorldConfig();
   const zone = resolveWorldZone(city.posX ?? 0, city.posY ?? 0, worldConfig.map.width, worldConfig.map.height);

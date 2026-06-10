@@ -879,7 +879,11 @@
       "fog": "Fog of War",
       "caravan": "Trade Caravan",
       "army": "Marching Army",
-      "discovery": "Discovered Territory"
+      "discovery": "Discovered Territory",
+      "march": {
+        "attack": "Army march",
+        "trade": "Trade caravan"
+      }
     },
     "rename": {
       "title": "Change Name",
@@ -1226,6 +1230,9 @@
       "joinTitle": "Join Rally",
       "troopsPrompt": "How many troops to send?",
       "confirmJoin": "Join Rally"
+    },
+    "mobile": {
+      "more": "More"
     }
   },
   "race": {
