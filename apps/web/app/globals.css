@@ -937,9 +937,16 @@ h1, h2, h3, h4, .font-display, .font-serif {
   /* body overflow handled by view-level components */
 
   .village-shell {
+    /* Capacitor StatusBar overlays the webview: reserve the notch area */
+    --topbar-height: calc(48px + env(safe-area-inset-top, 0px));
     grid-template-columns: 1fr;
-    grid-template-rows: 48px minmax(0, 1fr);
+    grid-template-rows: var(--topbar-height) minmax(0, 1fr);
     min-height: 100dvh;
+  }
+
+  .village-topbar {
+    padding-top: env(safe-area-inset-top, 0px);
+    height: var(--topbar-height) !important;
   }
 
   .village-sidebar,

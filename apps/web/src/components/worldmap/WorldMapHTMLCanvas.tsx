@@ -84,6 +84,9 @@ export function WorldMapHTMLCanvas({
   const [size, setSize] = useState({ w: 900, h: 620 });
 
   const cam = useRef({ x: 0, y: 0, zoom: 1 });
+  // Camera/fog only repaint when something actually changed — the rAF loop
+  // checks this flag instead of redrawing the full fog canvas every frame.
+  const camDirty = useRef(true);
   const hasStarted = useRef(false);
   const pointerState = useRef<{
     startClientX: number; startClientY: number;
@@ -240,13 +243,29 @@ export function WorldMapHTMLCanvas({
   drawFogRef.current = drawFog;
   const updateMovementsRef = useRef(updateMovements);
   updateMovementsRef.current = updateMovements;
+  const movementsRef = useRef(movements);
+  movementsRef.current = movements;
+
+  // Repaint camera/fog when data they depend on changes (not just input)
+  useEffect(() => {
+    camDirty.current = true;
+  }, [cities, myCityId, seasonState, size, movements]);
 
   useEffect(() => {
     let raf = 0;
-    const loop = () => {
-      applyCameraRef.current();
-      drawFogRef.current();
-      updateMovementsRef.current();
+    let lastMovementTick = 0;
+    const loop = (now: number) => {
+      if (camDirty.current) {
+        camDirty.current = false;
+        applyCameraRef.current();
+        drawFogRef.current();
+      }
+      // March interpolation is slow-moving: ~7fps is visually identical and
+      // avoids per-frame layout writes when the map is idle.
+      if (movementsRef.current.length > 0 && now - lastMovementTick > 140) {
+        lastMovementTick = now;
+        updateMovementsRef.current();
+      }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -291,6 +310,7 @@ export function WorldMapHTMLCanvas({
     }
     const clamped = clampCamera(cx, cy, initialZoom);
     cam.current = clamped;
+    camDirty.current = true;
     hasStarted.current = true;
   }, [mapConfig, cities, myCityId, halfW, halfH, clampCamera]);
 
@@ -311,6 +331,7 @@ export function WorldMapHTMLCanvas({
       cam.current.y * (1 - s) + ty * s,
       cam.current.zoom * (1 - s) + z * s
     );
+    camDirty.current = true;
   }, [cities, myCityId, size, halfW, halfH, mapConfig, clampCamera]);
 
   // ── Input: wheel zoom ────────────────────────────────────────────────────
@@ -331,6 +352,7 @@ export function WorldMapHTMLCanvas({
       const cx = mx - (mx - cam.current.x) * s;
       const cy = my - (my - cam.current.y) * s;
       cam.current = clampCamera(cx, cy, newZoom);
+      camDirty.current = true;
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
@@ -356,6 +378,7 @@ export function WorldMapHTMLCanvas({
     if (!ps.hasPanned && dist < PAN_THRESHOLD) return;
     ps.hasPanned = true;
     cam.current = clampCamera(ps.startCamX + dx, ps.startCamY + dy, cam.current.zoom);
+    camDirty.current = true;
   }, [clampCamera]);
 
   const onPointerUp = useCallback(() => { pointerState.current = null; }, []);
@@ -384,6 +407,7 @@ export function WorldMapHTMLCanvas({
     const newZoom = Math.min(zMax, Math.max(zMin, oldZoom * factor));
     const s = newZoom / oldZoom;
     cam.current = clampCamera(midX - (midX - cam.current.x) * s, midY - (midY - cam.current.y) * s, newZoom);
+    camDirty.current = true;
     pinch.current.dist = newDist;
   }, [clampCamera, zMin, zMax]);
 

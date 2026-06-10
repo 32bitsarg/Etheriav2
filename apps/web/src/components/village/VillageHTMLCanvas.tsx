@@ -173,8 +173,7 @@ export function VillageHTMLCanvas({
     [zMin, zMax]
   );
 
-  // Initialize camera — center world + responsive zoom for mobile
-  useEffect(() => {
+  const centerCamera = useCallback(() => {
     const w = outerRef.current?.clientWidth ?? window.innerWidth;
     const h = outerRef.current?.clientHeight ?? window.innerHeight;
     const isMobile = w < 768;
@@ -185,8 +184,19 @@ export function VillageHTMLCanvas({
       zoom,
     };
     applyCamera();
+  }, [applyCamera]);
+
+  // Initialize camera — center world + responsive zoom for mobile
+  useEffect(() => {
+    centerCamera();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // only on mount
+
+  // Double-tap / double-click on empty ground recenters the village
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest("[data-building-id]")) return;
+    centerCamera();
+  }, [centerCamera]);
 
   // ResizeObserver — debounced 80ms to avoid rapid re-renders on window resize
   useEffect(() => {
@@ -414,6 +424,7 @@ export function VillageHTMLCanvas({
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
+      onDoubleClick={handleDoubleClick}
     >
       {/* Parallax cloud layer — moves at 0.2× camera speed (outside camera div intentionally) */}
       <div
@@ -468,7 +479,8 @@ export function VillageHTMLCanvas({
           alt=""
           className="absolute inset-0 h-full w-full object-cover pointer-events-none"
           draggable={false}
-          loading="lazy"
+          loading="eager"
+          fetchPriority="high"
           decoding="async"
         />
 
