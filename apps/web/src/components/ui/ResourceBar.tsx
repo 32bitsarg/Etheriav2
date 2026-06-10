@@ -38,9 +38,42 @@ export function ResourceBar({ compact = false }: { compact?: boolean }) {
     return () => clearInterval(interval);
   }, []);
 
+  // Compact (mobile): chips de recurso distribuidos a ancho completo, sin
+  // shell con padding ancho — estilo barra superior de juego móvil.
+  if (compact) {
+    return (
+      <div className="pointer-events-auto flex w-full min-w-0 items-center justify-between gap-1">
+        {RESOURCES.map(({ key, storageKey }) => {
+          const value = liveResources[key as keyof typeof liveResources] ?? 0;
+          const max = storage[storageKey as keyof typeof storage] ?? 0;
+          const near = max > 0 && value / max >= 0.9;
+          return (
+            <div
+              key={key}
+              className="flex min-w-0 flex-1 items-center justify-center gap-1 rounded-md bg-stone-900/5 px-1 py-0.5"
+            >
+              <ResourceIconSVG type={key as any} size={12} />
+              <span className={`truncate text-[11px] font-bold tabular-nums ${near ? "text-rose-600" : "text-stone-800"}`}>
+                {formatNumber(Math.floor(value))}
+              </span>
+            </div>
+          );
+        })}
+        {liveResources.gems > 0 && (
+          <div className="flex min-w-0 items-center gap-1 rounded-md bg-stone-900/5 px-1 py-0.5">
+            <ResourceIconSVG type="gems" size={12} />
+            <span className="text-[11px] font-bold tabular-nums text-stone-800">
+              {formatNumber(Math.floor(liveResources.gems))}
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="resource-bar-shell pointer-events-auto">
-      <div className={`flex items-center ${compact ? "gap-2" : "gap-4"}`}>
+      <div className="flex items-center gap-4">
         {RESOURCES.map(({ key, prodKey, storageKey }) => {
           const value = liveResources[key as keyof typeof liveResources] ?? 0;
           const prod = production[prodKey as keyof typeof production] ?? 0;
@@ -49,28 +82,24 @@ export function ResourceBar({ compact = false }: { compact?: boolean }) {
           const near = pct >= 90;
 
           return (
-            <div key={key} className={`flex items-center shrink-0 ${compact ? "gap-1" : "gap-1.5"}`}>
-              <ResourceIconSVG type={key as any} size={compact ? 12 : 14} />
-              <span className={`font-bold tabular-nums ${compact ? "text-[11px]" : "text-[13px]"} ${near ? "text-rose-600" : "text-stone-800"}`}>
+            <div key={key} className="flex items-center shrink-0 gap-1.5">
+              <ResourceIconSVG type={key as any} size={14} />
+              <span className={`font-bold tabular-nums text-[13px] ${near ? "text-rose-600" : "text-stone-800"}`}>
                 {formatNumber(Math.floor(value))}
               </span>
-              {!compact && (
-                <span className={`text-[10px] font-semibold ${near ? "text-rose-600" : "text-emerald-600"}`}>
-                  +{prod}/h
-                </span>
-              )}
+              <span className={`text-[10px] font-semibold ${near ? "text-rose-600" : "text-emerald-600"}`}>
+                +{prod}/h
+              </span>
             </div>
           );
         })}
 
-        {(!compact || liveResources.gems > 0) && (
-          <div className={`flex items-center shrink-0 border-l border-stone-200 ${compact ? "gap-1 pl-2" : "gap-1.5 pl-3"}`}>
-            <ResourceIconSVG type="gems" size={compact ? 12 : 14} />
-            <span className={`font-bold tabular-nums text-stone-800 ${compact ? "text-[11px]" : "text-[13px]"}`}>
-              {formatNumber(Math.floor(liveResources.gems))}
-            </span>
-          </div>
-        )}
+        <div className="flex items-center shrink-0 border-l border-stone-200 gap-1.5 pl-3">
+          <ResourceIconSVG type="gems" size={14} />
+          <span className="font-bold tabular-nums text-stone-800 text-[13px]">
+            {formatNumber(Math.floor(liveResources.gems))}
+          </span>
+        </div>
       </div>
     </div>
   );

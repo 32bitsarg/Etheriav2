@@ -148,7 +148,7 @@ export function VillageImmersiveDock() {
   ];
 
   return (
-    <aside className="pointer-events-auto absolute inset-x-3 bottom-3 max-md:bottom-[4.5rem] z-40 flex items-center gap-1.5 rounded-2xl border border-stone-200/70 bg-white/82 px-3 py-2 shadow-lg shadow-stone-900/5 backdrop-blur-xl">
+    <aside className="pointer-events-auto absolute inset-x-3 bottom-3 max-md:bottom-[calc(52px+env(safe-area-inset-bottom,0px))] z-40 flex items-center gap-1.5 rounded-2xl border border-stone-200/70 bg-white/82 px-3 py-2 shadow-lg shadow-stone-900/5 backdrop-blur-xl">
       {sections.map((section, i) => (
         <React.Fragment key={section.label}>
           {i > 0 && <div className={`mx-1 h-8 w-px shrink-0 bg-stone-200 max-md:hidden`} />}

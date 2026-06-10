@@ -286,7 +286,7 @@ export function VillageView() {
   }, [cityId, resources, cityTechs, researchTech, addToast]);
 
   return (
-    <div ref={shellRef} className="village-shell relative z-10 grid h-screen w-screen overflow-hidden pb-16 md:pb-0">
+    <div ref={shellRef} className="village-shell relative z-10 grid h-dvh w-screen overflow-hidden pb-12 md:pb-0">
       <BarbarianAttackAlertBanner />
       <WinterPressureBanner />
 
@@ -339,7 +339,7 @@ export function VillageView() {
       <VillageImmersiveDock />
 
       {/* Rally banner — floats above dock when there's an active rally */}
-      <div className="pointer-events-auto absolute inset-x-3 bottom-16 z-40">
+      <div className="pointer-events-auto absolute inset-x-3 bottom-16 max-md:bottom-[calc(56px+env(safe-area-inset-bottom,0px))] z-40">
         <RallyBanner />
       </div>
 
