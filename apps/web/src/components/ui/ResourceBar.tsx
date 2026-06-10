@@ -12,7 +12,7 @@ const RESOURCES = [
   { key: "food", prodKey: "foodPerHour", storageKey: "maxFood" },
 ] as const;
 
-export function ResourceBar({ compact = false }: { compact?: boolean }) {
+export function ResourceBar({ compact = false, dark = false }: { compact?: boolean; dark?: boolean }) {
   const resources = useGameStore((s) => s.resources);
   const production = useGameStore((s) => s.production);
   const storage = useGameStore((s) => s.storage);
@@ -41,6 +41,9 @@ export function ResourceBar({ compact = false }: { compact?: boolean }) {
   // Compact (mobile): chips de recurso distribuidos a ancho completo, sin
   // shell con padding ancho — estilo barra superior de juego móvil.
   if (compact) {
+    const chipBg = dark ? "bg-white/10" : "bg-stone-900/5";
+    const textColor = dark ? "text-white/90" : "text-stone-800";
+    const nearColor = dark ? "text-rose-300" : "text-rose-600";
     return (
       <div className="pointer-events-auto flex w-full min-w-0 items-center justify-between gap-1">
         {RESOURCES.map(({ key, storageKey }) => {
@@ -50,19 +53,19 @@ export function ResourceBar({ compact = false }: { compact?: boolean }) {
           return (
             <div
               key={key}
-              className="flex min-w-0 flex-1 items-center justify-center gap-1 rounded-md bg-stone-900/5 px-1 py-0.5"
+              className={`flex min-w-0 flex-1 items-center justify-center gap-1 rounded-md px-1 py-0.5 ${chipBg}`}
             >
               <ResourceIconSVG type={key as any} size={12} />
-              <span className={`truncate text-[11px] font-bold tabular-nums ${near ? "text-rose-600" : "text-stone-800"}`}>
+              <span className={`truncate text-[11px] font-bold tabular-nums ${near ? nearColor : textColor}`}>
                 {formatNumber(Math.floor(value))}
               </span>
             </div>
           );
         })}
         {liveResources.gems > 0 && (
-          <div className="flex min-w-0 items-center gap-1 rounded-md bg-stone-900/5 px-1 py-0.5">
+          <div className={`flex min-w-0 items-center gap-1 rounded-md px-1 py-0.5 ${chipBg}`}>
             <ResourceIconSVG type="gems" size={12} />
-            <span className="text-[11px] font-bold tabular-nums text-stone-800">
+            <span className={`text-[11px] font-bold tabular-nums ${textColor}`}>
               {formatNumber(Math.floor(liveResources.gems))}
             </span>
           </div>

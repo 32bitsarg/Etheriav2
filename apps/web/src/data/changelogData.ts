@@ -24,14 +24,17 @@ export const changelogReleases: ChangelogRelease[] = [
       {
         heading: "Added",
         itemKeys: [
-          "changelog.items.v0_5_4.added.0"
+          "changelog.items.v0_5_4.added.0",
+          "changelog.items.v0_5_4.added.1"
         ],
       },
       {
         heading: "Changed",
         itemKeys: [
           "changelog.items.v0_5_4.changed.0",
-          "changelog.items.v0_5_4.changed.1"
+          "changelog.items.v0_5_4.changed.1",
+          "changelog.items.v0_5_4.changed.2",
+          "changelog.items.v0_5_4.changed.3"
         ],
       },
       {
@@ -39,7 +42,8 @@ export const changelogReleases: ChangelogRelease[] = [
         itemKeys: [
           "changelog.items.v0_5_4.fixed.0",
           "changelog.items.v0_5_4.fixed.1",
-          "changelog.items.v0_5_4.fixed.2"
+          "changelog.items.v0_5_4.fixed.2",
+          "changelog.items.v0_5_4.fixed.3"
         ],
       }
     ],

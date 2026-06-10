@@ -31,7 +31,7 @@ function RaceCard({
   return (
     <button
       onClick={onSelect}
-      className={`relative w-full rounded-2xl border p-5 text-left transition-all duration-200 ${
+      className={`relative w-full overflow-hidden rounded-2xl border text-left transition-all duration-200 ${
         mobile ? "flex h-full flex-col" : ""
       } ${
         isSelected
@@ -40,22 +40,33 @@ function RaceCard({
       } backdrop-blur-md`}
       style={{ "--race-color": race.color } as React.CSSProperties}
     >
-      <div className="mb-3 flex items-center gap-3">
-        <RaceEmblem race={race.id} className={mobile ? "h-14 w-14" : "h-11 w-11"} />
-        <div>
-          <div className={`font-display font-bold text-white ${mobile ? "text-xl" : "text-lg"}`}>
-            {t(race.nameKey)}
-          </div>
-          <div className="text-[11px] uppercase tracking-widest text-stone-500">
-            {race.id}
+      {/* Race portrait */}
+      <div className={`relative w-full overflow-hidden ${mobile ? "h-44" : "h-36"}`}>
+        <img
+          src={`/assets/races/${race.id.toLowerCase()}.webp`}
+          alt={t(race.nameKey)}
+          className="h-full w-full object-cover object-top"
+          draggable={false}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 flex items-center gap-2.5 px-4 pb-2.5">
+          <RaceEmblem race={race.id} className={mobile ? "h-10 w-10" : "h-9 w-9"} />
+          <div>
+            <div className={`font-display font-bold text-white drop-shadow ${mobile ? "text-xl" : "text-lg"}`}>
+              {t(race.nameKey)}
+            </div>
+            <div className="text-[10px] uppercase tracking-widest text-white/60">
+              {race.id}
+            </div>
           </div>
         </div>
         {isSelected && (
-          <span className="ml-auto flex h-7 w-7 items-center justify-center rounded-full bg-[var(--race-color)] text-sm font-bold text-black">
+          <span className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--race-color)] text-sm font-bold text-black shadow-lg">
             ✓
           </span>
         )}
       </div>
+      <div className={`p-4 ${mobile ? "flex flex-1 flex-col" : ""}`}>
       <p className={`mb-3 leading-relaxed text-stone-400 ${mobile ? "flex-1 text-[14px]" : "text-[13px]"}`}>
         {t(race.descriptionKey)}
       </p>
@@ -74,6 +85,7 @@ function RaceCard({
             </span>
           </div>
         ))}
+      </div>
       </div>
     </button>
   );

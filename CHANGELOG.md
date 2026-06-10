@@ -20,13 +20,17 @@ Each release is named after a legendary era in the world of Etheria.
 > *"La nieve por fin cae sobre la aldea, los íconos brillan sin marcos, y el tablero del reino se siente vivo."*
 
 ### Added
+- Retratos ilustrados para cada raza en la selección de raza y la página principal
 - Íconos ilustrados propios en todo el HUD: misiones, maravilla, logros, feed y configuración
 
 ### Changed
+- HUD móvil rediseñado: barra superior oscura con nombre de aldea, todos los recursos y estación siempre visibles; barra inferior más baja que tapa menos el mapa
 - HUD de escritorio y móvil pulidos: sin emojis, íconos consistentes y textos traducibles
 - Íconos del menú lateral rehechos: ahora con fondo transparente y 60 veces más livianos
+- Carga mucho más rápida en el celular: edificios e imágenes pesadas reducidas (más de 13MB menos al entrar a la aldea)
 
 ### Fixed
+- La música ahora arranca correctamente en el celular (el desbloqueo de audio fallaba en algunos dispositivos Android y quedaba en silencio para siempre)
 - Efectos de estación: la nieve, hojas y pétalos ahora caen de verdad en el mapa y también se ven en la aldea (antes quedaban congelados o invisibles)
 - Los efectos de estación ya no se reinician solos cada vez que el juego actualiza datos
 - Íconos del menú lateral que aparecían con un cuadrado blanco de fondo

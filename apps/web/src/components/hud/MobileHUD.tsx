@@ -85,55 +85,50 @@ export function MobileHUD({
 
   return (
     <>
-      {/* Topbar: solo recursos a ancho completo + campana */}
-      <header className="village-topbar pointer-events-auto col-span-3 row-start-1 flex items-center gap-1.5 px-1.5 z-50 h-12">
-        <ResourceBar compact />
-        <NotificationBell />
-      </header>
-
-      {/* Pill flotante: nombre de aldea + estación (no roba espacio de la topbar) */}
-      <div
-        className="pointer-events-none absolute left-1.5 z-40 flex items-center gap-1.5"
-        style={{ top: "calc(var(--topbar-height) + 6px)" }}
+      {/* Topbar oscura: nombre de aldea + recursos completos + estación + campana */}
+      <header
+        className="pointer-events-auto col-span-3 row-start-1 z-50 flex h-12 items-center gap-1.5 border-b border-white/10 bg-black/70 px-1.5 backdrop-blur-xl"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
         <button
-          className="pointer-events-auto flex max-w-[44vw] items-center gap-1 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 backdrop-blur-md"
+          className="flex max-w-[28vw] shrink-0 items-center gap-1 rounded-full bg-white/10 px-2 py-1"
           onClick={onRename}
         >
-          <span className="text-[10px]">🏰</span>
-          <span className="truncate text-[11px] font-semibold text-amber-100">
+          <span className="truncate text-[11px] font-semibold text-amber-200">
             {cityName || t("play.sidebar.village")}
           </span>
         </button>
-        <span className="pointer-events-auto">
-          <SeasonHUD compact />
-        </span>
-      </div>
+        <ResourceBar compact dark />
+        <span className="shrink-0"><SeasonHUD compact /></span>
+        <NotificationBell />
+      </header>
 
-      {/* Dock inferior: bajo, sin scroll, estilo juego moderno */}
+      {/* Dock inferior: 44px, sin scroll, highlight tipo pill */}
       <nav
-        className="fixed bottom-0 inset-x-0 z-[60] flex items-stretch overflow-hidden border-t border-white/10 bg-black/85 backdrop-blur-xl"
+        className="fixed bottom-0 inset-x-0 z-[60] flex items-stretch overflow-hidden border-t border-white/10 bg-gradient-to-t from-black/95 to-black/75 backdrop-blur-xl"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         {dockItems.map((item) => (
           <button
             key={item.id}
             onClick={item.onClick}
-            className={`relative flex h-12 min-w-0 flex-1 flex-col items-center justify-center transition-colors duration-150 ${
-              item.active ? "text-amber-400" : "text-white/55 active:text-white/90"
+            className={`relative flex h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 transition-colors duration-150 ${
+              item.active ? "text-amber-300" : "text-white/55 active:text-white/90"
             }`}
             style={{ WebkitTapHighlightColor: "transparent" }}
           >
+            {item.active && (
+              <span className="absolute inset-x-2 inset-y-1 rounded-xl bg-amber-400/12" />
+            )}
             {item.badge !== undefined && item.badge > 0 && (
-              <span className="absolute top-0.5 right-[22%] flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[8px] font-bold text-white">
+              <span className="absolute top-0.5 right-[22%] z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[8px] font-bold text-white">
                 {item.badge > 99 ? "99+" : item.badge}
               </span>
             )}
-            {item.icon}
-            <span className="mt-0.5 truncate px-0.5 text-[8px] font-medium leading-none tracking-wide">
+            <span className="relative">{item.icon}</span>
+            <span className="relative truncate px-0.5 text-[8px] font-medium leading-none tracking-wide">
               {item.label}
             </span>
-            {item.active && <span className="absolute top-0 inset-x-5 h-[2px] rounded-b bg-amber-400" />}
           </button>
         ))}
       </nav>
@@ -144,7 +139,7 @@ export function MobileHUD({
           <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
           <div
             className="absolute inset-x-0 rounded-t-2xl border-t border-white/10 bg-[#0b0f0f]/95 backdrop-blur-xl px-4 pt-2 pb-3 shadow-[0_-18px_50px_rgba(0,0,0,0.6)]"
-            style={{ bottom: "calc(48px + env(safe-area-inset-bottom, 0px))" }}
+            style={{ bottom: "calc(44px + env(safe-area-inset-bottom, 0px))" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" />
