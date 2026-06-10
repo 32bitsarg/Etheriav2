@@ -862,14 +862,8 @@ function AttackCityModal({ targetCityId, targetCityName, units, cityId, attackCi
   const types: UnitType[] = ["WARRIOR", "ARCHER", "PIKEMAN", "CAVALRY", "SIEGE", "CROSSBOWMAN", "CATAPULT", "SPY"];
 
   return (
-    <div className="fixed inset-0 z-[90] grid place-items-center bg-black/75 backdrop-blur-md p-4" onClick={onClose}>
-      <div className="w-[min(420px,calc(100vw-32px))] rounded-2xl border border-etheria-border bg-[#0b1111] shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-etheria-border px-5 py-4">
-          <h2 className="font-serif text-lg text-etheria-gold-soft">{t("play.battle.attack")}</h2>
-          <button onClick={onClose} className="rounded-lg border border-etheria-border-dim px-3 py-1 text-xs text-etheria-text-muted hover:text-etheria-gold-soft">{t("play.settings.close")}</button>
-        </div>
-
-        <div className="px-5 py-4 space-y-4">
+    <ModalBase isOpen={true} onClose={onClose} size="md" title={t("play.battle.attack")} zIndex="z-[90]">
+        <div className="space-y-4">
           <div className="text-sm text-etheria-text-muted">
             {t("play.battle.targetCity")}: <span className="text-etheria-gold-soft font-serif">{targetCityName}</span>
           </div>
@@ -901,8 +895,7 @@ function AttackCityModal({ targetCityId, targetCityName, units, cityId, attackCi
             {attackCity.isPending ? t("play.battle.sending") : `⚔️ ${t("play.battle.sendAttack")} (${totalSelected})`}
           </button>
         </div>
-      </div>
-    </div>
+    </ModalBase>
   );
 }
 
@@ -1031,11 +1024,9 @@ function MailModal({ onClose, t }: { onClose: () => void; t: (key: string) => st
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/62 px-4 backdrop-blur-[4px]" onClick={onClose} onPointerDown={(e) => e.stopPropagation()}>
-      <div className="relative grid h-[min(640px,calc(100vh-36px))] w-full max-w-[920px] max-sm:max-w-[calc(100vw-24px)] overflow-hidden rounded-[30px] border border-etheria-border bg-[#0b1111] shadow-[0_28px_90px_rgba(0,0,0,.58)] lg:grid-cols-[310px_1fr]" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute right-4 top-4 z-10 min-h-[44px] min-w-[44px] flex items-center justify-center text-etheria-gold-soft rounded-full hover:bg-white/10">✕</button>
+    <ModalBase isOpen={true} onClose={onClose} size="5xl" title={t("play.mail.title")} zIndex="z-[100]" contentClass="!p-0">
+      <div className="grid h-full min-h-0 lg:h-[min(560px,70dvh)] lg:grid-cols-[310px_1fr]">
         <aside className="border-r border-white/5 p-4 overflow-y-auto">
-          <div className="font-serif text-lg text-etheria-gold-soft mb-4 uppercase tracking-widest">{t("play.mail.title")}</div>
           <div className="flex gap-1 mb-4">
             {["inbox", "sent", "reports", "compose"].map((tId) => (
               <button key={tId} onClick={() => setTab(tId as any)} className={`flex-1 text-[10px] py-1.5 rounded-full border transition-colors ${tab === tId ? "border-etheria-gold bg-etheria-gold/10 text-etheria-gold" : "border-white/10 text-white/40 hover:text-white"}`}>
@@ -1154,7 +1145,7 @@ function MailModal({ onClose, t }: { onClose: () => void; t: (key: string) => st
           ) : <div className="h-full flex items-center justify-center text-white/20 italic">{t("play.mail.selectMessage")}</div>}
         </main>
       </div>
-    </div>
+    </ModalBase>
   );
 }
 
@@ -1226,7 +1217,6 @@ function BuildingModal({ building, resources, onUpgrade, onTrain, onResearch, is
     <ModalBase
       isOpen={true}
       onClose={onClose}
-      variant="desktop"
       size="xl"
       title={name}
       subtitle={`${t("play.building.level")} ${building.level}`}
@@ -1302,7 +1292,6 @@ function BarracksModal({ building, resources, onUpgrade, onTrain, isUpgrading, p
     <ModalBase
       isOpen={true}
       onClose={onClose}
-      variant="desktop"
       size="lg"
       title={name}
       subtitle={`${t("play.building.level")} ${building.level}`}
@@ -1485,7 +1474,6 @@ function LibraryModal({ building, resources, onUpgrade, onResearch, isUpgrading,
     <ModalBase
       isOpen={true}
       onClose={onClose}
-      variant="desktop"
       size="lg"
       title={name}
       subtitle={`${t("play.building.level")} ${building.level}`}
@@ -1819,16 +1807,13 @@ function RenameCityModal({ cityId, currentName, onClose, t }: any) {
   const rename = useRenameCity();
   const addToast = useToastStore((s) => s.addToast);
   return (
-    <div className="fixed inset-0 z-[100] grid place-items-center bg-black/80 backdrop-blur-sm" onClick={onClose}>
-       <div className="bg-[#0b1111] border border-etheria-border p-8 rounded-3xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
-          <h2 className="font-serif text-xl text-etheria-gold-soft mb-4">{t("play.rename.title")}</h2>
-          <input value={name} onChange={e => setName(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white mb-4" />
-          <div className="flex gap-2">
-            <button onClick={onClose} className="flex-1 bg-white/5 text-white/40 py-3 rounded-xl">{t("play.rename.cancel")}</button>
-            <button onClick={() => rename.mutate({ cityId, name }, { onSuccess: onClose })} className="flex-1 bg-etheria-gold text-black font-bold py-3 rounded-xl">{t("play.rename.save")}</button>
-          </div>
-       </div>
-    </div>
+    <ModalBase isOpen={true} onClose={onClose} size="sm" title={t("play.rename.title")} zIndex="z-[100]">
+      <input value={name} onChange={e => setName(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white mb-4" />
+      <div className="flex gap-2">
+        <button onClick={onClose} className="flex-1 bg-white/5 text-white/40 py-3 rounded-xl">{t("play.rename.cancel")}</button>
+        <button onClick={() => rename.mutate({ cityId, name }, { onSuccess: onClose })} className="flex-1 bg-etheria-gold text-black font-bold py-3 rounded-xl">{t("play.rename.save")}</button>
+      </div>
+    </ModalBase>
   );
 }
 
@@ -1868,13 +1853,8 @@ function QuestsModal({ cityId, onClose, t }: any) {
   const { data: quests } = usePlayerQuests(cityId);
   const claim = useClaimQuest();
   return (
-    <div className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="max-h-[84vh] w-full max-w-3xl max-sm:max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-etheria-border bg-[#0b1111]" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-white/5 p-5">
-          <h2 className="font-serif text-2xl text-etheria-gold-soft">{t("play.quests.title")}</h2>
-          <button onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-white/45 hover:text-white rounded-full hover:bg-white/10 text-sm">{t("play.building.close")}</button>
-        </div>
-        <div className="grid gap-3 p-5 md:grid-cols-2">
+    <ModalBase isOpen={true} onClose={onClose} size="3xl" title={t("play.quests.title")} zIndex="z-[90]">
+        <div className="grid gap-3 md:grid-cols-2">
           {(quests ?? []).map((quest) => (
             <div key={quest.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
               <div className="font-serif text-lg text-white">{t(quest.titleKey)}</div>
@@ -1887,8 +1867,7 @@ function QuestsModal({ cityId, onClose, t }: any) {
             </div>
           ))}
         </div>
-      </div>
-    </div>
+    </ModalBase>
   );
 }
 
@@ -1976,14 +1955,8 @@ function AllianceModal({ onClose, t }: any) {
   const otherAlliances = (data?.alliances ?? []).filter((alliance: any) => alliance.id !== currentAllianceId);
 
   return (
-    <div className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="max-h-[88vh] w-full max-w-5xl max-sm:max-w-[calc(100vw-16px)] overflow-hidden rounded-3xl border border-etheria-border bg-[#0b1111] shadow-2xl" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-white/5 p-5">
-          <h2 className="font-serif text-2xl uppercase tracking-widest text-etheria-gold-soft">{t("play.alliance.title")}</h2>
-          <button onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-white/40 hover:text-white rounded-full hover:bg-white/10">✕</button>
-        </div>
-
-        <div className="max-h-[calc(88vh-76px)] overflow-y-auto p-5">
+    <ModalBase isOpen={true} onClose={onClose} size="5xl" title={t("play.alliance.title")} zIndex="z-[90]">
+        <div>
           {isLoading ? (
             <div className="py-12 text-center text-white/40">{t("play.alliance.loading")}</div>
           ) : !data?.gate?.allowed ? (
@@ -2123,8 +2096,7 @@ function AllianceModal({ onClose, t }: any) {
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </ModalBase>
   );
 }
 

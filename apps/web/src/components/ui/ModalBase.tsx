@@ -2,15 +2,16 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { useI18n } from "@/i18n";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
-type ModalSize = "xs" | "sm" | "md" | "lg" | "xl" | "full";
+type ModalSize = "xs" | "sm" | "md" | "lg" | "xl" | "3xl" | "5xl" | "full";
 type ModalVariant = "desktop" | "mobile";
 
 interface ModalBaseProps {
   isOpen: boolean;
   onClose: () => void;
   children: ReactNode;
-  /** Visual theme */
+  /** Visual theme. Defaults to auto: bottom sheet on mobile, centered on desktop */
   variant?: ModalVariant;
   /** Max-width on desktop */
   size?: ModalSize;
@@ -36,23 +37,27 @@ const SIZE_CLASSES: Record<ModalSize, string> = {
   md: "max-w-md",
   lg: "max-w-lg",
   xl: "max-w-xl",
+  "3xl": "max-w-3xl",
+  "5xl": "max-w-5xl",
   full: "max-w-[calc(100vw-32px)]",
 };
 
-const HEIGHT_CLASSES: Record<ModalSize, string> = {
-  xs: "max-h-[75dvh]",
-  sm: "max-h-[82dvh]",
-  md: "max-h-[85dvh]",
-  lg: "max-h-[88dvh]",
-  xl: "max-h-[90dvh]",
-  full: "max-h-[94dvh]",
+const MAX_HEIGHTS: Record<ModalSize, string> = {
+  xs: "75dvh",
+  sm: "82dvh",
+  md: "85dvh",
+  lg: "88dvh",
+  xl: "90dvh",
+  "3xl": "90dvh",
+  "5xl": "90dvh",
+  full: "94dvh",
 };
 
 export function ModalBase({
   isOpen,
   onClose,
   children,
-  variant = "desktop",
+  variant,
   size = "sm",
   title,
   subtitle,
@@ -64,6 +69,8 @@ export function ModalBase({
 }: ModalBaseProps) {
   const { t } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
+  const resolvedVariant: ModalVariant = variant ?? (isMobile ? "mobile" : "desktop");
 
   // ESC to close
   useEffect(() => {
@@ -88,7 +95,7 @@ export function ModalBase({
   if (!isOpen) return null;
 
   // ── Mobile: bottom sheet ──
-  if (variant === "mobile") {
+  if (resolvedVariant === "mobile") {
     return (
       <div
         className={`fixed inset-0 ${zIndex}`}
@@ -104,7 +111,7 @@ export function ModalBase({
         {/* Sheet */}
         <div
           ref={ref}
-          className={`absolute inset-x-0 bottom-0 max-h-[88dvh] rounded-t-3xl border-t border-etheria-border bg-[#0b1111] shadow-[0_-8px_60px_rgba(0,0,0,0.6)] flex flex-col animate-slide-in-up`}
+          className={`absolute inset-x-0 bottom-0 max-h-[88dvh] rounded-t-3xl border-t border-white/10 bg-[#0b1111] shadow-[0_-8px_60px_rgba(0,0,0,0.6)] flex flex-col animate-slide-in-up`}
           style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -186,7 +193,7 @@ export function ModalBase({
           background: "rgb(11, 17, 17)",
           border: "1px solid rgba(255,255,255,0.08)",
           borderRadius: "var(--modal-radius, 20px)",
-          maxHeight: `calc(${HEIGHT_CLASSES[size].replace("max-h-", "")})`,
+          maxHeight: MAX_HEIGHTS[size],
         }}
         onClick={(e) => e.stopPropagation()}
       >

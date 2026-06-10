@@ -108,14 +108,14 @@ export const UNIT_INFO: Record<UnitType, { nameKey: string; icon: string; shortN
 };
 
 export const UNIT_IMAGE_PATHS: Partial<Record<UnitType, string>> = {
-  WARRIOR: "/assets/units/warrior.webp",
-  ARCHER: "/assets/units/archer.webp",
-  CAVALRY: "/assets/units/cavalry.webp",
-  SPY: "/assets/units/spy.webp",
-  SIEGE: "/assets/units/warrior.webp",
-  PIKEMAN: "/assets/units/warrior.webp",
-  CROSSBOWMAN: "/assets/units/archer.webp",
-  CATAPULT: "/assets/units/warrior.webp",
+  WARRIOR: "/assets/units/warrior.png",
+  ARCHER: "/assets/units/archer.png",
+  CAVALRY: "/assets/units/cavalry.png",
+  SPY: "/assets/units/spy.png",
+  SIEGE: "/assets/units/catapult.png",
+  PIKEMAN: "/assets/units/pikeman.png",
+  CROSSBOWMAN: "/assets/units/crossbowman.png",
+  CATAPULT: "/assets/units/catapult.png",
 };
 
 // ─── Resource Display Info ───
