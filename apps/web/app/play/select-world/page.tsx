@@ -7,6 +7,13 @@ import { useWorlds, type WorldItem } from "@/hooks/useWorlds";
 
 const WORLD_ID_KEY = "etheria_world_id";
 
+const SEASON_DISPLAY: Record<string, { icon: string; label: string }> = {
+  SPRING: { icon: "🌸", label: "Primavera" },
+  SUMMER: { icon: "☀️", label: "Verano" },
+  AUTUMN: { icon: "🍂", label: "Otoño" },
+  WINTER: { icon: "❄️", label: "Invierno" },
+};
+
 function WorldCard({
   world,
   isSelected,
@@ -48,6 +55,12 @@ function WorldCard({
       )}
       <div className="flex items-center gap-4 text-[12px] text-stone-500">
         <span>👥 {world.playerCount} jugadores</span>
+        {world.currentSeason && (
+          <span>
+            {SEASON_DISPLAY[world.currentSeason]?.icon ?? "🌍"}{" "}
+            {SEASON_DISPLAY[world.currentSeason]?.label ?? world.currentSeason}
+          </span>
+        )}
       </div>
     </button>
   );

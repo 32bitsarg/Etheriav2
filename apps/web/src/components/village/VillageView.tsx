@@ -118,6 +118,33 @@ export function VillageView() {
     (m) => m.type === "TRADE" && (m.from.name === myName || m.to.name === myName)
   );
 
+  // Notificación de llegada: detecta transiciones de mis marchas entre polls
+  const prevOwnMovesRef = useRef<Map<string, { status: string; toName: string; type: string }>>(new Map());
+  useEffect(() => {
+    if (!worldMoves || !myName) return;
+    const ownNow = new Map(
+      worldMoves
+        .filter((m) => m.from.name === myName)
+        .map((m) => [m.id, { status: m.status, toName: m.to.name, type: m.type }])
+    );
+    const prev = prevOwnMovesRef.current;
+    if (prev.size > 0) {
+      for (const [id, before] of prev) {
+        const after = ownNow.get(id);
+        if (before.status === "MARCHING" && after?.status === "RETURNING") {
+          addToast({
+            type: "info",
+            title: before.type === "TRADE" ? t("play.march.tradeArrived") : t("play.march.attackArrived"),
+            message: before.toName,
+          });
+        } else if (!after && before.status === "RETURNING") {
+          addToast({ type: "success", title: t("play.march.troopsReturned"), message: "" });
+        }
+      }
+    }
+    prevOwnMovesRef.current = ownNow;
+  }, [worldMoves, myName, addToast, t]);
+
   const resources = getLiveResources();
   const isMobile = useIsMobile();
   const unreadTotal = (mailData?.unreadCount ?? 0) + (reportsData?.unreadCount ?? 0) + unreadBattleReports;

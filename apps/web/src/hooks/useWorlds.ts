@@ -10,6 +10,7 @@ export type WorldItem = {
   status: string;
   playerCount: number;
   sortOrder: number;
+  currentSeason: string | null;
 };
 
 export function useWorlds() {

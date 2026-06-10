@@ -1233,6 +1233,11 @@
     },
     "mobile": {
       "more": "Más"
+    },
+    "march": {
+      "attackArrived": "⚔️ Tu ejército llegó a destino",
+      "tradeArrived": "📦 Tu caravana llegó a destino",
+      "troopsReturned": "🏠 Tus tropas volvieron a casa"
     }
   },
   "race": {

@@ -274,8 +274,18 @@ async function processResourceTicks() {
 
   if (eligibleCities.length === 0) return;
 
-  const seasonState = await getSeasonState();
-  const isWinter = seasonState?.currentSeason === 'WINTER';
+  // Season and map config are per-world: a winter in Etheria I must not
+  // starve cities living in another world's summer.
+  const worldIds = [...new Set(eligibleCities.map((c: any) => c.worldId ?? 'default'))];
+  const seasonByWorld = new Map<string, any>();
+  const configByWorld = new Map<string, any>();
+  for (const wId of worldIds) {
+    const state = await getSeasonState(wId).catch(() => null);
+    seasonByWorld.set(wId, state);
+    if (state?.currentSeason === 'WINTER') {
+      configByWorld.set(wId, await getWorldConfig(wId));
+    }
+  }
 
   // Preload alliance effects to avoid N+1 queries per city
   const userIds = new Set(eligibleCities.map((city: any) => city.userId).filter(Boolean));
@@ -308,14 +318,16 @@ async function processResourceTicks() {
     }
   }
 
-  // Cache world config once per tick (zone resolution uses it)
-  const worldCfg = isWinter ? await getWorldConfig() : null;
-
   for (const city of eligibleCities) {
     const lastUpdate = new Date(city.lastResourceUpdate ?? city.createdAt);
     const hoursElapsed = (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60);
 
     if (hoursElapsed < 0.001) continue;
+
+    const cityWorldId = (city as any).worldId ?? 'default';
+    const seasonState = seasonByWorld.get(cityWorldId) ?? null;
+    const isWinter = seasonState?.currentSeason === 'WINTER';
+    const worldCfg = configByWorld.get(cityWorldId) ?? null;
 
     const activeAllianceEffects = allianceEffectsByUserId.get(city.userId) ?? [];
     const effective = await calculateEffectiveProduction({
@@ -506,7 +518,7 @@ async function resolveAndProcessBattle(battle: any) {
     .filter(([, count]) => count > 0)
     .map(([type]) => getUnitStats(type as any, 1, attackerTechBonuses).speed);
   const minSpeed = speeds.length > 0 ? Math.min(...speeds) : 60;
-  const worldConfig = await getWorldConfig();
+  const worldConfig = await getWorldConfig(attackerCityRes.data?.worldId);
   const terrainSpeed = calculatePathSpeedMultiplier(
     attackerCityRes.data?.posX ?? 0,
     attackerCityRes.data?.posY ?? 0,
@@ -784,7 +796,7 @@ async function resolveAndProcessBarbarianBattle(battle: any) {
     const campRes = await db.from(COLLECTIONS.BARBARIAN_CAMPS).eq('id', battle.targetCampId).getFirst() as any;
     const camp = campRes.data;
     if (camp) {
-      const seasonState = await getSeasonState();
+      const seasonState = await getSeasonState(camp.worldId ?? attackerCity?.worldId);
       const season = (seasonState?.currentSeason ?? 'SUMMER') as Season;
       const attackerPower = Object.values(result.attackerSurvivors).reduce((s: number, v: number) => s + v, 0) * 10;
       const defenderPower = army.power;

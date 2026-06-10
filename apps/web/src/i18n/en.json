@@ -1233,6 +1233,11 @@
     },
     "mobile": {
       "more": "More"
+    },
+    "march": {
+      "attackArrived": "⚔️ Your army arrived",
+      "tradeArrived": "📦 Your caravan arrived",
+      "troopsReturned": "🏠 Your troops returned home"
     }
   },
   "race": {
