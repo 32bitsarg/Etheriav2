@@ -631,12 +631,12 @@ const BuildingButton = memo(function BuildingButton({
         />
       )}
 
-      {/* Upgrade badge */}
-      {isUpgrading && (
-        <span className="pointer-events-none absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] shadow-md ring-2 ring-white">
-          🏗️
-        </span>
-      )}
+      {/* Always-visible name + level */}
+      <div className="pointer-events-none absolute bottom-full left-1/2 mb-0.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-stone-900/80 px-2 py-0.5 text-[10px] font-semibold text-white shadow-lg backdrop-blur-sm">
+        {label}
+        <span className="ml-1 text-amber-300">Nv {building.level}</span>
+        {isUpgrading && <span className="ml-1 text-stone-400 text-[9px]">↑ mejorando</span>}
+      </div>
 
       {/* Upgrade countdown */}
       {queue && (
@@ -645,12 +645,7 @@ const BuildingButton = memo(function BuildingButton({
         </div>
       )}
 
-      {/* Hover tooltip */}
-      <div className="pointer-events-none absolute bottom-full left-1/2 mb-1.5 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-stone-900/92 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-xl backdrop-blur-sm group-hover:block">
-        {label}
-        <span className="ml-1.5 text-amber-300">Nv {building.level}</span>
-        {isUpgrading && <span className="ml-1.5 text-stone-400 text-[10px]">↑ mejorando</span>}
-      </div>
+
     </button>
   );
 });
