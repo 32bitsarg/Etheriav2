@@ -74,7 +74,7 @@ export default function MobileLoginPage() {
       else localStorage.removeItem(REMEMBER_IDENTIFIER_KEY);
       router.replace("/play");
     } catch {
-      setError("Error de conexión. Verificá tu internet.");
+      setError(t("login.connectionError"));
       setLoading(false);
     }
   };
@@ -114,12 +114,12 @@ export default function MobileLoginPage() {
         <form onSubmit={onSubmit} className="mt-8 space-y-5">
           <div>
             <label className="mb-2 block text-sm font-medium text-stone-600">
-              {t("login.emailOrUsername")}
+              {t("login.identifier")}
             </label>
             <input
               type="text"
               autoComplete="username"
-              placeholder={t("login.emailPlaceholder")}
+              placeholder={t("login.identifierPlaceholder")}
               value={identifier}
               onChange={(e) => {
                 setIdentifier(e.target.value);
@@ -155,7 +155,7 @@ export default function MobileLoginPage() {
                 onClick={() => setShowPassword((v) => !v)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center text-stone-400 active:text-stone-600"
                 tabIndex={-1}
-                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                aria-label={showPassword ? t("login.hidePassword") : t("login.showPassword")}
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                   {showPassword ? (
@@ -201,7 +201,7 @@ export default function MobileLoginPage() {
           <p className="text-center text-sm text-stone-500">
             {t("login.noAccount")}{" "}
             <Link href="/mobile/register" className="font-semibold text-amber-600 hover:text-amber-700">
-              {t("login.createAccount")}
+              {t("login.registerLink")}
             </Link>
           </p>
         </form>

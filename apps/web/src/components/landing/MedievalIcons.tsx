@@ -165,3 +165,48 @@ export function CoinIcon({ className = "w-6 h-6" }: { className?: string }) {
     </svg>
   );
 }
+
+export function SnowflakeIcon({ className = "w-6 h-6" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M24 6v36M8.4 15l31.2 18M39.6 15L8.4 33" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round"/>
+      <path d="M24 6l-4 5h8l-4-5ZM24 42l-4-5h8l-4 5ZM8.4 15l6.3.9-4-6.9-2.3 6ZM39.6 33l-6.3-.9 4 6.9 2.3-6ZM39.6 15l-2.3-6-4 6.9 6.3-.9ZM8.4 33l2.3 6 4-6.9-6.3.9Z" fill="#7dd3fc" stroke="#0284c7" strokeWidth="1"/>
+      <circle cx="24" cy="24" r="3.5" fill="#e0f2fe" stroke="#0284c7" strokeWidth="1.2"/>
+    </svg>
+  );
+}
+
+export function TrophyIcon({ className = "w-6 h-6" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M14 8h20v12c0 6.5-4.5 11-10 11s-10-4.5-10-11V8Z" fill="url(#trophy-grad)" stroke="#92400e" strokeWidth="2" strokeLinejoin="round"/>
+      <path d="M14 11H7c0 7 3 11 8 12M34 11h7c0 7-3 11-8 12" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round"/>
+      <rect x="21" y="31" width="6" height="6" fill="#b45309" stroke="#78350f" strokeWidth="1"/>
+      <rect x="15" y="37" width="18" height="5" rx="1.5" fill="#92400e" stroke="#451a03" strokeWidth="1.2"/>
+      <path d="M20 14l3 2 3-4 2 5" stroke="#fef3c7" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+      <defs>
+        <linearGradient id="trophy-grad" x1="14" y1="8" x2="34" y2="31">
+          <stop offset="0%" stopColor="#fde68a"/>
+          <stop offset="100%" stopColor="#f59e0b"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+export function HammerIcon({ className = "w-6 h-6" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="10" y="8" width="20" height="11" rx="2.5" fill="url(#hammer-grad)" stroke="#44403c" strokeWidth="1.8"/>
+      <path d="M30 10c4 1 6 2 6 3.5S34 18 30 17.5V10Z" fill="#78716c" stroke="#44403c" strokeWidth="1.5"/>
+      <rect x="17.5" y="19" width="5" height="22" rx="1.6" fill="#b45309" stroke="#78350f" strokeWidth="1.4"/>
+      <rect x="10" y="11" width="20" height="2.5" fill="#fafaf9" opacity="0.4"/>
+      <defs>
+        <linearGradient id="hammer-grad" x1="10" y1="8" x2="30" y2="19">
+          <stop offset="0%" stopColor="#d6d3d1"/>
+          <stop offset="100%" stopColor="#78716c"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}

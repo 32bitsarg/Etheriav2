@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useI18n } from "@/i18n";
+import { RaceEmblem } from "@/components/RaceEmblem";
 
 const DISPLAY_FONT = "var(--font-fredoka, Fredoka, system-ui, sans-serif)";
 
@@ -93,7 +94,7 @@ export function LoreSection() {
           {RACES.map((race) => (
             <div key={race.id} className="group overflow-hidden rounded-[1.8rem] border border-[#f6ebdb] bg-white shadow-[0_10px_26px_-14px_rgba(60,40,20,.3)] transition-transform hover:-translate-y-1">
               <div className="flex h-32 items-center justify-center relative overflow-hidden" style={{ background: race.gradient }}>
-                <span className="text-6xl drop-shadow-lg">{race.emoji}</span>
+                <RaceEmblem race={race.id} className="h-20 w-20 drop-shadow-lg" />
                 <div className="absolute inset-0 bg-white/5" />
               </div>
 

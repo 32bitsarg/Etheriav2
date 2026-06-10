@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { HammerIcon } from "./MedievalIcons";
 
 const DISPLAY_FONT = "var(--font-fredoka, Fredoka, system-ui, sans-serif)";
 
@@ -23,7 +24,7 @@ export function LatestVersionSection() {
             />
           </div>
           <div className="absolute -bottom-5 left-6 flex items-center gap-2.5 rounded-2xl border border-[#f6ebdb] bg-white px-4 py-2.5 shadow-[0_10px_26px_-14px_rgba(60,40,20,.3)]">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-lg">🏗️</span>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100"><HammerIcon className="h-5 w-5" /></span>
             <div>
               <div className="text-[13px] font-bold text-[#2c2118]">Mejorando…</div>
               <div className="text-[11px] text-[#6f6052]">Ayuntamiento → Nv 13</div>

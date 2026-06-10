@@ -8,6 +8,8 @@ import { RACE_INFO, type RaceId } from "@/config/raceConfig";
 import { getCityId } from "@/lib/guestAuth";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { MobileSelectCarousel } from "@/components/ui/MobileSelectCarousel";
+import { RaceEmblem } from "@/components/RaceEmblem";
+import { SelectBackdrop } from "@/components/SelectBackdrop";
 
 const PENDING_RACE_KEY = "etheria_pending_race";
 
@@ -34,12 +36,12 @@ function RaceCard({
       } ${
         isSelected
           ? "border-[var(--race-color)] bg-[var(--race-color)]/10 shadow-[0_0_28px_var(--race-color)]/25 scale-[1.02]"
-          : "border-etheria-border-dim bg-black/20 hover:border-etheria-border hover:bg-black/30"
-      }`}
+          : "border-etheria-border-dim bg-black/45 hover:border-etheria-border hover:bg-black/55"
+      } backdrop-blur-md`}
       style={{ "--race-color": race.color } as React.CSSProperties}
     >
       <div className="mb-3 flex items-center gap-3">
-        <span className={mobile ? "text-5xl" : "text-3xl"}>{race.icon}</span>
+        <RaceEmblem race={race.id} className={mobile ? "h-14 w-14" : "h-11 w-11"} />
         <div>
           <div className={`font-display font-bold text-white ${mobile ? "text-xl" : "text-lg"}`}>
             {t(race.nameKey)}
@@ -136,10 +138,11 @@ export default function SelectRacePage() {
   if (isMobile) {
     return (
       <div
-        className="flex h-dvh flex-col bg-[#0b1111]"
+        className="relative flex h-dvh flex-col bg-[#0b1111]"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 20px)" }}
       >
-        <div className="px-6 text-center">
+        <SelectBackdrop src="/assets/backgrounds/village-fullscreen.webp" />
+        <div className="relative z-10 px-6 text-center">
           <h1 className="text-2xl font-display font-bold text-etheria-gold-soft" style={{ letterSpacing: "-0.02em" }}>
             {t("race.title")}
           </h1>
@@ -148,7 +151,7 @@ export default function SelectRacePage() {
           </p>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col justify-center py-4">
+        <div className="relative z-10 flex min-h-0 flex-1 flex-col justify-center py-4">
           <MobileSelectCarousel
             items={races.map((r) => ({ key: r.id }))}
             onActiveChange={(i) => setSelected(races[i]?.id ?? null)}
@@ -159,7 +162,7 @@ export default function SelectRacePage() {
         </div>
 
         <div
-          className="px-6"
+          className="relative z-10 px-6"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
         >
           <button
@@ -179,8 +182,9 @@ export default function SelectRacePage() {
 
   // ─── Desktop: grid ───
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#0b1111] px-4 py-12">
-      <div className="w-full max-w-2xl">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-[#0b1111] px-4 py-12">
+      <SelectBackdrop src="/assets/backgrounds/village-fullscreen.webp" />
+      <div className="relative z-10 w-full max-w-2xl">
         <div className="mb-10 text-center">
           <h1
             className="mb-3 text-4xl font-display font-bold text-etheria-gold-soft"

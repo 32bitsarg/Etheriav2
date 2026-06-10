@@ -15,6 +15,30 @@ Each release is named after a legendary era in the world of Etheria.
 
 ---
 
+## [0.5.3] - El Rostro de los Reinos - 2026-06-10
+
+> *"Etheria se mira al espejo: las razas ya tienen rostro, los mundos muestran su estación, y el reino avisa cuando cambia."*
+
+### Added
+- Aviso de nueva versión dentro del juego: cuando publicamos una actualización, los jugadores en partida ven un cartel con el botón Actualizar
+- Modal de novedades al entrar al juego después de cada actualización
+- Emblemas heráldicos para cada raza (Humanos, Elfos, Orcos y Enanos) en la selección de raza y la página principal
+- Fondos de pantalla con arte del juego en la selección de raza y de mundo
+- Las tarjetas de mundo muestran el arte y el ícono de su estación actual
+
+### Changed
+- Página de changelog rediseñada: línea de tiempo, etiquetas de color por tipo de cambio y fechas relativas
+- La página principal reemplaza los emojis por íconos ilustrados propios
+- Imágenes del juego optimizadas: la web carga mucho más rápido (más de 180MB menos de peso)
+- Vista de mapa y aldea más fluidas: menos trabajo de render en cada actualización de datos
+
+### Fixed
+- Traducciones faltantes en la pantalla de inicio de sesión móvil
+- El changelog público ya no muestra entradas internas en la página principal
+- Recuperación automática cuando el juego queda con una versión vieja tras una actualización
+
+---
+
 ## [0.5.1] - El Despertar de las Tierras - 2026-06-09
 
 > *"Las tierras dormidas despiertan. El norte ya no está vacío, el invierno golpea con justicia, y los almacenes por fin crecen."*

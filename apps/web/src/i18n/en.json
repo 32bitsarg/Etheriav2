@@ -183,7 +183,10 @@
     "rememberEmail": "Remember me",
     "loading": "Loading...",
     "noAccount": "Don't have an account?",
-    "registerLink": "Create account"
+    "registerLink": "Create account",
+    "connectionError": "Connection error. Check your internet.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "register": {
     "title": "Create Account",
@@ -282,7 +285,8 @@
       "v0_0_1": "The Foundation of Etheria",
       "v0_2_4": "The Forge of War",
       "v0_5_0": "The Traveler's Era",
-      "v0_5_1": "The Awakening of the Lands"
+      "v0_5_1": "The Awakening of the Lands",
+      "v0_5_3": "The Face of the Realms"
     },
     "items": {
       "v0_2_2": {
@@ -527,6 +531,26 @@
           "[GAME] Barbarians across the map: the north, center, and south now have barbarian camps. Previously 3 out of 7 zones had zero activity.",
           "[GAME] Advanced storage now works: the technology that promised to increase your storage capacity actually does so now. It had no effect before.",
           "[GAME] Winter with personality: winter now hits harder in the north (+35%) and lighter in the south (-30%), matching each region's climate."
+        ]
+      },
+      "v0_5_3": {
+        "added": [
+          "In-game new version notice: when we ship an update, players in-game see a banner with an Update button.",
+          "What's new modal when entering the game after each update.",
+          "Heraldic emblems for each race (Humans, Elves, Orcs and Dwarves) on race selection and the landing page.",
+          "Full-screen game art backdrops on the race and world selection screens.",
+          "World cards now show their current season's art and icon."
+        ],
+        "changed": [
+          "Redesigned changelog page: timeline, color-coded change type badges and relative dates.",
+          "The landing page replaces emojis with custom illustrated icons.",
+          "Optimized game images: the web loads much faster (over 180MB lighter).",
+          "Smoother map and village views: less render work on every data refresh."
+        ],
+        "fixed": [
+          "Missing translations on the mobile login screen.",
+          "The public changelog no longer shows internal entries on the landing page.",
+          "Automatic recovery when the game is left on a stale version after a deploy."
         ]
       }
     }
