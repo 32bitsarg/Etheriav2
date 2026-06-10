@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
+import { execSync } from "child_process";
 
 // Latest released version from CHANGELOG.md, baked into the client bundle.
 // Compared at runtime against /version.json to detect new deploys.
@@ -19,10 +20,21 @@ function latestChangelogVersion(): string {
   return "0.0.0";
 }
 
+// Same sha written into version.json at build: a client whose baked id differs
+// from the served one knows a new deploy happened, even without a version bump.
+function gitBuildId(): string {
+  try {
+    return execSync("git rev-parse --short HEAD").toString().trim();
+  } catch {
+    return "";
+  }
+}
+
 const nextConfig: NextConfig = {
   transpilePackages: ["@etheria/shared"],
   env: {
     NEXT_PUBLIC_APP_VERSION: latestChangelogVersion(),
+    NEXT_PUBLIC_BUILD_ID: gitBuildId(),
   },
   images: {
     formats: ["image/webp", "image/avif"],

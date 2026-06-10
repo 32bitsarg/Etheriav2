@@ -166,14 +166,21 @@ fs.writeFileSync(outPath, generateDataFile(releases));
 
 console.log(`✓ Generated ${outPath}`);
 
-// version.json: polled by the game client to detect new deploys
+// version.json: polled by the game client to detect new deploys.
+// buildId (git sha) makes EVERY deploy trigger the update notice, not just
+// changelog version bumps.
+let buildId = null;
+try {
+  buildId = require('child_process').execSync('git rev-parse --short HEAD', { cwd: projectRoot }).toString().trim();
+} catch { /* no git available: version-only comparison */ }
+
 const latest = releases[0];
 const versionOut = path.join(__dirname, '..', 'public', 'version.json');
 fs.writeFileSync(
   versionOut,
-  JSON.stringify({ version: latest?.version ?? '0.0.0', date: latest?.date ?? '' }) + '\n'
+  JSON.stringify({ version: latest?.version ?? '0.0.0', date: latest?.date ?? '', buildId }) + '\n'
 );
-console.log(`✓ Generated ${versionOut}`);
+console.log(`✓ Generated ${versionOut} (buildId: ${buildId ?? 'n/a'})`);
 
 console.log('\nTip: Add translations to en.json and es.json under "changelog" key.');
 console.log('Release names: changelog.releases.<version>');
