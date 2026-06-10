@@ -4,6 +4,7 @@ import type { VillageLayoutData } from "@/lib/villageLayout";
 import type { WorldTerrainMaskData } from "@/lib/worldTerrainMask";
 import villageLayoutJson from "@/data/village-layout.json";
 import { normalizeVillageLayout } from "@/lib/villageLayout";
+import { adminHeaders } from "@/lib/adminClient";
 const API_BASE = "/api";
 const pendingUpgradeKeys = new Set<string>();
 export const PLAY_INITIAL_TIMEOUT_MS = 15_000;
@@ -558,7 +559,7 @@ export function useSaveVillageLayout() {
     mutationFn: async (layout: VillageLayoutData) => {
       const res = await fetch("/api/editor/layout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: adminHeaders(),
         body: JSON.stringify(layout),
       });
       if (!res.ok) throw new Error("Failed to save village layout");
@@ -591,7 +592,7 @@ export function useSaveWorldTerrainMask() {
     mutationFn: async (mask: WorldTerrainMaskData) => {
       const res = await fetch("/api/editor/world-terrain", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: adminHeaders(),
         body: JSON.stringify(mask),
       });
       if (!res.ok) throw new Error("Failed to save world terrain mask");

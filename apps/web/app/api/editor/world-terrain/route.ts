@@ -4,6 +4,20 @@ import path from "node:path";
 import { DEFAULT_WORLD_TERRAIN_MASK, normalizeWorldTerrainMask, type WorldTerrainMaskData } from "@/lib/worldTerrainMask";
 
 export const runtime = "nodejs";
+
+function requireAdminSecret(req: Request): NextResponse | null {
+  const expected = process.env.ADMIN_SECRET ?? "";
+  // Sin secreto configurado solo se permite en desarrollo local
+  if (!expected) {
+    if (process.env.NODE_ENV !== "production") return null;
+    return NextResponse.json({ error: "Admin secret not configured" }, { status: 503 });
+  }
+  if (req.headers.get("x-admin-secret") !== expected) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return null;
+}
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 const maskPath = path.join(process.cwd(), "src", "data", "world-terrain-mask.json");
@@ -23,6 +37,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const denied = requireAdminSecret(req);
+  if (denied) return denied;
   const body = await req.json() as WorldTerrainMaskData;
   const mask = normalizeWorldTerrainMask(body);
   await writeFile(maskPath, `${JSON.stringify(mask, null, 2)}\n`, "utf8");

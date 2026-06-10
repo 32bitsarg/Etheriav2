@@ -5,6 +5,20 @@ import { normalizeVillageLayout, type VillageLayoutData } from "@/lib/villageLay
 
 export const runtime = "nodejs";
 
+function requireAdminSecret(req: Request): NextResponse | null {
+  const expected = process.env.ADMIN_SECRET ?? "";
+  // Sin secreto configurado solo se permite en desarrollo local
+  if (!expected) {
+    if (process.env.NODE_ENV !== "production") return null;
+    return NextResponse.json({ error: "Admin secret not configured" }, { status: 503 });
+  }
+  if (req.headers.get("x-admin-secret") !== expected) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return null;
+}
+
+
 const layoutPath = path.join(process.cwd(), "src", "data", "village-layout.json");
 
 async function readLayout(): Promise<VillageLayoutData> {
@@ -22,6 +36,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const denied = requireAdminSecret(req);
+  if (denied) return denied;
   const body = await req.json() as VillageLayoutData;
   const layout = normalizeVillageLayout(body);
   await writeFile(layoutPath, `${JSON.stringify(layout, null, 2)}\n`, "utf8");

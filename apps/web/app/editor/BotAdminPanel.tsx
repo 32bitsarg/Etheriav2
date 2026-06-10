@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useWorlds, type WorldItem } from "@/hooks/useWorlds";
+import { adminHeaders } from "@/lib/adminClient";
 
 type BotRecord = {
   id: string;
@@ -17,7 +18,7 @@ type BotRecord = {
 
 function adminFetch(path: string, options?: RequestInit) {
   const url = `/api/editor/admin?path=${encodeURIComponent(path)}`;
-  return fetch(url, { ...options, headers: { "Content-Type": "application/json", ...options?.headers } });
+  return fetch(url, { ...options, headers: { ...adminHeaders(), ...options?.headers } });
 }
 
 export function BotAdminPanel({ apiTarget }: { apiTarget: "local" | "prod" }) {
