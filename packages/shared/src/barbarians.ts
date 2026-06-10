@@ -1,7 +1,7 @@
 import { z } from "zod";
+import { SeasonSchema } from "./season";
 
-const UnitTypeSchema = z.enum(["WARRIOR", "ARCHER", "CAVALRY", "SIEGE", "SPY"]);
-const SeasonSchema = z.enum(["SPRING", "SUMMER", "AUTUMN", "WINTER"]);
+const UnitTypeSchema = z.enum(["WARRIOR", "ARCHER", "CAVALRY", "SIEGE", "SPY", "PIKEMAN", "CROSSBOWMAN", "CATAPULT"]);
 
 // ─── Barbarian Archetypes ───
 

@@ -161,6 +161,7 @@ model City {
   @@index([lastResourceUpdate])
   @@index([createdAt])
   @@index([worldId])
+  @@index([race])
   @@map("cities")
 }
 
@@ -274,6 +275,7 @@ model Battle {
   @@index([attackerCityId])
   @@index([defenderCityId])
   @@index([status, arrivesAt])
+  @@index([status, returnsAt])
   @@index([defenderCityId, startedAt])
   @@index([attackerCityId, resolvedAt])
   @@map("battles")

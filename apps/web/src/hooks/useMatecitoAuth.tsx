@@ -28,9 +28,10 @@ function extractErrorMessage(data: any, fallback: string): string {
   return fallback;
 }
 
-const DEV_AUTO_LOGIN = process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN === "true";
-const DEV_EMAIL = process.env.NEXT_PUBLIC_DEV_EMAIL ?? "";
-const DEV_PASSWORD = process.env.NEXT_PUBLIC_DEV_PASSWORD ?? "";
+const IS_DEV = process.env.NODE_ENV === "development";
+const DEV_AUTO_LOGIN = IS_DEV && process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN === "true";
+const DEV_EMAIL = IS_DEV ? (process.env.NEXT_PUBLIC_DEV_EMAIL ?? "") : "";
+const DEV_PASSWORD = IS_DEV ? (process.env.NEXT_PUBLIC_DEV_PASSWORD ?? "") : "";
 
 async function devAutoLogin(applyUser: (u: AuthUser | null) => void) {
   if (!DEV_EMAIL || !DEV_PASSWORD) return;

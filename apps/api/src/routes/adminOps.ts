@@ -3,6 +3,7 @@ import { promisify } from "node:util";
 import { Hono } from "hono";
 import { z } from "zod";
 import { getPerfSnapshot } from "../infrastructure/perfMetrics.js";
+import { requireAdmin } from "../infrastructure/adminMiddleware.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -31,16 +32,6 @@ const HELPER_PATH = process.env.ADMIN_OPS_HELPER_PATH ?? "/opt/etheria/adminctl.
 
 type OpsService = keyof typeof SERVICE_ACTIONS;
 
-function requireAdminSecret(c: any) {
-  const expected = process.env.ADMIN_SECRET;
-  if (!expected) return c.json({ error: "ADMIN_SECRET is not configured" }, 503);
-
-  const received = c.req.header("x-admin-secret");
-  if (!received || received !== expected) return c.json({ error: "Unauthorized" }, 401);
-
-  return null;
-}
-
 async function runAdminHelper(action: string, args: string[] = []) {
   const { stdout, stderr } = await execFileAsync("sudo", ["-n", HELPER_PATH, action, ...args], {
     timeout: 120_000,
@@ -59,9 +50,7 @@ function isOpsService(value: string): value is OpsService {
 
 export const adminOpsRouter = new Hono();
 
-adminOpsRouter.use("*", async (c, next) => {
-  const denied = requireAdminSecret(c);
-  if (denied) return denied;
+adminOpsRouter.use("*", requireAdmin(), async (c, next) => {
   c.header("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   c.header("Pragma", "no-cache");
   c.header("Expires", "0");

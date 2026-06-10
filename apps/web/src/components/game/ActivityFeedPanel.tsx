@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Modal } from "@/components/ui/Modal";
+import { useI18n } from "@/i18n";
 
 interface FeedEntry {
   id: string;
@@ -19,26 +20,28 @@ const TYPE_ICONS: Record<string, string> = {
   ACHIEVEMENT_UNLOCKED: "🥇",
 };
 
-function formatEntry(entry: FeedEntry): string {
-  switch (entry.type) {
-    case "CITY_CONQUERED": return `conquistó la ciudad de ${entry.payload.defenderName}`;
-    case "WONDER_CAPTURED": return `capturó La Maravilla`;
-    case "RALLY_LAUNCHED": return `lanzó un rally de alianza`;
-    default: return `realizó una acción`;
-  }
-}
-
-function timeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return "ahora";
-  if (m < 60) return `hace ${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `hace ${h}h`;
-  return `hace ${Math.floor(h / 24)}d`;
-}
-
 export function ActivityFeedPanel({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n();
+
+  function formatEntry(entry: FeedEntry): string {
+    switch (entry.type) {
+      case "CITY_CONQUERED": return `${t("play.activityFeed.conquered")} ${entry.payload.defenderName}`;
+      case "WONDER_CAPTURED": return t("play.activityFeed.wonder");
+      case "RALLY_LAUNCHED": return t("play.activityFeed.rally");
+      default: return t("play.activityFeed.action");
+    }
+  }
+
+  function timeAgo(iso: string) {
+    const diff = Date.now() - new Date(iso).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return t("play.activityFeed.now");
+    if (m < 60) return t("play.activityFeed.minutesAgo").replace("{m}", String(m));
+    const h = Math.floor(m / 60);
+    if (h < 24) return t("play.activityFeed.hoursAgo").replace("{h}", String(h));
+    return t("play.activityFeed.daysAgo").replace("{d}", String(Math.floor(h / 24)));
+  }
+
   const { data, isLoading } = useQuery<{ feed: FeedEntry[] }>({
     queryKey: ["activity-feed"],
     queryFn: async () => {
@@ -52,15 +55,15 @@ export function ActivityFeedPanel({ onClose }: { onClose: () => void }) {
     <Modal
       isOpen
       onClose={onClose}
-      title="Feed Global"
-      subtitle="Lo que pasa en el mundo"
+      title={t("play.activityFeed.title")}
+      subtitle={t("play.activityFeed.subtitle")}
       headerGradient="from-slate-700 to-slate-800"
       headerIcon="📰"
       contentClass="p-0"
     >
-      {isLoading && <div className="py-8 text-center text-stone-400 text-sm">Cargando...</div>}
+      {isLoading && <div className="py-8 text-center text-stone-400 text-sm">{t("play.activityFeed.loading")}</div>}
       {(data?.feed ?? []).length === 0 && !isLoading && (
-        <div className="py-8 text-center text-stone-400 text-sm">Aún no hay actividad</div>
+        <div className="py-8 text-center text-stone-400 text-sm">{t("play.activityFeed.empty")}</div>
       )}
       <ul className="divide-y divide-stone-50">
         {(data?.feed ?? []).map((entry) => (

@@ -51,6 +51,7 @@ import {
 import { STARTER_BUILDINGS } from "../domain/cityCreation.js";
 import { createStarterCityForUser } from "../domain/cityCreation.js";
 import { requireMatecitoAuth } from "../infrastructure/authMiddleware.js";
+import { rateLimit } from "../infrastructure/rateLimiter.js";
 import { getWorldConfig } from "../domain/worldConfig.js";
 import { getAllianceMembershipForUser } from "../domain/alliances.js";
 import { normalizeBuildingsByType } from "../domain/buildingNormalization.js";
@@ -62,6 +63,14 @@ import { generateCityName, generatePlayerName } from "../domain/nameGenerator.js
 import { getCityQueueConfig } from "../domain/queueConfigData.js";
 
 const genId = () => crypto.randomUUID();
+
+async function assertCityOwner(cityId: string, userId: string) {
+  const cityRes = await db.from(COLLECTIONS.CITIES).eq("id", cityId).getFirst() as any;
+  if (!cityRes.data) return null;
+  if (cityRes.data.userId !== userId) return "FORBIDDEN" as const;
+  return cityRes.data;
+}
+
 const citySnapshotCache = new Map<string, { data: any; cachedAt: number }>();
 const CITY_SNAPSHOT_TTL_MS = 15_000;
 const WORLD_MAP_CITY_LIMIT = Number(process.env.WORLD_MAP_CITY_LIMIT ?? 200);
@@ -680,8 +689,8 @@ cityRouter.post("/bootstrap", requireMatecitoAuth(), async (c) => {
   }
 });
 
-// Create Starter City
-cityRouter.post("/create", async (c) => {
+// Create Starter City (guest flow — rate limited)
+cityRouter.post("/create", rateLimit({ name: "city-create", windowMs: 60_000 * 10, max: 3 }), async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const cityName = typeof body.name === "string" && body.name.trim().length >= 2
     ? body.name.trim()
@@ -771,24 +780,25 @@ cityRouter.get("/ranking/all", async (c) => {
   return c.json({ ranking });
 });
 
-cityRouter.patch("/:id/name", async (c) => {
+cityRouter.patch("/:id/name", requireMatecitoAuth(), async (c) => {
   const cityId = c.req.param("id");
+  const userId = c.get("userId");
+  const ownership = await assertCityOwner(cityId, userId);
+  if (!ownership) return c.json({ error: "City not found" }, 404);
+  if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
+
   const body = await c.req.json().catch(() => ({}));
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (name.length < 2 || name.length > 30) {
     return c.json({ error: "City name must be between 2 and 30 characters" }, 400);
   }
 
-  const cityRes = await db.from(COLLECTIONS.CITIES).eq("id", cityId).getFirst() as any;
-  const city = cityRes.data;
-  if (!city) return c.json({ error: "City not found" }, 404);
-
-  await mergeRecordBySelector(COLLECTIONS.CITIES, city, {
+  await mergeRecordBySelector(COLLECTIONS.CITIES, ownership, {
     name,
     updatedAt: new Date().toISOString(),
   });
 
-  return c.json({ success: true, city: { ...city, name } });
+  return c.json({ success: true, city: { ...ownership, name } });
 });
 
 // World map endpoints must be registered before "/:id" to avoid route capture.
@@ -815,9 +825,13 @@ cityRouter.get("/world/movements", async (c) => {
   return c.json({ movements });
 });
 
-cityRouter.get("/:id/play-initial", async (c) => {
+cityRouter.get("/:id/play-initial", requireMatecitoAuth(), async (c) => {
   const startedAt = performance.now();
   const id = c.req.param("id");
+  const userId = c.get("userId");
+  const ownership = await assertCityOwner(id, userId);
+  if (!ownership) return c.json({ error: "City not found", code: "CITY_NOT_FOUND" }, 404);
+  if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
   try {
     const snapshot = await getPlayInitialSnapshot(id);
     if (!snapshot) return c.json({ error: "City not found", code: "CITY_NOT_FOUND" }, 404);
@@ -833,37 +847,53 @@ cityRouter.get("/:id/play-initial", async (c) => {
 });
 
 // Get city
-cityRouter.get("/:id", async (c) => {
+cityRouter.get("/:id", requireMatecitoAuth(), async (c) => {
   const id = c.req.param("id");
+  const userId = c.get("userId");
+  const ownership = await assertCityOwner(id, userId);
+  if (!ownership) return c.json({ error: "City not found" }, 404);
+  if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
   const city = await getCityWithResources(id);
   if (!city) return c.json({ error: "City not found" }, 404);
   return c.json(city);
 });
 
 // Create building
-cityRouter.post("/:id/build", zValidator("json", CreateBuildingRequestSchema), async (c) => {
+cityRouter.post("/:id/build", requireMatecitoAuth(), zValidator("json", CreateBuildingRequestSchema), async (c) => {
   const cityId = c.req.param("id");
+  const userId = c.get("userId");
+  const ownership = await assertCityOwner(cityId, userId);
+  if (!ownership) return c.json({ error: "City not found" }, 404);
+  if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
   const data = c.req.valid("json");
   try {
-    return c.json(await createBuildingAction({ cityId, ...data, actor: { type: "human" } }));
+    return c.json(await createBuildingAction({ cityId, ...data, actor: { type: "human", userId } }));
   } catch (error) {
     return actionErrorResponse(c, error);
   }
 });
 
 // Upgrade building
-cityRouter.post("/:id/buildings/:buildingId/upgrade", async (c) => {
+cityRouter.post("/:id/buildings/:buildingId/upgrade", requireMatecitoAuth(), async (c) => {
   const cityId = c.req.param("id");
+  const userId = c.get("userId");
+  const ownership = await assertCityOwner(cityId, userId);
+  if (!ownership) return c.json({ error: "City not found" }, 404);
+  if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
   const buildingId = c.req.param("buildingId");
   try {
-    return c.json(await upgradeBuildingAction({ cityId, buildingId, actor: { type: "human" } }));
+    return c.json(await upgradeBuildingAction({ cityId, buildingId, actor: { type: "human", userId } }));
   } catch (error) {
     return actionErrorResponse(c, error);
   }
 });
 
-cityRouter.post("/:id/build-queues/:queueId/cancel", async (c) => {
+cityRouter.post("/:id/build-queues/:queueId/cancel", requireMatecitoAuth(), async (c) => {
   const cityId = c.req.param("id");
+  const userId = c.get("userId");
+  const ownership = await assertCityOwner(cityId, userId);
+  if (!ownership) return c.json({ error: "City not found" }, 404);
+  if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
   const queueId = c.req.param("queueId");
 
   const city = await getCityWithResources(cityId);
@@ -915,18 +945,26 @@ cityRouter.post("/:id/build-queues/:queueId/cancel", async (c) => {
 });
 
 // Train units
-cityRouter.post("/:id/train", zValidator("json", TrainUnitsRequestSchema), async (c) => {
+cityRouter.post("/:id/train", requireMatecitoAuth(), zValidator("json", TrainUnitsRequestSchema), async (c) => {
   const cityId = c.req.param("id");
+  const userId = c.get("userId");
+  const ownership = await assertCityOwner(cityId, userId);
+  if (!ownership) return c.json({ error: "City not found" }, 404);
+  if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
   const data = c.req.valid("json");
   try {
-    return c.json(await trainUnitsAction({ cityId, ...data, actor: { type: "human" } }));
+    return c.json(await trainUnitsAction({ cityId, ...data, actor: { type: "human", userId } }));
   } catch (error) {
     return actionErrorResponse(c, error);
   }
 });
 
-cityRouter.post("/:id/training-queues/:queueId/cancel", async (c) => {
+cityRouter.post("/:id/training-queues/:queueId/cancel", requireMatecitoAuth(), async (c) => {
   const cityId = c.req.param("id");
+  const userId = c.get("userId");
+  const ownership = await assertCityOwner(cityId, userId);
+  if (!ownership) return c.json({ error: "City not found" }, 404);
+  if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
   const queueId = c.req.param("queueId");
 
   const city = await getCityWithResources(cityId);
@@ -967,15 +1005,19 @@ cityRouter.post("/:id/training-queues/:queueId/cancel", async (c) => {
 });
 
 // Attack
-cityRouter.post("/:id/attack", zValidator("json", AttackRequestSchema), async (c) => {
+cityRouter.post("/:id/attack", requireMatecitoAuth(), zValidator("json", AttackRequestSchema), async (c) => {
   const attackerCityId = c.req.param("id");
+  const userId = c.get("userId");
+  const ownership = await assertCityOwner(attackerCityId, userId);
+  if (!ownership) return c.json({ error: "City not found" }, 404);
+  if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
   const data = c.req.valid("json");
   try {
     return c.json(await attackCityAction({
       attackerCityId,
       targetCityId: data.targetCityId,
       units: data.units as any,
-      actor: { type: "human" },
+      actor: { type: "human", userId },
     }));
   } catch (error) {
     return actionErrorResponse(c, error);
@@ -983,8 +1025,12 @@ cityRouter.post("/:id/attack", zValidator("json", AttackRequestSchema), async (c
 });
 
 // Trade / Send resources
-cityRouter.post("/:id/trade", zValidator("json", SendResourcesRequestSchema), async (c) => {
+cityRouter.post("/:id/trade", requireMatecitoAuth(), zValidator("json", SendResourcesRequestSchema), async (c) => {
   const senderCityId = c.req.param("id");
+  const userId = c.get("userId");
+  const ownership = await assertCityOwner(senderCityId, userId);
+  if (!ownership) return c.json({ error: "City not found" }, 404);
+  if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
   const data = c.req.valid("json");
   try {
     return c.json(await sendResourcesAction({
@@ -999,8 +1045,12 @@ cityRouter.post("/:id/trade", zValidator("json", SendResourcesRequestSchema), as
 });
 
 // Get queues
-cityRouter.get("/:id/queue", async (c) => {
+cityRouter.get("/:id/queue", requireMatecitoAuth(), async (c) => {
   const cityId = c.req.param("id");
+  const userId = c.get("userId");
+  const ownership = await assertCityOwner(cityId, userId);
+  if (!ownership) return c.json({ error: "City not found" }, 404);
+  if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
 
   const [buildQueuesRes, trainingQueuesRes] = await Promise.all([
     db.from(COLLECTIONS.BUILD_QUEUES).eq("cityId", cityId).eq("isComplete", false).get(),
@@ -1010,7 +1060,6 @@ cityRouter.get("/:id/queue", async (c) => {
   const buildQueues = (buildQueuesRes as any).data ?? [];
   const trainingQueues = (trainingQueuesRes as any).data ?? [];
 
-  // Sort by startedAt ascending
   buildQueues.sort((a: any, b: any) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime());
   trainingQueues.sort((a: any, b: any) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime());
 
@@ -1019,8 +1068,13 @@ cityRouter.get("/:id/queue", async (c) => {
 
 // ─── Battle Reports ───
 
-cityRouter.get("/:id/battles/reports", async (c) => {
+cityRouter.get("/:id/battles/reports", requireMatecitoAuth(), async (c) => {
   const cityId = c.req.param("id");
+  const userId = c.get("userId");
+  const ownership = await assertCityOwner(cityId, userId);
+  if (!ownership) return c.json({ error: "City not found" }, 404);
+  if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
+
   const reports = await prisma.battleReport.findMany({
     where: { cityId },
     orderBy: { createdAt: "desc" },
@@ -1030,9 +1084,14 @@ cityRouter.get("/:id/battles/reports", async (c) => {
   return c.json({ reports: serializeRecord(reports) });
 });
 
-cityRouter.post("/:id/battles/reports/:reportId/read", async (c) => {
-  const reportId = c.req.param("reportId");
+cityRouter.post("/:id/battles/reports/:reportId/read", requireMatecitoAuth(), async (c) => {
+  const cityId = c.req.param("id");
+  const userId = c.get("userId");
+  const ownership = await assertCityOwner(cityId, userId);
+  if (!ownership) return c.json({ error: "City not found" }, 404);
+  if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
 
+  const reportId = c.req.param("reportId");
   await prisma.battleReport.update({ where: { id: reportId }, data: { read: true } });
 
   return c.json({ success: true });
@@ -1040,8 +1099,12 @@ cityRouter.post("/:id/battles/reports/:reportId/read", async (c) => {
 
 // ─── Active Battles ───
 
-cityRouter.get("/:id/battles/active", async (c) => {
+cityRouter.get("/:id/battles/active", requireMatecitoAuth(), async (c) => {
   const cityId = c.req.param("id");
+  const userId = c.get("userId");
+  const ownership = await assertCityOwner(cityId, userId);
+  if (!ownership) return c.json({ error: "City not found" }, 404);
+  if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
 
   const active = await prisma.battle.findMany({
     where: {
@@ -1057,8 +1120,12 @@ cityRouter.get("/:id/battles/active", async (c) => {
 
 // ─── Tech / Research ───
 
-cityRouter.get("/:id/techs", async (c) => {
+cityRouter.get("/:id/techs", requireMatecitoAuth(), async (c) => {
   const cityId = c.req.param("id");
+  const userId = c.get("userId");
+  const ownership = await assertCityOwner(cityId, userId);
+  if (!ownership) return c.json({ error: "City not found" }, 404);
+  if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
 
   const [cityTechs, researchQueue] = await Promise.all([
     prisma.cityTech.findMany({ where: { cityId } }),
@@ -1071,18 +1138,26 @@ cityRouter.get("/:id/techs", async (c) => {
   return c.json(buildTechResponse(cityTechs, researchQueue));
 });
 
-cityRouter.post("/:id/research", zValidator("json", StartResearchRequestSchema), async (c) => {
+cityRouter.post("/:id/research", requireMatecitoAuth(), zValidator("json", StartResearchRequestSchema), async (c) => {
   const cityId = c.req.param("id");
+  const userId = c.get("userId");
+  const ownership = await assertCityOwner(cityId, userId);
+  if (!ownership) return c.json({ error: "City not found" }, 404);
+  if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
   const data = c.req.valid("json");
   try {
-    return c.json(await startResearchAction({ cityId, techId: data.techId, actor: { type: "human" } }));
+    return c.json(await startResearchAction({ cityId, techId: data.techId, actor: { type: "human", userId } }));
   } catch (error) {
     return actionErrorResponse(c, error);
   }
 });
 
-cityRouter.post("/:id/research-queues/:queueId/cancel", async (c) => {
+cityRouter.post("/:id/research-queues/:queueId/cancel", requireMatecitoAuth(), async (c) => {
   const cityId = c.req.param("id");
+  const userId = c.get("userId");
+  const ownership = await assertCityOwner(cityId, userId);
+  if (!ownership) return c.json({ error: "City not found" }, 404);
+  if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
   const queueId = c.req.param("queueId");
 
   const city = await getCityWithResources(cityId);

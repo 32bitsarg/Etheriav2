@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Modal } from "@/components/ui/Modal";
+import { useI18n } from "@/i18n";
 
 interface Achievement {
   key: string;
@@ -14,6 +15,7 @@ interface Achievement {
 }
 
 export function AchievementsPanel({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n();
   const { data, isLoading } = useQuery<{ achievements: Achievement[] }>({
     queryKey: ["achievements"],
     queryFn: async () => {
@@ -30,16 +32,16 @@ export function AchievementsPanel({ onClose }: { onClose: () => void }) {
     <Modal
       isOpen
       onClose={onClose}
-      title="Logros"
-      subtitle={`${unlocked.length} desbloqueados · ${totalPoints} puntos`}
+      title={t("play.achievements.title")}
+      subtitle={`${unlocked.length} ${t("play.achievements.unlocked")} · ${totalPoints} ${t("play.achievements.points")}`}
       headerGradient="from-yellow-500 to-amber-500"
       headerIcon="🏆"
       contentClass="p-4 space-y-2"
     >
-      {isLoading && <div className="py-8 text-center text-stone-400 text-sm">Cargando...</div>}
+      {isLoading && <div className="py-8 text-center text-stone-400 text-sm">{t("play.achievements.loading")}</div>}
 
       {unlocked.length > 0 && (
-        <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider px-1">Desbloqueados</p>
+        <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider px-1">{t("play.achievements.unlockedSection")}</p>
       )}
       {unlocked.map((a) => (
         <div key={a.key} className="flex items-center gap-3 p-3 rounded-xl bg-yellow-50 border border-yellow-200">
@@ -53,7 +55,7 @@ export function AchievementsPanel({ onClose }: { onClose: () => void }) {
       ))}
 
       {locked.length > 0 && (
-        <p className="text-xs font-semibold text-stone-300 uppercase tracking-wider px-1 pt-2">Por desbloquear</p>
+        <p className="text-xs font-semibold text-stone-300 uppercase tracking-wider px-1 pt-2">{t("play.achievements.lockedSection")}</p>
       )}
       {locked.map((a) => (
         <div key={a.key} className="flex items-center gap-3 p-3 rounded-xl bg-stone-50 border border-stone-100 opacity-60">

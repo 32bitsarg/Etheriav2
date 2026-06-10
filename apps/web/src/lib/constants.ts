@@ -112,8 +112,10 @@ export const UNIT_IMAGE_PATHS: Partial<Record<UnitType, string>> = {
   ARCHER: "/assets/units/archer.webp",
   CAVALRY: "/assets/units/cavalry.webp",
   SPY: "/assets/units/spy.webp",
+  SIEGE: "/assets/units/warrior.webp",
   PIKEMAN: "/assets/units/warrior.webp",
   CROSSBOWMAN: "/assets/units/archer.webp",
+  CATAPULT: "/assets/units/warrior.webp",
 };
 
 // ─── Resource Display Info ───
@@ -237,10 +239,6 @@ export function getUnitIcon(type: string): string {
 
 export function getResourceNameKey(resource: string): string {
   return RESOURCE_INFO[resource as keyof typeof RESOURCE_INFO]?.nameKey ?? resource;
-}
-
-export function getResourceIcon(resource: string): string {
-  return RESOURCE_INFO[resource as keyof typeof RESOURCE_INFO]?.icon ?? "💰";
 }
 
 export function getCategoryLabelKey(category: string): string {

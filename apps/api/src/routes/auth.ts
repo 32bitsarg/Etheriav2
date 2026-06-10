@@ -12,6 +12,7 @@ import {
   touchSession,
 } from "../domain/authService.js";
 import { generateCityName, generatePlayerName } from "../domain/nameGenerator.js";
+import { rateLimit } from "../infrastructure/rateLimiter.js";
 
 export const authRouter = new Hono();
 
@@ -23,7 +24,7 @@ const RegisterSchema = z.object({
   remember: z.boolean().optional().default(false),
 });
 
-authRouter.post("/register", zValidator("json", RegisterSchema), async (c) => {
+authRouter.post("/register", rateLimit({ name: "auth-register", windowMs: 60_000 * 15, max: 5 }), zValidator("json", RegisterSchema), async (c) => {
   try {
     const data = c.req.valid("json");
     const result = await registerUser({
@@ -56,7 +57,7 @@ const LoginSchema = z.object({
   remember: z.boolean().optional().default(false),
 });
 
-authRouter.post("/login", zValidator("json", LoginSchema), async (c) => {
+authRouter.post("/login", rateLimit({ name: "auth-login", windowMs: 60_000 * 5, max: 10 }), zValidator("json", LoginSchema), async (c) => {
   const data = c.req.valid("json");
   const result = await loginUser({ email: data.email, password: data.password, remember: data.remember });
   if ("error" in result) return c.json({ error: result.error }, 401);

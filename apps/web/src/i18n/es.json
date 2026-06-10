@@ -1194,6 +1194,38 @@
         "plains": "Llanura"
       },
       "title": "Buffs"
+    },
+    "activityFeed": {
+      "title": "Feed Global",
+      "subtitle": "Lo que pasa en el mundo",
+      "loading": "Cargando...",
+      "empty": "Aún no hay actividad",
+      "conquered": "conquistó la ciudad de",
+      "wonder": "capturó La Maravilla",
+      "rally": "lanzó un rally de alianza",
+      "action": "realizó una acción",
+      "now": "ahora",
+      "minutesAgo": "hace {m}m",
+      "hoursAgo": "hace {h}h",
+      "daysAgo": "hace {d}d"
+    },
+    "achievements": {
+      "title": "Logros",
+      "unlocked": "desbloqueados",
+      "points": "puntos",
+      "loading": "Cargando...",
+      "unlockedSection": "Desbloqueados",
+      "lockedSection": "Por desbloquear"
+    },
+    "rallyBanner": {
+      "launching": "¡Lanzando!",
+      "title": "¡Rally de Alianza!",
+      "participants": "participantes",
+      "join": "Unirme",
+      "joined": "Unido",
+      "joinTitle": "Unirse al Rally",
+      "troopsPrompt": "¿Cuántas tropas envías?",
+      "confirmJoin": "Unirme al Rally"
     }
   },
   "race": {

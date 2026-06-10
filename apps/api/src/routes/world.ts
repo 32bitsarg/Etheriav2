@@ -8,6 +8,7 @@ import { getWorldConfig } from '../domain/worldConfig.js';
 import { getSeasonDurationHours, LOCAL_SEASON_CONFIG } from '../domain/seasonConfigData.js';
 import type { Season, WorldZoneSnapshot, UnitType } from '@etheria/shared';
 import { getAllActiveCamps, getBarbarianCampDetail, fetchCurrentSeasonState } from '../domain/barbarians.js';
+import { requireAdmin } from '../infrastructure/adminMiddleware.js';
 import { calculateEstimatedReward } from '../domain/barbarianRewardConfigData.js';
 import {
   getWinterPressureSummary,
@@ -104,7 +105,7 @@ worldRouter.get('/state', async (c) => {
 
 // ─── POST /admin/world — create world (admin) ───
 
-worldRouter.post('/admin/world', async (c) => {
+worldRouter.post('/admin/world', requireAdmin(), async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '') : null;
   if (!slug || slug.length < 2) return c.json({ error: 'Invalid slug' }, 400);
@@ -131,7 +132,7 @@ worldRouter.post('/admin/world', async (c) => {
 
 // ─── PUT /admin/world/:id/config — update world config (admin) ───
 
-worldRouter.put('/admin/world/:id/config', async (c) => {
+worldRouter.put('/admin/world/:id/config', requireAdmin(), async (c) => {
   const id = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
   if (!body.config) return c.json({ error: 'Missing config' }, 400);
@@ -154,29 +155,10 @@ worldRouter.put('/admin/world/:id/config', async (c) => {
 
 // ─── POST /admin/world/season/advance ───
 
-worldRouter.post(
-  '/admin/season/advance',
-  zValidator(
-    'json',
-    z.object({
-      secret: z.string().optional(),
-    }).optional()
-  ),
-  async (c) => {
-    // In production, verify admin secret here
-    const body = c.req.valid('json');
-    const allowed = process.env.ADMIN_SECRET
-      ? body?.secret === process.env.ADMIN_SECRET
-      : process.env.NODE_ENV !== 'production';
-
-    if (!allowed) {
-      return c.json({ error: 'Unauthorized' }, 401);
-    }
-
-    const state = await advanceSeason();
-    return c.json({ season: state });
-  }
-);
+worldRouter.post('/admin/season/advance', requireAdmin(), async (c) => {
+  const state = await advanceSeason();
+  return c.json({ season: state });
+});
 
 // ─── GET /world/config ───
 
@@ -412,7 +394,7 @@ worldRouter.get('/winter-pressure/:cityId', async (c) => {
   });
 });
 
-worldRouter.post('/admin/repair-terrain', async (c) => {
+worldRouter.post('/admin/repair-terrain', requireAdmin(), async (c) => {
   const result = await repairWorldEntityPlacements();
   return c.json({ ok: true, ...result });
 });
