@@ -1,7 +1,7 @@
 "use client";
 
 import React, {
-  useRef, useEffect, useState, useCallback,
+  useRef, useEffect, useState, useCallback, memo,
 } from "react";
 import type { WorldMovement } from "@etheria/shared";
 import { useI18n } from "@/i18n";
@@ -56,7 +56,7 @@ const MOVEMENT_RELATION_COLORS: Record<string, string> = {
   neutral: "#b9b3a4",
 };
 
-export function WorldMapHTMLCanvas({
+export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   cities,
   mapConfig,
   myCityId,
@@ -437,13 +437,6 @@ export function WorldMapHTMLCanvas({
     onSelectCamp?.(camp, { x: e.clientX - rect.left, y: e.clientY - rect.top });
   }, [onSelectCamp]);
 
-  function relationColor(relation?: string) {
-    if (relation === "ally") return "#49f0c5";
-    if (relation === "peace") return "#6fc8ff";
-    if (relation === "hostile") return "#d75f43";
-    return "#e7d6a8";
-  }
-
   // ─── Loading state ───────────────────────────────────────────────────────
 
   if (!mapConfig) {
@@ -493,51 +486,16 @@ export function WorldMapHTMLCanvas({
           />
 
           {/* Cities */}
-          {cities.map((city) => {
-            const l = worldToLocal(city.posX, city.posY);
-            const isMe = city.id === myCityId;
-            const color = relationColor(city.relation);
-            return (
-              <button
-                key={city.id}
-                onClick={(e) => handleCityClick(city, e)}
-                className="absolute flex flex-col items-center cursor-pointer"
-                style={{
-                  left: l.x, top: l.y,
-                  transform: isMe ? "translate(-50%, -85%) scale(1.15)" : "translate(-50%, -85%)",
-                  zIndex: isMe ? 4 : 2,
-                  willChange: isMe ? "transform" : "auto",
-                }}
-              >
-                <img
-                  src="/assets/map/player-village.png"
-                  alt=""
-                  className="pointer-events-none"
-                  draggable={false}
-                  style={{
-                    width: 20, height: 20,
-                    filter: `drop-shadow(0 2px 3px rgba(0,0,0,0.5))`,
-                  }}
-                />
-                {isMe && (
-                  <div
-                    className="absolute rounded-full pointer-events-none animate-pulse"
-                    style={{
-                      width: 28, height: 28, top: -4,
-                      border: `2px solid ${color}`,
-                      boxShadow: `0 0 10px ${color}44`,
-                    }}
-                  />
-                )}
-                <span
-                  className="text-[9px] font-semibold whitespace-nowrap px-1.5 py-0.5 rounded pointer-events-none"
-                  style={{ color, backgroundColor: "rgba(5,7,7,0.75)", marginTop: 1 }}
-                >
-                  {city.name}
-                </span>
-              </button>
-            );
-          })}
+          {cities.map((city) => (
+            <CityMarker
+              key={city.id}
+              city={city}
+              x={city.posX + halfW}
+              y={city.posY + halfH}
+              isMe={city.id === myCityId}
+              onClick={handleCityClick}
+            />
+          ))}
 
           {/* Barbarian camps */}
           {barbarianCamps
@@ -609,9 +567,6 @@ export function WorldMapHTMLCanvas({
             const color = MOVEMENT_RELATION_COLORS[m.relation ?? "neutral"] ?? (isTrade ? "#ffe066" : "#ff8888");
             const icon = isTrade ? "📦" : "⚔️";
             const isHovered = hoveredMovementId === m.id;
-            const etaMs = new Date(m.status === "RETURNING" && m.returnsAt ? m.returnsAt : m.arrivesAt).getTime() - Date.now();
-            const etaMin = Math.max(0, Math.floor(etaMs / 60000));
-            const etaSec = Math.max(0, Math.floor((etaMs % 60000) / 1000));
             return (
               <div
                 key={m.id}
@@ -631,7 +586,11 @@ export function WorldMapHTMLCanvas({
               >
                 <span style={{ fontSize: 11, filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.7))" }}>{icon}</span>
                 <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}` }} />
-                {isHovered && (
+                {isHovered && (() => {
+                  const etaMs = new Date(m.status === "RETURNING" && m.returnsAt ? m.returnsAt : m.arrivesAt).getTime() - Date.now();
+                  const etaMin = Math.max(0, Math.floor(etaMs / 60000));
+                  const etaSec = Math.max(0, Math.floor((etaMs % 60000) / 1000));
+                  return (
                   <div
                     className="absolute bottom-full mb-1 whitespace-nowrap rounded-md border px-2 py-1 text-[9px] leading-snug pointer-events-none"
                     style={{ backgroundColor: "rgba(5,7,7,0.92)", borderColor: `${color}66`, color: "#e9e2cf" }}
@@ -646,7 +605,8 @@ export function WorldMapHTMLCanvas({
                       {isTrade ? t("play.map.march.trade") : t("play.map.march.attack")} · {etaMin}m {etaSec}s
                     </div>
                   </div>
-                )}
+                  );
+                })()}
               </div>
             );
           })}
@@ -675,4 +635,62 @@ export function WorldMapHTMLCanvas({
       </button>
     </div>
   );
+});
+
+function relationColor(relation?: string) {
+  if (relation === "ally") return "#49f0c5";
+  if (relation === "peace") return "#6fc8ff";
+  if (relation === "hostile") return "#d75f43";
+  return "#e7d6a8";
 }
+
+// Memoized: city markers can number in the hundreds and only change when the
+// map data does — hover/poll re-renders of the canvas must not rebuild them.
+const CityMarker = memo(function CityMarker({ city, x, y, isMe, onClick }: {
+  city: WorldCity;
+  x: number;
+  y: number;
+  isMe: boolean;
+  onClick: (city: WorldCity, e: React.MouseEvent) => void;
+}) {
+  const color = relationColor(city.relation);
+  return (
+    <button
+      onClick={(e) => onClick(city, e)}
+      className="absolute flex flex-col items-center cursor-pointer"
+      style={{
+        left: x, top: y,
+        transform: isMe ? "translate(-50%, -85%) scale(1.15)" : "translate(-50%, -85%)",
+        zIndex: isMe ? 4 : 2,
+        willChange: isMe ? "transform" : "auto",
+      }}
+    >
+      <img
+        src="/assets/map/player-village.png"
+        alt=""
+        className="pointer-events-none"
+        draggable={false}
+        style={{
+          width: 20, height: 20,
+          filter: `drop-shadow(0 2px 3px rgba(0,0,0,0.5))`,
+        }}
+      />
+      {isMe && (
+        <div
+          className="absolute rounded-full pointer-events-none animate-pulse"
+          style={{
+            width: 28, height: 28, top: -4,
+            border: `2px solid ${color}`,
+            boxShadow: `0 0 10px ${color}44`,
+          }}
+        />
+      )}
+      <span
+        className="text-[9px] font-semibold whitespace-nowrap px-1.5 py-0.5 rounded pointer-events-none"
+        style={{ color, backgroundColor: "rgba(5,7,7,0.75)", marginTop: 1 }}
+      >
+        {city.name}
+      </span>
+    </button>
+  );
+});

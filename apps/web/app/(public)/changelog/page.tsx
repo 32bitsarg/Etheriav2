@@ -1,23 +1,13 @@
 "use client";
 
-import { changelogReleases } from "@/data/changelogData";
 import Link from "next/link";
+import { getPublicReleases } from "@/lib/changelogPublic";
+import { SECTION_STYLES, formatRelativeDate } from "@/components/changelog/changelogUi";
 import { useI18n } from "@/i18n";
 
 export default function ChangelogPage() {
   const { t, locale } = useI18n();
-  const publicReleases = changelogReleases
-    .map((release) => ({
-      ...release,
-      sections: release.sections
-        .filter((section) => section.audience !== "internal")
-        .map((section) => ({
-          ...section,
-          itemKeys: section.itemKeys.filter((itemKey) => !section.internalItemKeys?.includes(itemKey)),
-        }))
-        .filter((section) => section.itemKeys.length > 0),
-    }))
-    .filter((release) => release.sections.length > 0);
+  const publicReleases = getPublicReleases();
 
   const translateHeading = (heading: string) => {
     const key = `changelog.headings.${heading}`;
@@ -26,7 +16,7 @@ export default function ChangelogPage() {
   };
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-16">
+    <main className="mx-auto max-w-3xl px-6 py-16">
       <Link
         href="/"
         className="inline-flex items-center gap-2 text-[14px] text-stone-500 hover:text-stone-900 transition-colors mb-8"
@@ -49,53 +39,71 @@ export default function ChangelogPage() {
         </p>
       </div>
 
-      <div className="space-y-8">
-        {publicReleases.map((release) => (
-          <article
-            key={release.version}
-            className="rounded-[16px] border border-stone-200 bg-white p-6 sm:p-8"
-          >
-            <div className="mb-6 flex flex-wrap items-center gap-4">
-              <span className="rounded-[10px] bg-amber-500 px-3 py-1 text-sm font-semibold text-white">
-                v{release.version}
-              </span>
-              <h2
-                className="text-xl font-bold text-stone-900"
-                style={{ fontFamily: "Inter, system-ui, sans-serif" }}
-              >
-                {t(release.nameKey)}
-              </h2>
-              <span className="ml-auto text-sm text-stone-400">{release.date}</span>
-            </div>
+      <div className="relative">
+        {/* Timeline connector */}
+        <div className="absolute left-[7px] top-2 bottom-2 w-px bg-stone-200 max-sm:hidden" />
 
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {release.sections
-                .slice(0, 3)
-                .map((section) => (
-                  <div key={section.heading}>
-                    <h3 className="mb-3 text-[13px] font-semibold uppercase tracking-[0.05em] text-amber-600">
-                      {translateHeading(section.heading)}
-                    </h3>
-                    <ul className="space-y-2">
-                      {section.itemKeys.slice(0, 3).map((itemKey, i) => (
-                        <li key={i} className="flex gap-2 text-[14px] text-stone-600">
-                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-                          <span className="line-clamp-2">{t(itemKey)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-            </div>
+        <div className="space-y-10">
+          {publicReleases.map((release, idx) => (
+            <article key={release.version} className="relative sm:pl-10">
+              <span
+                className={`absolute left-0 top-2 hidden h-[15px] w-[15px] rounded-full border-2 border-white shadow-sm sm:block ${
+                  idx === 0 ? "bg-amber-500" : "bg-stone-300"
+                }`}
+              />
 
-            <Link
-              href={`/changelog/${release.version}`}
-              className="mt-6 inline-flex items-center gap-2 text-[14px] font-semibold text-amber-600 hover:text-amber-700 transition-colors"
-            >
-              {t("changelog.viewAll")}
-            </Link>
-          </article>
-        ))}
+              <div className="rounded-[16px] border border-stone-200 bg-white p-6 sm:p-8">
+                <div className="mb-6 flex flex-wrap items-center gap-3">
+                  <span className="rounded-[10px] bg-amber-500 px-3 py-1 text-sm font-semibold text-white">
+                    v{release.version}
+                  </span>
+                  <h2
+                    className="text-xl font-bold text-stone-900"
+                    style={{ fontFamily: "Inter, system-ui, sans-serif" }}
+                  >
+                    {t(release.nameKey)}
+                  </h2>
+                  <span
+                    className="ml-auto text-sm text-stone-400"
+                    title={release.date}
+                  >
+                    {formatRelativeDate(release.date, locale)}
+                  </span>
+                </div>
+
+                <div className="space-y-6">
+                  {release.sections.map((section) => {
+                    const style = SECTION_STYLES[section.heading] ?? SECTION_STYLES.Changed;
+                    return (
+                      <div key={section.heading}>
+                        <span
+                          className={`mb-3 inline-block rounded-full px-2.5 py-0.5 text-[12px] font-bold ${style.badge}`}
+                        >
+                          {translateHeading(section.heading)}
+                        </span>
+                        <ul className="space-y-2">
+                          {section.itemKeys.map((itemKey) => (
+                            <li key={itemKey} className="flex gap-2 text-[14px] text-stone-600">
+                              <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${style.dot}`} />
+                              <span>{t(itemKey)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <Link
+                  href={`/changelog/${release.version}`}
+                  className="mt-6 inline-flex items-center gap-2 text-[14px] font-semibold text-amber-600 hover:text-amber-700 transition-colors"
+                >
+                  {t("changelog.viewAll")}
+                </Link>
+              </div>
+            </article>
+          ))}
+        </div>
       </div>
     </main>
   );

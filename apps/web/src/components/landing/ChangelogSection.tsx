@@ -1,23 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { changelogReleases } from "@/data/changelogData";
+import { getPublicReleases } from "@/lib/changelogPublic";
+import { SECTION_STYLES, formatRelativeDate } from "@/components/changelog/changelogUi";
 import { useI18n } from "@/i18n";
 
 const DISPLAY_FONT = "var(--font-fredoka, Fredoka, system-ui, sans-serif)";
 
 export function ChangelogSection() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
-  const publicReleases = changelogReleases
-    .map((release) => ({
-      ...release,
-      sections: release.sections.filter((section) => section.audience !== "internal"),
-    }))
-    .filter((release) => release.sections.length > 0);
-
+  const publicReleases = getPublicReleases();
   const latest = publicReleases[0];
   if (!latest) return null;
+
+  const history = publicReleases.slice(1, 4);
 
   return (
     <section id="changelog" className="px-6 py-16" style={{ background: "#fafaf9" }}>
@@ -42,22 +39,25 @@ export function ChangelogSection() {
             <h3 className="text-2xl font-bold text-[#2c2118]" style={{ fontFamily: DISPLAY_FONT }}>
               {t(latest.nameKey)}
             </h3>
-            <span className="ml-auto text-sm text-stone-400">{latest.date}</span>
+            <span className="ml-auto text-sm text-stone-400" title={latest.date}>
+              {formatRelativeDate(latest.date, locale)}
+            </span>
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {latest.sections.map((section) => {
+              const style = SECTION_STYLES[section.heading] ?? SECTION_STYLES.Changed;
               const displayCount = 4;
               const extra = section.itemKeys.length - displayCount;
               return (
                 <div key={section.heading}>
-                  <h4 className="mb-2.5 text-[12px] font-bold uppercase tracking-[0.08em] text-amber-600">
+                  <span className={`mb-2.5 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold ${style.badge}`}>
                     {t(`changelog.headings.${section.heading}`)}
-                  </h4>
+                  </span>
                   <ul className="space-y-1.5">
                     {section.itemKeys.slice(0, displayCount).map((itemKey, i) => (
                       <li key={i} className="flex gap-2 text-[13px] text-stone-600">
-                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                        <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${style.dot}`} />
                         <span className="line-clamp-2">{t(itemKey)}</span>
                       </li>
                     ))}
@@ -71,6 +71,21 @@ export function ChangelogSection() {
               );
             })}
           </div>
+
+          {history.length > 0 && (
+            <div className="mt-6 flex flex-wrap items-center gap-2">
+              {history.map((release) => (
+                <Link
+                  key={release.version}
+                  href={`/changelog/${release.version}`}
+                  className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-[12px] font-semibold text-stone-500 transition-colors hover:border-amber-300 hover:text-amber-700"
+                  title={t(release.nameKey)}
+                >
+                  v{release.version} · {formatRelativeDate(release.date, locale)}
+                </Link>
+              ))}
+            </div>
+          )}
 
           <div className="mt-6 pt-5 border-t border-stone-100 flex justify-between items-center">
             <Link

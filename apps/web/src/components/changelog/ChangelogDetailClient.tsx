@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useI18n } from "@/i18n";
 import type { ChangelogRelease } from "@/data/changelogData";
+import { SECTION_STYLES } from "@/components/changelog/changelogUi";
 
 interface Props {
   release: ChangelogRelease;
@@ -50,21 +51,24 @@ export function ChangelogDetailClient({ release }: Props) {
         </header>
 
         <div className="mt-10 space-y-10">
-          {publicSections.map((section) => (
-            <section key={section.heading}>
-              <h2 className="mb-5 text-[13px] font-semibold uppercase tracking-[0.05em] text-amber-600">
-                {translateHeading(section.heading)}
-              </h2>
-              <ul className="space-y-4">
-                {section.itemKeys.map((itemKey, i) => (
-                  <li key={i} className="flex gap-3 text-[14px] text-stone-600">
-                    <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-amber-500" />
-                    <span className="leading-relaxed">{t(itemKey)}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
+          {publicSections.map((section) => {
+            const style = SECTION_STYLES[section.heading] ?? SECTION_STYLES.Changed;
+            return (
+              <section key={section.heading}>
+                <span className={`mb-5 inline-block rounded-full px-3 py-1 text-[12px] font-bold ${style.badge}`}>
+                  {translateHeading(section.heading)}
+                </span>
+                <ul className="space-y-4">
+                  {section.itemKeys.map((itemKey, i) => (
+                    <li key={i} className="flex gap-3 text-[14px] text-stone-600">
+                      <span className={`mt-2 h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
+                      <span className="leading-relaxed">{t(itemKey)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
         </div>
       </article>
     </main>
