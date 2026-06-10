@@ -79,6 +79,24 @@ function normalizeRecord(record: any): any {
   return normalized;
 }
 
+function normalizeCreateData(data: Record<string, any>) {
+  const normalized: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    const prismaKey = toPrismaField(key);
+    // Skip null/undefined — Prisma create() rejects relation scalars (e.g. allianceId)
+    // and nullable fields default to null on their own
+    if (value === null || value === undefined) continue;
+    if (value instanceof Date) {
+      normalized[prismaKey] = value;
+    } else if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+      normalized[prismaKey] = new Date(value);
+    } else {
+      normalized[prismaKey] = value;
+    }
+  }
+  return normalized;
+}
+
 function normalizeWriteData(data: Record<string, any>) {
   const normalized: Record<string, any> = {};
   for (const [key, value] of Object.entries(data)) {
@@ -197,7 +215,7 @@ export const postgresCompatDb = {
 
   async insert(collection: string, data: Record<string, any>) {
     const model = modelFor(collection);
-    const row = await model.create({ data: normalizeWriteData(data) });
+    const row = await model.create({ data: normalizeCreateData(data) });
     return { data: normalizeRecord(row), error: null };
   },
 };
