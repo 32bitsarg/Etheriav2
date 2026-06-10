@@ -1,14 +1,16 @@
 "use client";
 
+import { SwordIcon, GlobeIcon, UsersIcon, ScrollIcon, SnowflakeIcon, TrophyIcon } from "./MedievalIcons";
+
 const DISPLAY_FONT = "var(--font-fredoka, Fredoka, system-ui, sans-serif)";
 
 const FEATURES = [
-  { icon: "⚔️", bg: "bg-amber-100", title: "Combate con sentido", desc: "Cada unidad cuenta. Combiná guerreros, arqueros y caballería y usá el terreno a tu favor." },
-  { icon: "🌍", bg: "bg-teal-100", title: "Un mundo vivo", desc: "Ejércitos y caravanas se mueven en tiempo real. El mapa cambia con cada jugador." },
-  { icon: "🤝", bg: "bg-sky-100", title: "Mejor con amigos", desc: "Sumate a una alianza, chateá, firmá tratados y defendé el territorio en equipo." },
-  { icon: "📚", bg: "bg-purple-100", title: "Investigá y crecé", desc: "22 tecnologías en tres ramas para darle tu propio estilo a tu imperio." },
-  { icon: "❄️", bg: "bg-rose-100", title: "Estaciones que importan", desc: "El invierno aprieta, el verano produce. Adaptá tu estrategia a cada temporada." },
-  { icon: "🏆", bg: null, title: "Temporadas y rankings", desc: "Competí por el primer puesto y ganá recompensas exclusivas cada temporada.", highlight: true },
+  { Icon: SwordIcon, bg: "bg-amber-100", title: "Combate con sentido", desc: "Cada unidad cuenta. Combiná guerreros, arqueros y caballería y usá el terreno a tu favor." },
+  { Icon: GlobeIcon, bg: "bg-teal-100", title: "Un mundo vivo", desc: "Ejércitos y caravanas se mueven en tiempo real. El mapa cambia con cada jugador." },
+  { Icon: UsersIcon, bg: "bg-sky-100", title: "Mejor con amigos", desc: "Sumate a una alianza, chateá, firmá tratados y defendé el territorio en equipo." },
+  { Icon: ScrollIcon, bg: "bg-purple-100", title: "Investigá y crecé", desc: "22 tecnologías en tres ramas para darle tu propio estilo a tu imperio." },
+  { Icon: SnowflakeIcon, bg: "bg-rose-100", title: "Estaciones que importan", desc: "El invierno aprieta, el verano produce. Adaptá tu estrategia a cada temporada." },
+  { Icon: TrophyIcon, bg: null, title: "Temporadas y rankings", desc: "Competí por el primer puesto y ganá recompensas exclusivas cada temporada.", highlight: true },
 ];
 
 export function FeaturesSection() {
@@ -37,8 +39,8 @@ export function FeaturesSection() {
                   : "border-[#f6ebdb] bg-white"
               }`}
             >
-              <div className={`flex h-14 w-14 items-center justify-center rounded-2xl text-[26px] ${f.highlight ? "bg-white/20" : f.bg}`}>
-                {f.icon}
+              <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${f.highlight ? "bg-white/20" : f.bg}`}>
+                <f.Icon className="h-8 w-8" />
               </div>
               <h3
                 className={`mt-5 text-xl font-semibold ${f.highlight ? "text-white" : "text-[#2c2118]"}`}

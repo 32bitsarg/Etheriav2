@@ -6,14 +6,16 @@ import { useMatecitoAuth } from "@/hooks/useMatecitoAuth";
 import { useWorlds, type WorldItem } from "@/hooks/useWorlds";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { MobileSelectCarousel } from "@/components/ui/MobileSelectCarousel";
+import { SelectBackdrop } from "@/components/SelectBackdrop";
+import { GlobeIcon, UsersIcon } from "@/components/landing/MedievalIcons";
 
 const WORLD_ID_KEY = "etheria_world_id";
 
-const SEASON_DISPLAY: Record<string, { icon: string; label: string }> = {
-  SPRING: { icon: "🌸", label: "Primavera" },
-  SUMMER: { icon: "☀️", label: "Verano" },
-  AUTUMN: { icon: "🍂", label: "Otoño" },
-  WINTER: { icon: "❄️", label: "Invierno" },
+const SEASON_DISPLAY: Record<string, { icon: string; bg: string; label: string }> = {
+  SPRING: { icon: "/assets/ui/seasons/season-spring.png", bg: "/assets/ui/seasons/season-bg-spring.png", label: "Primavera" },
+  SUMMER: { icon: "/assets/ui/seasons/season-summer.png", bg: "/assets/ui/seasons/season-bg-summer.png", label: "Verano" },
+  AUTUMN: { icon: "/assets/ui/seasons/season-autumn.png", bg: "/assets/ui/seasons/season-bg-autumn.png", label: "Otoño" },
+  WINTER: { icon: "/assets/ui/seasons/season-winter.png", bg: "/assets/ui/seasons/season-bg-winter.png", label: "Invierno" },
 };
 
 function WorldCard({
@@ -31,16 +33,27 @@ function WorldCard({
   return (
     <button
       onClick={onSelect}
-      className={`relative w-full rounded-2xl border p-6 text-left transition-all duration-200 ${
+      className={`relative w-full overflow-hidden rounded-2xl border p-6 text-left transition-all duration-200 backdrop-blur-md ${
         mobile ? "flex h-full flex-col" : ""
       } ${
         isSelected
           ? "border-amber-500/60 bg-amber-500/10 shadow-[0_0_28px_rgba(245,158,11,0.2)] scale-[1.02]"
-          : "border-etheria-border-dim bg-black/20 hover:border-etheria-border hover:bg-black/30"
+          : "border-etheria-border-dim bg-black/45 hover:border-etheria-border hover:bg-black/55"
       }`}
     >
-      <div className="mb-2 flex items-center gap-3">
-        <span className={mobile ? "text-4xl" : "text-3xl"}>🌍</span>
+      {/* Season art banner behind the header */}
+      {season && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-20 overflow-hidden opacity-35">
+          <img src={season.bg} alt="" className="h-full w-full object-cover" draggable={false} />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0b1111]" />
+        </div>
+      )}
+      <div className="relative mb-2 flex items-center gap-3">
+        {season ? (
+          <img src={season.icon} alt={season.label} className={mobile ? "h-12 w-12 object-contain" : "h-10 w-10 object-contain"} draggable={false} />
+        ) : (
+          <GlobeIcon className={mobile ? "h-10 w-10" : "h-8 w-8"} />
+        )}
         <div>
           <div className={`font-display font-bold text-white ${mobile ? "text-xl" : "text-lg"}`}>
             {world.name}
@@ -60,9 +73,15 @@ function WorldCard({
           {world.description}
         </p>
       )}
-      <div className={`flex items-center gap-4 text-stone-500 ${mobile ? "text-[13px]" : "text-[12px]"}`}>
-        <span>👥 {world.playerCount} jugadores</span>
-        {season && <span>{season.icon} {season.label}</span>}
+      <div className={`relative flex items-center gap-4 text-stone-400 ${mobile ? "text-[13px]" : "text-[12px]"}`}>
+        <span className="inline-flex items-center gap-1.5">
+          <UsersIcon className="h-4 w-4" /> {world.playerCount} jugadores
+        </span>
+        {season && (
+          <span className="inline-flex items-center gap-1.5">
+            <img src={season.icon} alt="" className="h-4 w-4 object-contain" draggable={false} /> {season.label}
+          </span>
+        )}
       </div>
     </button>
   );
@@ -79,7 +98,7 @@ export default function SelectWorldPage() {
   if (!auth.ready || !auth.isLoggedIn) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-etheria-bg">
-        <div className="text-2xl animate-bounce">🌍</div>
+        <GlobeIcon className="h-9 w-9 animate-bounce" />
       </div>
     );
   }
@@ -109,7 +128,7 @@ export default function SelectWorldPage() {
 
   const emptyBlock = worlds && worlds.length === 0 && (
     <div className="rounded-2xl border border-etheria-border-dim bg-black/20 p-10 text-center">
-      <span className="text-5xl">🏜️</span>
+      <GlobeIcon className="mx-auto h-14 w-14 opacity-60" />
       <p className="mt-4 text-stone-400">
         No hay mundos disponibles en este momento. Vuelve más tarde.
       </p>
@@ -120,10 +139,11 @@ export default function SelectWorldPage() {
   if (isMobile) {
     return (
       <div
-        className="flex h-dvh flex-col bg-[#0b1111]"
+        className="relative flex h-dvh flex-col bg-[#0b1111]"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 20px)" }}
       >
-        <div className="px-6 text-center">
+        <SelectBackdrop src="/assets/backgrounds/world-map.webp" />
+        <div className="relative z-10 px-6 text-center">
           <h1 className="text-2xl font-display font-bold text-etheria-gold-soft" style={{ letterSpacing: "-0.02em" }}>
             Selecciona tu Mundo
           </h1>
@@ -132,7 +152,7 @@ export default function SelectWorldPage() {
           </p>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col justify-center py-4">
+        <div className="relative z-10 flex min-h-0 flex-1 flex-col justify-center py-4">
           {loadingBlock}
           {emptyBlock}
           {worlds && worlds.length > 0 && (
@@ -148,7 +168,7 @@ export default function SelectWorldPage() {
 
         {worlds && worlds.length > 0 && (
           <div
-            className="px-6"
+            className="relative z-10 px-6"
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
           >
             <button
@@ -166,8 +186,9 @@ export default function SelectWorldPage() {
 
   // ─── Desktop: grid ───
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#0b1111] px-4 py-12">
-      <div className="w-full max-w-2xl">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-[#0b1111] px-4 py-12">
+      <SelectBackdrop src="/assets/backgrounds/world-map.webp" />
+      <div className="relative z-10 w-full max-w-2xl">
         <div className="mb-10 text-center">
           <h1
             className="mb-3 text-4xl font-display font-bold text-etheria-gold-soft"

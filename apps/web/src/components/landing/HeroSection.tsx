@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { HammerIcon } from "./MedievalIcons";
 
 export function HeroSection() {
   return (
@@ -78,7 +79,7 @@ export function HeroSection() {
         {/* Early access badge */}
         <div className="mx-auto mt-10 max-w-lg rounded-2xl border border-amber-300/30 bg-amber-500/10 px-5 py-4 backdrop-blur-md text-left">
           <div className="flex items-start gap-3">
-            <span className="mt-0.5 text-lg">🛠️</span>
+            <HammerIcon className="mt-0.5 h-5 w-5 shrink-0" />
             <div>
               <p className="text-[13px] font-semibold text-amber-200 uppercase tracking-wide">Acceso anticipado</p>
               <p className="mt-1 text-[13px] leading-relaxed text-white/80">

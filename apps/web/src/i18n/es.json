@@ -183,7 +183,10 @@
     "rememberEmail": "Recordar usuario",
     "loading": "Cargando...",
     "noAccount": "¿No tenés cuenta?",
-    "registerLink": "Crear cuenta"
+    "registerLink": "Crear cuenta",
+    "connectionError": "Error de conexión. Verificá tu internet.",
+    "showPassword": "Mostrar contraseña",
+    "hidePassword": "Ocultar contraseña"
   },
   "register": {
     "title": "Crear Cuenta",
@@ -282,7 +285,8 @@
       "v0_0_1": "La Fundación de Etheria",
       "v0_2_4": "La Forja de la Guerra",
       "v0_5_0": "La Era del Viajero",
-      "v0_5_1": "El Despertar de las Tierras"
+      "v0_5_1": "El Despertar de las Tierras",
+      "v0_5_3": "El Rostro de los Reinos"
     },
     "items": {
       "v0_2_0": {
@@ -527,6 +531,26 @@
           "[JUEGO] Barbaros en todo el mapa: el norte, centro y sur del mundo ahora tienen campamentos barbaros. Antes 3 de las 7 zonas no recibian actividad.",
           "[JUEGO] Almacenamiento avanzado funcional: la tecnologia que prometia aumentar tu capacidad de almacenamiento ahora realmente lo hace. Antes no tenia ningun efecto.",
           "[JUEGO] Invierno con personalidad: ahora pega mas fuerte en el norte (+35%) y mas leve en el sur (-30%), como corresponde al clima de cada region."
+        ]
+      },
+      "v0_5_3": {
+        "added": [
+          "Aviso de nueva versión dentro del juego: cuando publicamos una actualización, los jugadores en partida ven un cartel con el botón Actualizar.",
+          "Modal de novedades al entrar al juego después de cada actualización.",
+          "Emblemas heráldicos para cada raza (Humanos, Elfos, Orcos y Enanos) en la selección de raza y la página principal.",
+          "Fondos de pantalla con arte del juego en la selección de raza y de mundo.",
+          "Las tarjetas de mundo muestran el arte y el ícono de su estación actual."
+        ],
+        "changed": [
+          "Página de changelog rediseñada: línea de tiempo, etiquetas de color por tipo de cambio y fechas relativas.",
+          "La página principal reemplaza los emojis por íconos ilustrados propios.",
+          "Imágenes del juego optimizadas: la web carga mucho más rápido (más de 180MB menos de peso).",
+          "Vista de mapa y aldea más fluidas: menos trabajo de render en cada actualización de datos."
+        ],
+        "fixed": [
+          "Traducciones faltantes en la pantalla de inicio de sesión móvil.",
+          "El changelog público ya no muestra entradas internas en la página principal.",
+          "Recuperación automática cuando el juego queda con una versión vieja tras una actualización."
         ]
       }
     }
