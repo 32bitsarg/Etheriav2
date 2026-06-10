@@ -156,6 +156,11 @@ function applyEffect(effect: TechEffect, level: number, bonuses: TechBonuses): v
           : bonuses.wallBonusMultiplier + value;
       } else if (effect.target === 'TOWER' && effect.stat === 'damage') {
         bonuses.towerDamageBonus += value;
+      } else if (effect.target === 'STORAGE' && effect.stat === 'capacity') {
+        // Store as implicit field on bonuses JSON (not in Zod schema, stored on city)
+        (bonuses as any).storageMultiplier = effect.operation === 'MULTIPLY'
+          ? ((bonuses as any).storageMultiplier ?? 1) * Math.pow(value, level)
+          : ((bonuses as any).storageMultiplier ?? 1) + value;
       }
       break;
 

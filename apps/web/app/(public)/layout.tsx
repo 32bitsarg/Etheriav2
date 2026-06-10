@@ -11,7 +11,7 @@ export default function PublicLayout({
     <I18nClientProvider>
       <div className="flex min-h-screen flex-col" style={{ background: "#fdf7ee" }}>
         <LandingNavbar />
-        <main className="flex-1 overflow-x-hidden">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
           {children}
         </main>
         <LandingFooter />

@@ -308,6 +308,9 @@ async function processResourceTicks() {
     }
   }
 
+  // Cache world config once per tick (zone resolution uses it)
+  const worldCfg = isWinter ? await getWorldConfig() : null;
+
   for (const city of eligibleCities) {
     const lastUpdate = new Date(city.lastResourceUpdate ?? city.createdAt);
     const hoursElapsed = (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60);
@@ -339,13 +342,17 @@ async function processResourceTicks() {
     if (isWinter) {
       const totalTroops = Object.values(units).reduce((s, c) => s + c, 0);
       if (totalTroops > 0) {
+        // Apply zone winter intensity to troop food consumption
+        const zoneId = resolveWorldZone(city.posX ?? 0, city.posY ?? 0, worldCfg!.map.width, worldCfg!.map.height).id;
+        const zoneIntensity = ZONE_WINTER_INTENSITY[zoneId] ?? 1.0;
+        
         const winterState = evaluateWinterPressure(
           city as any,
           effective.production.foodPerHour,
           units,
           (city.winterState ?? null) as any,
           now,
-          DEFAULT_WINTER_PRESSURE_CONFIG
+          { ...DEFAULT_WINTER_PRESSURE_CONFIG, zoneIntensity } as any
         );
 
         // foodBalance already accounts for netFood (production - consumption) over elapsed time.

@@ -14,9 +14,15 @@
     "db:pg:studio": "pnpm --filter @etheria/database db:studio",
     "db:seed": "node -e \"console.log('Static balance config now lives in apps/api/src/domain and no longer needs DB seeding.')\"",
     "db:seed:legacy": "cd apps/api && npx tsx seed-matecito.ts",
-    "db:setup": "cd apps/api && npx tsx setup-matecito.ts"
+    "db:setup": "cd apps/api && npx tsx setup-matecito.ts",
+    "cap:sync": "npx cap sync",
+    "cap:open": "npx cap open android",
+    "cap:build": "npx cap sync && cd android && ./gradlew assembleDebug"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
     "prettier": "^3.5.0",
     "supabase": "^2.98.2",
     "turbo": "^2.4.0",

@@ -43,7 +43,8 @@ export interface VillageHTMLCanvasProps {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ZOOM_MIN = 1.0;
+const ZOOM_MIN_DESKTOP = 1.0;
+const ZOOM_MIN_MOBILE = 0.8;
 const ZOOM_MAX = 2.4;
 const ZOOM_STEP = 0.06;
 const EDITOR_ZOOM_MIN = 0.3;
@@ -57,7 +58,6 @@ const AMBIENT_GLINTS = [
   { x: 78, y: 38, size: 7, delay: 0.8, dur: 5.1, color: "rgba(255,245,190,0.50)" },
   { x: 32, y: 62, size: 5, delay: 2.1, dur: 4.6, color: "rgba(180,240,200,0.40)" },
   { x: 67, y: 70, size: 6, delay: 0.3, dur: 3.5, color: "rgba(255,235,160,0.50)" },
-  { x: 42, y: 82, size: 4, delay: 1.9, dur: 4.9, color: "rgba(200,220,255,0.40)" },
 ] as const;
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -127,7 +127,7 @@ export function VillageHTMLCanvas({
     return map;
   }, [normalizedLayout, size.w, size.h, renderableBuildings]);
 
-  const zMin = editorMode ? EDITOR_ZOOM_MIN : ZOOM_MIN;
+  const zMin = editorMode ? EDITOR_ZOOM_MIN : (size.w < 768 ? ZOOM_MIN_MOBILE : ZOOM_MIN_DESKTOP);
   const zMax = editorMode ? EDITOR_ZOOM_MAX : ZOOM_MAX;
 
   // Apply camera — batched via rAF, sub-pixel rounded
@@ -178,7 +178,7 @@ export function VillageHTMLCanvas({
     const w = outerRef.current?.clientWidth ?? window.innerWidth;
     const h = outerRef.current?.clientHeight ?? window.innerHeight;
     const isMobile = w < 768;
-    const zoom = isMobile ? Math.max(1.4, 900 / w) : 1;
+    const zoom = isMobile ? Math.max(1.2, Math.min(900 / Math.min(w, h || w), 2.4)) : 1;
     cam.current = {
       x: (w * (1 - zoom)) / 2,
       y: (h * (1 - zoom)) / 2,
@@ -462,13 +462,13 @@ export function VillageHTMLCanvas({
         className="absolute inset-0"
         style={{ transformOrigin: "0 0", willChange: "transform" }}
       >
-        {/* Background */}
+        {/* Background — optimized for mobile */}
         <img
           src={normalizedLayout.backgroundAssetPath}
           alt=""
           className="absolute inset-0 h-full w-full object-cover pointer-events-none"
           draggable={false}
-          loading="eager"
+          loading="lazy"
           decoding="async"
         />
 

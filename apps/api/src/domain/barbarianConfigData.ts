@@ -75,7 +75,7 @@ export const LOCAL_SEASONAL_SPAWN_CONFIG: SeasonalSpawnConfig = {
 
 export const LOCAL_BARBARIAN_ZONE_CONFIGS: BarbarianZoneConfig[] = [
   {
-    zoneId: 'NORTH',
+    zoneId: 'north_frozen',
     maxDensity: 4,
     levelMin: 4,
     levelMax: 8,
@@ -85,7 +85,7 @@ export const LOCAL_BARBARIAN_ZONE_CONFIGS: BarbarianZoneConfig[] = [
     spawnIntervalSeconds: 300,
   },
   {
-    zoneId: 'CENTER',
+    zoneId: 'center_temperate',
     maxDensity: 3,
     levelMin: 2,
     levelMax: 6,
@@ -95,7 +95,7 @@ export const LOCAL_BARBARIAN_ZONE_CONFIGS: BarbarianZoneConfig[] = [
     spawnIntervalSeconds: 240,
   },
   {
-    zoneId: 'SOUTH',
+    zoneId: 'south_warm',
     maxDensity: 3,
     levelMin: 1,
     levelMax: 5,
@@ -105,7 +105,7 @@ export const LOCAL_BARBARIAN_ZONE_CONFIGS: BarbarianZoneConfig[] = [
     spawnIntervalSeconds: 240,
   },
   {
-    zoneId: 'COAST',
+    zoneId: 'coast',
     maxDensity: 2,
     levelMin: 2,
     levelMax: 5,
@@ -115,7 +115,7 @@ export const LOCAL_BARBARIAN_ZONE_CONFIGS: BarbarianZoneConfig[] = [
     spawnIntervalSeconds: 360,
   },
   {
-    zoneId: 'MOUNTAIN',
+    zoneId: 'mountain',
     maxDensity: 3,
     levelMin: 3,
     levelMax: 7,
@@ -125,7 +125,7 @@ export const LOCAL_BARBARIAN_ZONE_CONFIGS: BarbarianZoneConfig[] = [
     spawnIntervalSeconds: 300,
   },
   {
-    zoneId: 'FOREST',
+    zoneId: 'forest',
     maxDensity: 4,
     levelMin: 1,
     levelMax: 5,
@@ -135,7 +135,7 @@ export const LOCAL_BARBARIAN_ZONE_CONFIGS: BarbarianZoneConfig[] = [
     spawnIntervalSeconds: 180,
   },
   {
-    zoneId: 'PLAINS',
+    zoneId: 'plains',
     maxDensity: 3,
     levelMin: 1,
     levelMax: 4,

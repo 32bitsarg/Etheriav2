@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:background="#fdf7ee">
+
+    <!-- Left: Decorative brand panel -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1.2"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:background="#2c2118"
+        android:padding="40dp">
+
+        <ImageView
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:layout_marginBottom="24dp"
+            android:src="@mipmap/ic_launcher"
+            android:contentDescription="Etheria logo" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Etheria"
+            android:textSize="42sp"
+            android:textColor="#f5a623"
+            android:textStyle="bold"
+            android:fontFamily="serif"
+            android:letterSpacing="0.04" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Un imperio te espera"
+            android:textSize="16sp"
+            android:textColor="#8a7a6a"
+            android:fontFamily="serif" />
+
+        <!-- Decorative divider -->
+        <View
+            android:layout_width="80dp"
+            android:layout_height="2dp"
+            android:background="#f5a623"
+            android:layout_marginTop="24dp" />
+
+    </LinearLayout>
+
+    <!-- Right: Auth forms -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="48dp">
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxHeight="480dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- Login View -->
+                <LinearLayout
+                    android:id="@+id/loginView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="visible">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Iniciar sesión"
+                        android:textSize="24sp"
+                        android:textColor="#2c2118"
+                        android:textStyle="bold"
+                        android:fontFamily="serif"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Ingresá a tu reino"
+                        android:textSize="14sp"
+                        android:textColor="#8a7a6a"
+                        android:layout_marginBottom="28dp" />
+
+                    <EditText
+                        android:id="@+id/loginEmail"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:hint="Email"
+                        android:inputType="textEmailAddress"
+                        android:background="@drawable/auth_input_white"
+                        android:textColor="#2c2118"
+                        android:textColorHint="#b0a090"
+                        android:textSize="15sp"
+                        android:paddingHorizontal="16dp"
+                        android:layout_marginBottom="14dp" />
+
+                    <EditText
+                        android:id="@+id/loginPassword"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:hint="Contraseña"
+                        android:inputType="textPassword"
+                        android:background="@drawable/auth_input_white"
+                        android:textColor="#2c2118"
+                        android:textColorHint="#b0a090"
+                        android:textSize="15sp"
+                        android:paddingHorizontal="16dp"
+                        android:layout_marginBottom="6dp" />
+
+                    <TextView
+                        android:id="@+id/loginError"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="#c0392b"
+                        android:textSize="13sp"
+                        android:visibility="gone"
+                        android:layout_marginBottom="10dp" />
+
+                    <Button
+                        android:id="@+id/loginBtn"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:text="INGRESAR"
+                        android:textColor="#ffffff"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.06"
+                        android:backgroundTint="#2c2118"
+                        android:layout_marginTop="6dp" />
+                </LinearLayout>
+
+                <!-- Register View -->
+                <LinearLayout
+                    android:id="@+id/registerView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Crear cuenta"
+                        android:textSize="24sp"
+                        android:textColor="#2c2118"
+                        android:textStyle="bold"
+                        android:fontFamily="serif"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Forjá tu destino en Etheria"
+                        android:textSize="14sp"
+                        android:textColor="#8a7a6a"
+                        android:layout_marginBottom="28dp" />
+
+                    <EditText
+                        android:id="@+id/regName"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:hint="Nombre de jugador"
+                        android:inputType="textPersonName"
+                        android:background="@drawable/auth_input_white"
+                        android:textColor="#2c2118"
+                        android:textColorHint="#b0a090"
+                        android:textSize="15sp"
+                        android:paddingHorizontal="16dp"
+                        android:layout_marginBottom="14dp" />
+
+                    <EditText
+                        android:id="@+id/regEmail"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:hint="Email"
+                        android:inputType="textEmailAddress"
+                        android:background="@drawable/auth_input_white"
+                        android:textColor="#2c2118"
+                        android:textColorHint="#b0a090"
+                        android:textSize="15sp"
+                        android:paddingHorizontal="16dp"
+                        android:layout_marginBottom="14dp" />
+
+                    <EditText
+                        android:id="@+id/regPassword"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:hint="Contraseña (mín. 6)"
+                        android:inputType="textPassword"
+                        android:background="@drawable/auth_input_white"
+                        android:textColor="#2c2118"
+                        android:textColorHint="#b0a090"
+                        android:textSize="15sp"
+                        android:paddingHorizontal="16dp"
+                        android:layout_marginBottom="14dp" />
+
+                    <EditText
+                        android:id="@+id/regConfirm"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:hint="Confirmar contraseña"
+                        android:inputType="textPassword"
+                        android:background="@drawable/auth_input_white"
+                        android:textColor="#2c2118"
+                        android:textColorHint="#b0a090"
+                        android:textSize="15sp"
+                        android:paddingHorizontal="16dp"
+                        android:layout_marginBottom="6dp" />
+
+                    <TextView
+                        android:id="@+id/regError"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="#c0392b"
+                        android:textSize="13sp"
+                        android:visibility="gone"
+                        android:layout_marginBottom="10dp" />
+
+                    <Button
+                        android:id="@+id/registerBtn"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:text="CREAR CUENTA"
+                        android:textColor="#ffffff"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.06"
+                        android:backgroundTint="#2c2118"
+                        android:layout_marginTop="6dp" />
+                </LinearLayout>
+
+                <!-- Toggle link -->
+                <TextView
+                    android:id="@+id/toggleLink"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="No tengo cuenta — Registrarme"
+                    android:textColor="#8a7a6a"
+                    android:textSize="14sp"
+                    android:layout_marginTop="20dp"
+                    android:layout_gravity="center"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+            </LinearLayout>
+        </ScrollView>
+
+    </LinearLayout>
+
+</LinearLayout>

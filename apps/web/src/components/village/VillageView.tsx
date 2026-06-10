@@ -19,6 +19,8 @@ import { ActiveBuffsPanel } from "@/components/game/ActiveBuffsPanel";
 import { SettingsModal } from "@/components/village/SettingsModal";
 import { SidebarNavIcon } from "@/components/ui/SidebarNavIcon";
 import { VillageImmersiveDock } from "@/components/village/VillageImmersiveDock";
+import { MobileBottomNav } from "@/components/ui/MobileBottomNav";
+import { OrientationLock } from "@/components/game/OrientationLock";
 import { NotificationBell } from "@/components/game/NotificationBell";
 import { DailyQuestsPanel } from "@/components/game/DailyQuestsPanel";
 import { RankingsPanel } from "@/components/game/RankingsPanel";
@@ -214,7 +216,7 @@ export function VillageView() {
   }, [cityId, resources, cityTechs, researchTech, addToast]);
 
   return (
-    <div ref={shellRef} className="village-shell relative z-10 grid h-screen w-screen overflow-hidden">
+    <div ref={shellRef} className="village-shell relative z-10 grid h-screen w-screen overflow-hidden pb-16 md:pb-0">
       <BarbarianAttackAlertBanner />
       <WinterPressureBanner />
 
@@ -240,7 +242,7 @@ export function VillageView() {
         </div>
       </header>
 
-      <aside className="grepolis-sidebar village-sidebar">
+      <aside className="grepolis-sidebar village-sidebar max-md:hidden">
         <nav className="grepolis-sidebar__nav relative pb-2">
           {/* View switchers */}
           <button onClick={() => { setActiveView("pueblo"); setSelectedBuildingId(null); }} className={`grepolis-nav-item ${activeView === "pueblo" ? "active" : ""}`}>
@@ -391,6 +393,19 @@ export function VillageView() {
       {isAchievementsOpen && <AchievementsPanel onClose={() => setIsAchievementsOpen(false)} />}
       {isActivityFeedOpen && <ActivityFeedPanel onClose={() => setIsActivityFeedOpen(false)} />}
       <BarbarianCampModal />
+
+      {/* Mobile bottom navigation dock */}
+      <MobileBottomNav
+        activeView={activeView}
+        onViewChange={setActiveView}
+        onRankingsOpen={() => setIsNewRankingsOpen(true)}
+        onMailOpen={() => setIsMailOpen(true)}
+        onAllianceOpen={() => setIsAllianceOpen(true)}
+        unreadCount={(mailData?.unreadCount ?? 0) + (reportsData?.unreadCount ?? 0) + unreadBattleReports}
+      />
+
+      {/* Force landscape on mobile */}
+      <OrientationLock />
     </div>
   );
 }
@@ -1042,7 +1057,7 @@ function MailModal({ onClose, t }: { onClose: () => void; t: (key: string) => st
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/62 px-4 backdrop-blur-[4px]" onClick={onClose} onPointerDown={(e) => e.stopPropagation()}>
       <div className="relative grid h-[min(640px,calc(100vh-36px))] w-full max-w-[920px] max-sm:max-w-[calc(100vw-24px)] overflow-hidden rounded-[30px] border border-etheria-border bg-[#0b1111] shadow-[0_28px_90px_rgba(0,0,0,.58)] lg:grid-cols-[310px_1fr]" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute right-5 top-5 z-10 text-etheria-gold-soft">✕</button>
+        <button onClick={onClose} className="absolute right-4 top-4 z-10 min-h-[44px] min-w-[44px] flex items-center justify-center text-etheria-gold-soft rounded-full hover:bg-white/10">✕</button>
         <aside className="border-r border-white/5 p-4 overflow-y-auto">
           <div className="font-serif text-lg text-etheria-gold-soft mb-4 uppercase tracking-widest">{t("play.mail.title")}</div>
           <div className="flex gap-1 mb-4">
@@ -1175,7 +1190,10 @@ function RankingModal({ myCityId, onClose, t }: { myCityId: string | null; onClo
       <div className="max-h-[86vh] w-full max-w-4xl overflow-hidden rounded-3xl border border-etheria-border bg-[#0b1111] shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="p-6 border-b border-white/5 flex items-center justify-between">
           <h2 className="font-serif text-2xl text-etheria-gold-soft uppercase tracking-widest">{t("play.ranking.title")}</h2>
-          <button onClick={onClose} className="text-white/40 hover:text-white">✕</button>
+          <button onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-white/40 hover:text-white rounded-full hover:bg-white/10">✕</button>
+        </div>
+        <div className="max-h-[calc(84vh-74px)] space-y-3 overflow-y-auto p-5">
+          {isLoading && <div className="text-sm text-white/45">{t("play.ranking.loading")}</div>}
         </div>
         <div className="overflow-auto max-h-[60vh]">
           <table className="w-full text-left">
@@ -1230,8 +1248,8 @@ function BuildingModal({ building, resources, onUpgrade, onTrain, onResearch, is
 
   return (
     <div className="fixed inset-0 z-[80] grid place-items-center bg-black/75 backdrop-blur-md p-4" onClick={onClose} onPointerDownCapture={(e) => e.stopPropagation()}>
-      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-[40px] border border-etheria-border bg-[#0b1111] shadow-[0_0_100px_rgba(0,0,0,0.5)] flex flex-col md:flex-row" onClick={(e) => e.stopPropagation()} onPointerDownCapture={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute right-6 top-6 z-10 text-white/40 hover:text-white">✕</button>
+      <div className="relative w-full max-w-4xl max-sm:max-w-[calc(100vw-16px)] max-h-[90vh] overflow-hidden rounded-[40px] max-sm:rounded-2xl border border-etheria-border bg-[#0b1111] shadow-[0_0_100px_rgba(0,0,0,0.5)] flex flex-col md:flex-row" onClick={(e) => e.stopPropagation()} onPointerDownCapture={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute right-4 top-4 z-10 min-h-[44px] min-w-[44px] flex items-center justify-center text-white/40 hover:text-white rounded-full hover:bg-white/10">✕</button>
         
         {/* Left Side: Visuals */}
         <div className="w-full md:w-[400px] bg-black/40 p-8 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-white/5">
@@ -1304,8 +1322,8 @@ function BarracksModal({ building, resources, onUpgrade, onTrain, isUpgrading, p
 
   return (
     <div className="fixed inset-0 z-[80] grid place-items-center bg-black/75 backdrop-blur-md p-4" onClick={onClose}>
-      <div className="relative w-full max-w-[640px] overflow-hidden rounded-[40px] border border-etheria-border bg-[#0b1111] shadow-[0_0_100px_rgba(0,0,0,0.5)]" onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute right-6 top-6 z-10 text-white/40 hover:text-white">✕</button>
+      <div className="relative w-full max-w-[640px] max-sm:max-w-[calc(100vw-16px)] overflow-hidden rounded-[40px] max-sm:rounded-2xl border border-etheria-border bg-[#0b1111] shadow-[0_0_100px_rgba(0,0,0,0.5)]" onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute right-4 top-4 z-10 min-h-[44px] min-w-[44px] flex items-center justify-center text-white/40 hover:text-white rounded-full hover:bg-white/10">✕</button>
 
         {/* Header */}
         <div className="px-8 pt-8 pb-4">
@@ -1496,8 +1514,8 @@ function LibraryModal({ building, resources, onUpgrade, onResearch, isUpgrading,
 
   return (
     <div className="fixed inset-0 z-[80] grid place-items-center bg-black/75 backdrop-blur-md p-4" onClick={onClose}>
-      <div className="relative w-full max-w-[720px] overflow-hidden rounded-[40px] border border-etheria-border bg-[#0b1111] shadow-[0_0_100px_rgba(0,0,0,0.5)]" style={{ maxHeight: "calc(100vh - 40px)" }} onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute right-6 top-6 z-10 text-white/40 hover:text-white">✕</button>
+      <div className="relative w-full max-w-[720px] max-sm:max-w-[calc(100vw-16px)] overflow-hidden rounded-[40px] max-sm:rounded-2xl border border-etheria-border bg-[#0b1111] shadow-[0_0_100px_rgba(0,0,0,0.5)]" style={{ maxHeight: "calc(100vh - 40px)" }} onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute right-4 top-4 z-10 min-h-[44px] min-w-[44px] flex items-center justify-center text-white/40 hover:text-white rounded-full hover:bg-white/10">✕</button>
 
         {/* Header */}
         <div className="px-8 pt-8 pb-4">
@@ -1862,7 +1880,7 @@ function ReportsModal({ onClose, t }: any) {
       <div className="max-h-[84vh] w-full max-w-3xl max-sm:max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-etheria-border bg-[#0b1111]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-white/5 p-5">
           <h2 className="font-serif text-2xl text-etheria-gold-soft">{t("play.reports.title")}</h2>
-          <button onClick={onClose} className="text-white/45 hover:text-white">{t("play.building.close")}</button>
+          <button onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-white/45 hover:text-white rounded-full hover:bg-white/10 text-sm">{t("play.building.close")}</button>
         </div>
         <div className="max-h-[calc(84vh-74px)] space-y-3 overflow-y-auto p-5">
           {isLoading && <div className="text-sm text-white/45">{t("play.reports.loading")}</div>}
@@ -1894,7 +1912,7 @@ function QuestsModal({ cityId, onClose, t }: any) {
       <div className="max-h-[84vh] w-full max-w-3xl max-sm:max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-etheria-border bg-[#0b1111]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-white/5 p-5">
           <h2 className="font-serif text-2xl text-etheria-gold-soft">{t("play.quests.title")}</h2>
-          <button onClick={onClose} className="text-white/45 hover:text-white">{t("play.building.close")}</button>
+          <button onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-white/45 hover:text-white rounded-full hover:bg-white/10 text-sm">{t("play.building.close")}</button>
         </div>
         <div className="grid gap-3 p-5 md:grid-cols-2">
           {(quests ?? []).map((quest) => (
@@ -1920,7 +1938,7 @@ function MarketModal({ cityId, onClose, t }: any) {
       <div className="max-h-[88vh] w-full max-w-4xl max-sm:max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-etheria-border bg-[#0b1111]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-white/5 p-5">
           <h2 className="font-serif text-2xl text-etheria-gold-soft">{t("play.market.title")}</h2>
-          <button onClick={onClose} className="text-white/45 hover:text-white">{t("play.building.close")}</button>
+          <button onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-white/45 hover:text-white rounded-full hover:bg-white/10 text-sm">{t("play.building.close")}</button>
         </div>
         <MarketPanel cityId={cityId} t={t} />
       </div>
@@ -1999,10 +2017,10 @@ function AllianceModal({ onClose, t }: any) {
 
   return (
     <div className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="max-h-[88vh] w-full max-w-5xl overflow-hidden rounded-3xl border border-etheria-border bg-[#0b1111] shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="max-h-[88vh] w-full max-w-5xl max-sm:max-w-[calc(100vw-16px)] overflow-hidden rounded-3xl border border-etheria-border bg-[#0b1111] shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-white/5 p-5">
           <h2 className="font-serif text-2xl uppercase tracking-widest text-etheria-gold-soft">{t("play.alliance.title")}</h2>
-          <button onClick={onClose} className="text-white/40 hover:text-white">?</button>
+          <button onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-white/40 hover:text-white rounded-full hover:bg-white/10">✕</button>
         </div>
 
         <div className="max-h-[calc(88vh-76px)] overflow-y-auto p-5">

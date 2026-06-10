@@ -3,7 +3,7 @@ function readNumber(name: string, fallback: number) {
   return Number.isFinite(value) ? value : fallback;
 }
 
-export type BotProfile = "ECONOMIST" | "MILITARIST" | "TECH_RUSHER" | "BALANCED";
+export type BotProfile = "ECONOMIST" | "MILITARIST" | "TECH_RUSHER" | "BALANCED" | "CHAOTIC";
 
 export type BotProfileWeights = {
   economy: number;
@@ -12,12 +12,13 @@ export type BotProfileWeights = {
   aggression: number;
 };
 
-const DEFAULT_PROFILES: BotProfile[] = ["ECONOMIST", "MILITARIST", "TECH_RUSHER", "BALANCED"];
+const DEFAULT_PROFILES: BotProfile[] = ["ECONOMIST", "MILITARIST", "TECH_RUSHER", "BALANCED", "CHAOTIC"];
 const DEFAULT_PROFILE_WEIGHTS: Record<BotProfile, BotProfileWeights> = {
   ECONOMIST: { economy: 5, military: 1, research: 3, aggression: 0.5 },
   MILITARIST: { economy: 2, military: 5, research: 2, aggression: 3 },
   TECH_RUSHER: { economy: 2, military: 1, research: 5, aggression: 0.75 },
   BALANCED: { economy: 3, military: 3, research: 3, aggression: 1.5 },
+  CHAOTIC: { economy: 2, military: 4, research: 1, aggression: 3.5 },
 };
 
 export type BotSimulationConfig = {
@@ -46,6 +47,9 @@ export type BotSimulationConfig = {
   attackCooldownRangeMinutes: [number, number];
   errorRecoveryMinutes: number;
   metricsWindowMinutes: number;
+  sleepSimulationEnabled: boolean;
+  sleepWindowStartHour: number;
+  sleepWindowEndHour: number;
   profiles: BotProfile[];
   profileWeights: Record<BotProfile, BotProfileWeights>;
 };
@@ -84,6 +88,9 @@ export function getBotSimulationConfig(): BotSimulationConfig {
     allianceCenterRequiredLevel: readNumber("BOT_ALLIANCE_CENTER_REQUIRED_LEVEL", 5),
     errorRecoveryMinutes: readNumber("BOT_ERROR_RECOVERY_MINUTES", 15),
     metricsWindowMinutes: readNumber("BOT_METRICS_WINDOW_MINUTES", 15),
+    sleepSimulationEnabled: process.env.BOT_SLEEP_SIMULATION !== "false",
+    sleepWindowStartHour: readNumber("BOT_SLEEP_WINDOW_START", 1),
+    sleepWindowEndHour: readNumber("BOT_SLEEP_WINDOW_END", 5),
     profiles: DEFAULT_PROFILES,
     profileWeights: DEFAULT_PROFILE_WEIGHTS,
   };

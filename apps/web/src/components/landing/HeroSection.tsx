@@ -5,7 +5,7 @@ import Link from "next/link";
 
 export function HeroSection() {
   return (
-    <header className="relative flex min-h-screen items-center overflow-hidden">
+    <header className="relative flex min-h-screen flex-col items-center justify-center">
       {/* Background */}
       <div className="absolute inset-0">
         <Image

@@ -23,6 +23,8 @@ function parseChangelog(lines) {
     const match = line.match(/^##\s+\[(\d+\.\d+\.\d+(?:-[\w.]+)?)\]\s+-\s+(.+?)\s+-\s+(\d{4}-\d{2}-\d{2})\s*$/);
     if (match) {
       const [, version, name, date] = match;
+      // Convert version to i18n-safe key: 0.5.0 → v0_5_0
+      const versionKey = 'v' + version.replace(/\./g, '_');
       const sections = [];
       i++;
 
@@ -62,7 +64,7 @@ function parseChangelog(lines) {
         }
       }
 
-      releases.push({ version, name, date, sections });
+      releases.push({ version, versionKey, name, date, sections });
     } else {
       i++;
     }
@@ -90,11 +92,11 @@ function isInternalItem(sectionHeading, item) {
 function generateDataFile(releases) {
   const sectionsCode = releases.map(r => {
     const secs = r.sections.map(s => {
-      const keys = s.items.map((_, idx) => `          "changelog.items.${r.version}.${s.heading.toLowerCase()}.${idx}"`);
+      const keys = s.items.map((_, idx) => `          "changelog.items.${r.versionKey}.${s.heading.toLowerCase()}.${idx}"`);
       const internalKeys = s.items
         .map((item, idx) => ({ item, idx }))
         .filter(({ item }) => isInternalItem(s.heading, item))
-        .map(({ idx }) => `          "changelog.items.${r.version}.${s.heading.toLowerCase()}.${idx}"`);
+        .map(({ idx }) => `          "changelog.items.${r.versionKey}.${s.heading.toLowerCase()}.${idx}"`);
       const audience = s.heading === 'Technical' ? '\n        audience: "internal",' : '';
       const internalItemKeys = internalKeys.length > 0 ? `,
         internalItemKeys: [
@@ -109,7 +111,7 @@ ${keys.join(',\n')}
     });
     return `  {
     version: "${r.version}",
-    nameKey: "changelog.releases.${r.version}",
+    nameKey: "changelog.releases.${r.versionKey}",
     date: "${r.date}",
     sections: [
 ${secs.join(',\n')}
@@ -153,9 +155,9 @@ function generateI18nSnippets(releases, lang) {
       const sectionKey = s.heading.toLowerCase();
       verItems[sectionKey] = s.items;
     });
-    items[r.version] = verItems;
+    items[r.versionKey] = verItems;
   });
-  return { releases: releases.reduce((acc, r) => { acc[r.version] = r.name; return acc; }, {}), items };
+  return { releases: releases.reduce((acc, r) => { acc[r.versionKey] = r.name; return acc; }, {}), items };
 }
 
 const outPath = path.join(__dirname, '..', 'src', 'data', 'changelogData.ts');

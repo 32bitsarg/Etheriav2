@@ -41,13 +41,13 @@ export const DEFAULT_WINTER_PRESSURE_CONFIG: WinterPressureConfig = {
 // North gets hit harder, coast gets hit less.
 
 export const ZONE_WINTER_INTENSITY: Record<string, number> = {
-  NORTH: 1.35,
-  CENTER: 1.0,
-  SOUTH: 0.7,
-  COAST: 0.75,
-  MOUNTAIN: 1.2,
-  FOREST: 0.9,
-  PLAINS: 1.0,
+  north_frozen: 1.35,
+  center_temperate: 1.0,
+  south_warm: 0.7,
+  coast: 0.75,
+  mountain: 1.2,
+  forest: 0.9,
+  plains: 1.0,
 };
 
 export function calculateHourlyFoodConsumption(
@@ -86,7 +86,7 @@ export function evaluateWinterPressure(
 
   const state: CityWinterState = currentWinterState ?? {
     cityId: city.id,
-    foodBalance: city.resources.food,
+    foodBalance: city.food ?? 0,
     starvationHours: 0,
     isStarving: false,
     combatPenalty: 1.0,
@@ -170,7 +170,7 @@ export function getWinterPressureSummary(
   const netFoodPerHour = effectiveFoodProduction - hourlyConsumption;
 
   const hoursUntilStarvation = netFoodPerHour < 0
-    ? Math.floor((city.resources.food - config.minimumFoodReserve) / Math.abs(netFoodPerHour))
+    ? Math.floor(((city.food ?? city.resources?.food ?? 0) - config.minimumFoodReserve) / Math.abs(netFoodPerHour))
     : Infinity;
 
   return {

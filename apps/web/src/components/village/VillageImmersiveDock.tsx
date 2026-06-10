@@ -142,7 +142,7 @@ export function VillageImmersiveDock() {
     null;
 
   return (
-    <aside className="pointer-events-auto absolute inset-x-3 bottom-3 z-40 flex items-center gap-1.5 rounded-2xl border border-stone-200/70 bg-white/82 px-3 py-2 shadow-lg shadow-stone-900/5 backdrop-blur-xl">
+    <aside className="pointer-events-auto absolute inset-x-3 bottom-3 max-md:bottom-[4.5rem] z-40 flex items-center gap-1.5 rounded-2xl border border-stone-200/70 bg-white/82 px-3 py-2 shadow-lg shadow-stone-900/5 backdrop-blur-xl">
       <QueueSection
         label={t("play.dock.construction")}
         emoji="🏗️"

@@ -272,7 +272,9 @@
       "v0_0_3": "La Forja de Armas",
       "v0_0_2": "Las Primeras Guerras",
       "v0_0_1": "La Fundación de Etheria",
-      "v0_2_4": "La Forja de la Guerra"
+      "v0_2_4": "La Forja de la Guerra",
+      "v0_5_0": "La Era del Viajero",
+      "v0_5_1": "El Despertar de las Tierras"
     },
     "items": {
       "v0_2_0": {
@@ -491,6 +493,32 @@
           "[UI] Modal de biblioteca roto (ACADEMY→LIBRARY).",
           "[UI] Cuartel no mostraba unidades entrenadas.",
           "[BOTS] Market accept incluye fee. Trade solo a aliados."
+        ]
+      },
+      "v0_5_0": {
+        "added": [
+          "[JUEGO] Barra de navegación rápida en la parte inferior para moverte entre tu aldea, el mapa, mensajes, alianza y rankings sin perderte.",
+          "[JUEGO] Cola de construcción mejorada que se acomoda sola para no tapar los botones de navegación.",
+          "[JUEGO] Bordes de pantalla respetados en teléfonos con notch o barra inferior, ahora nada queda tapado.",
+          "[JUEGO] Bonificaciones visibles al tocar los íconos de mejoras activas, ahora también funcionan con el dedo."
+        ],
+        "changed": [
+          "[JUEGO] Menú lateral reemplazado por la nueva barra inferior en celulares, todo al alcance del pulgar.",
+          "[JUEGO] Ventanas mejoradas: botones de cerrar más grandes y fáciles de tocar, ventanas que ocupan toda tu pantalla sin desbordes, y esquinas redondeadas que se ajustan solas.",
+          "[JUEGO] Mejor visión de tu aldea en el celular, ahora podés alejarte un poco más para ver todo de un vistazo.",
+          "[JUEGO] Notificaciones reposicionadas para que no se superpongan con los botones de abajo."
+        ],
+        "fixed": [
+          "[JUEGO] Contenido de ventanas que antes se veía amontonado en el celular ahora se muestra ordenado y legible.",
+          "[JUEGO] Información de mejoras que solo se veía pasando el mouse ahora también se ve al tocar con el dedo."
+        ]
+      },
+      "v0_5_1": {
+        "fixed": [
+          "[JUEGO] Invierno justo: las ciudades ya no se corrompen al entrar en su primer invierno con tropas. Un bug hacia que la comida desapareciera y la ciudad quedara injugable.",
+          "[JUEGO] Barbaros en todo el mapa: el norte, centro y sur del mundo ahora tienen campamentos barbaros. Antes 3 de las 7 zonas no recibian actividad.",
+          "[JUEGO] Almacenamiento avanzado funcional: la tecnologia que prometia aumentar tu capacidad de almacenamiento ahora realmente lo hace. Antes no tenia ningun efecto.",
+          "[JUEGO] Invierno con personalidad: ahora pega mas fuerte en el norte (+35%) y mas leve en el sur (-30%), como corresponde al clima de cada region."
         ]
       }
     }
@@ -1177,19 +1205,27 @@
     "permanentChoice": "Esta decisión no se puede cambiar después.",
     "human": {
       "name": "Humanos",
-      "description": "Versátiles y diplomáticos. Se adaptan a cualquier terreno con bonificaciones equilibradas en producción y comercio."
+      "description": "Versátiles y diplomáticos. Se adaptan a cualquier terreno con bonificaciones equilibradas en producción y comercio.",
+      "loreTitle": "Los Reinos del Amanecer",
+      "lore": "Cuando el Primer Sol iluminó Etheria, los humanos fueron los primeros en alzar murallas. Diplomáticos y comerciantes natos, forjan alianzas donde otros ven enemigos. Su oro fluye como ríos y sus ejércitos, aunque no los más fuertes, son los mejor organizados."
     },
     "elf": {
       "name": "Elfos",
-      "description": "Maestros del bosque y el arco. Producen más madera y comida, y sus arqueros son letales."
+      "description": "Maestros del bosque y el arco. Producen más madera y comida, y sus arqueros son letales.",
+      "loreTitle": "Los Hijos del Bosque Eterno",
+      "lore": "En lo profundo del Bosque Eterno, los elfos cantan a los árboles y estos les responden con frutos y madera infinita. Sus arqueros ven en la oscuridad y sus flechas nunca fallan. Prefieren la diplomacia, pero su arquero es temido en todo Etheria."
     },
     "orc": {
       "name": "Orcos",
-      "description": "Brutales guerreros nacidos para la batalla. Producen más piedra y sus unidades son más resistentes."
+      "description": "Brutales guerreros nacidos para la batalla. Producen más piedra y sus unidades son más resistentes.",
+      "loreTitle": "La Horda de Hierro",
+      "lore": "De las Montañas Quebradas surgieron los orcos, forjados en fuego y sangre. No conocen el miedo ni la derrota. Cada orco es un guerrero, cada aldea un bastión. Producen piedra como respiran y sus ejércitos no se detienen hasta ver caer las murallas enemigas."
     },
     "dwarf": {
       "name": "Enanos",
-      "description": "Forjadores insuperables. Extraen oro y piedra más rápido, y sus defensas son impenetrables."
+      "description": "Forjadores insuperables. Extraen oro y piedra más rápido, y sus defensas son impenetrables.",
+      "loreTitle": "Los Forjadores de la Montaña",
+      "lore": "Bajo las Montañas Eternas, los enanos golpean el yunque desde antes que existieran los reinos. Nadie extrae oro y piedra como ellos. Sus defensas son leyenda — una torre enana resiste lo que diez murallas humanas no pueden. Prefieren la paz, pero en guerra son imparables."
     },
     "bonus": {
       "goldProduction": "Producción de oro",
@@ -1211,5 +1247,13 @@
       "startingWood": "Madera inicial",
       "startingStone": "Piedra inicial"
     }
+  },
+  "landing": {
+    "chooseFaction": "Elegí tu bando",
+    "fourRaces": "Cuatro razas dominan Etheria. Cada una con su historia, sus bonus y su destino. ¿A cuál vas a jurar lealtad?",
+    "latestUpdate": "Última actualización",
+    "etheriaGrows": "Etheria crece con cada versión. Esto es lo nuevo.",
+    "moreItems": "+{count} más",
+    "startPlaying": "Empezar a jugar →"
   }
 }

@@ -128,7 +128,8 @@ export function getStorageBonus(type: BuildingType, level: number) {
   };
 }
 
-export function calculateCityStats(buildings: { type: BuildingType; level: number }[]) {
+export function calculateCityStats(buildings: { type: BuildingType; level: number }[], options?: { storageMultiplier?: number }) {
+  const storageMult = options?.storageMultiplier ?? 1;
   let goldPerHour = 0;
   let woodPerHour = 0;
   let stonePerHour = 0;
@@ -155,7 +156,7 @@ export function calculateCityStats(buildings: { type: BuildingType; level: numbe
 
   return {
     production: { goldPerHour, woodPerHour, stonePerHour, foodPerHour },
-    storage: { maxGold, maxWood, maxStone, maxFood },
+    storage: { maxGold: Math.round(maxGold * storageMult), maxWood: Math.round(maxWood * storageMult), maxStone: Math.round(maxStone * storageMult), maxFood: Math.round(maxFood * storageMult) },
   };
 }
 

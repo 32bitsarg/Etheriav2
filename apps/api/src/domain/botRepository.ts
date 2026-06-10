@@ -90,10 +90,10 @@ export async function logBotAction(input: {
 }
 
 export async function listRecentBotLogs(since: Date) {
-  const res = await db.from(COLLECTIONS.BOT_ACTION_LOGS)
-    .gte("createdAt", since.toISOString())
-    .get() as any;
-  return res.data ?? [];
+  // MatecitoDB doesn't support .gte() — fetch recent logs and filter in JS
+  const res = await db.from(COLLECTIONS.BOT_ACTION_LOGS).get() as any;
+  const sinceIso = since.toISOString();
+  return (res.data ?? []).filter((log: any) => log.createdAt && log.createdAt >= sinceIso);
 }
 
 export async function writeBotMetrics(input: Record<string, unknown>) {

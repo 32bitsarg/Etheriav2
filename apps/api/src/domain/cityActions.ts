@@ -243,6 +243,9 @@ export async function upgradeBuildingAction(input: {
   actor: CityActionActor;
   citySnapshot?: CitySnapshot;
 }) {
+  if (input.actor.type === "bot" && process.env.BOT_TRACE === "true") {
+    console.debug(`[BOT_TRACE] ${input.actor.botId} upgrading ${input.buildingId} in ${input.cityId}`);
+  }
   const city = await getCitySnapshot(input.cityId, input.citySnapshot);
   const building = city.buildings.find((b: any) => b.id === input.buildingId);
   if (!building) throw new CityActionError("Building not found", 404);
@@ -322,6 +325,9 @@ export async function trainUnitsAction(input: {
   actor: CityActionActor;
   citySnapshot?: CitySnapshot;
 }) {
+  if (input.actor.type === "bot" && process.env.BOT_TRACE === "true") {
+    console.debug(`[BOT_TRACE] ${input.actor.botId} training ${input.count}x ${input.unitType} in ${input.cityId}`);
+  }
   const city = await getCitySnapshot(input.cityId, input.citySnapshot);
   const activeTrainingQueues = sortPendingQueues(city.trainingQueues ?? []);
   assertQueueSlotAvailable("training", activeTrainingQueues);

@@ -23,7 +23,6 @@ import { generateCityName, generatePlayerName } from "./nameGenerator.js";
 import { createAllianceForUser, joinAlliance } from "./alliances.js";
 import { createChatMessage } from "./chat.js";
 import { sendMailMessage } from "./mail.js";
-import { prisma } from "@etheria/database";
 import { listActiveWorlds } from "./worldService.js";
 
 type BotActionStatus = "SUCCESS" | "EXPECTED_BLOCKED" | "VALIDATION_ERROR" | "UNEXPECTED_ERROR";
@@ -39,6 +38,35 @@ type BotGlobalSnapshot = {
 function nextTickDate(config: BotSimulationConfig, jitterSeconds = 15) {
   const jitter = Math.floor(Math.random() * jitterSeconds * 1000);
   return new Date(Date.now() + config.tickSeconds * 1000 + jitter);
+}
+
+// Simulates realistic player activity patterns using a per-bot virtual "timezone".
+// Each bot has a 4-8 hour daily "sleep window" where it skips ticks ~85% of the time.
+// This prevents bots from looking like they're active 24/7 — a key camouflage signal.
+function botShouldSleep(botId: string, now: Date, config: BotSimulationConfig): boolean {
+  if (!config.sleepSimulationEnabled) return false;
+  // Derive a virtual UTC offset from -12 to +12 from the botId
+  const seed = hashStringBot(botId);
+  const virtualUtcOffset = (seed % 25) - 12; // -12 to +12
+  // Convert hour to the bot's virtual timezone
+  const virtualHour = (now.getUTCHours() + virtualUtcOffset + 24) % 24;
+  const virtualMinutes = now.getUTCMinutes();
+  const virtualTime = virtualHour + virtualMinutes / 60;
+  // Sleep window: bots sleep during virtual 1am-5am (4h window, customizable)
+  const sleepStart = config.sleepWindowStartHour;
+  const sleepEnd = config.sleepWindowEndHour;
+  if (virtualTime < sleepStart || virtualTime >= sleepEnd) return false;
+  // During sleep window, skip ~85% of ticks (occasional insomnia)
+  return Math.random() < 0.85;
+}
+
+function hashStringBot(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h) + s.charCodeAt(i);
+    h |= 0;
+  }
+  return Math.abs(h);
 }
 
 function classifyError(error: unknown): { status: BotActionStatus; errorKind: string; message: string; details: Record<string, unknown> } {
@@ -453,6 +481,16 @@ export async function processDueBots(config = getBotSimulationConfig(), worldId 
 
   let errors = 0;
   for (const bot of bots) {
+    // Simulate offline periods — bots shouldn't be active 24/7
+    if (botShouldSleep(bot.id, now, config)) {
+      await updateBotRecord(bot.id, {
+        state: { ...(bot.state ?? {}), lastSleptAt: now.toISOString() },
+        lastTickAt: now,
+        nextTickAt: nextTickDate(config, config.tickSeconds),
+      });
+      continue;
+    }
+
     const snapshot = await loadBotSnapshot(bot, config, globalSnapshot);
     const decision = decideBotAction(snapshot, bot.profile, config, now);
     const actionType = botActionType(decision);
@@ -487,30 +525,33 @@ export async function processDueBots(config = getBotSimulationConfig(), worldId 
         payload: { decisionType: decision.type, decision: decision.payload, details: classified.details },
       });
       if (classified.status === "VALIDATION_ERROR" || classified.status === "UNEXPECTED_ERROR") {
-        await appendBotErrorReport({
-          botId: bot.id,
-          cityId: bot.cityId,
-          actionType,
-          status: classified.status,
-          reason: decision.reason,
-          errorKind: classified.errorKind,
-          errorMessage: classified.message,
-          payload: { decision: decision.payload, details: classified.details },
-          stack: error instanceof Error ? error.stack : undefined,
-        }).catch((reportError) => {
-          console.error("Failed to write bot error report:", reportError);
-        });
+        // Suppress error reports for deliberate edge-case probes (not real errors)
+        const isProbe = (decision as any)._probe === true;
+        if (!isProbe) {
+          await appendBotErrorReport({
+            botId: bot.id,
+            cityId: bot.cityId,
+            actionType,
+            status: classified.status,
+            reason: decision.reason,
+            errorKind: classified.errorKind,
+            errorMessage: classified.message,
+            payload: { decision: decision.payload, details: classified.details },
+            stack: error instanceof Error ? error.stack : undefined,
+          }).catch((reportError) => {
+            console.error("Failed to write bot error report:", reportError);
+          });
+        }
       }
+      const errorCount = classified.status === "UNEXPECTED_ERROR"
+        ? (bot.state?.errorCount ?? 0) + 1
+        : 0;
       await updateBotRecord(bot.id, {
         status: classified.status === "UNEXPECTED_ERROR" ? "ERROR" : "ACTIVE",
         lastTickAt: now,
         nextTickAt: nextTickDate(config),
-        state: updateBotMemory(bot.state, decision, classified.status === "EXPECTED_BLOCKED" ? "blocked" : "error", now),
+        state: updateBotMemory({ ...bot.state, errorCount }, decision, classified.status === "EXPECTED_BLOCKED" ? "blocked" : "error", now),
       });
-      if (classified.status === "UNEXPECTED_ERROR") {
-        const errorCount = (bot.state?.errorCount ?? 0) + 1;
-        bot.state = { ...(bot.state ?? {}), errorCount };
-      }
     }
   }
 
@@ -526,36 +567,41 @@ export async function writeBotMetricsSnapshot(windowMinutes = 15) {
   ]);
   const botCityIds = new Set<string>(bots.map((bot: any) => bot.cityId));
   const attemptedByType: Record<string, number> = {};
+  const errorsByType: Record<string, { validation: number; unexpected: number; blocked: number }> = {};
   for (const log of logs as any[]) {
     const realType = log.payload?.decisionType ?? log.actionType;
     attemptedByType[realType] = (attemptedByType[realType] ?? 0) + 1;
+    if (!errorsByType[realType]) errorsByType[realType] = { validation: 0, unexpected: 0, blocked: 0 };
+    if (log.status === "VALIDATION_ERROR") errorsByType[realType].validation++;
+    if (log.status === "UNEXPECTED_ERROR") errorsByType[realType].unexpected++;
+    if (log.status === "EXPECTED_BLOCKED") errorsByType[realType].blocked++;
   }
 
   const botCityIdsList = [...botCityIds];
-  const [resolvedBattles, completedResearch] = await Promise.all([
+  const windowStartedIso = windowStartedAt.toISOString();
+  const windowEndedIso = windowEndedAt.toISOString();
+  const [resolvedBattlesRes, completedResearchRes] = await Promise.all([
     botCityIdsList.length > 0
-      ? prisma.battle.count({
-          where: {
-            attackerCityId: { in: botCityIdsList },
-            resolvedAt: {
-              gte: windowStartedAt,
-              lte: windowEndedAt,
-            },
-          },
-        })
-      : Promise.resolve(0),
+      ? db.from(COLLECTIONS.BATTLES).limit(5000).get() as any
+      : Promise.resolve({ data: [] }),
     botCityIdsList.length > 0
-      ? prisma.cityTech.count({
-          where: {
-            cityId: { in: botCityIdsList },
-            unlockedAt: {
-              gte: windowStartedAt,
-              lte: windowEndedAt,
-            },
-          },
-        })
-      : Promise.resolve(0),
+      ? db.from(COLLECTIONS.CITY_TECHS).limit(5000).get() as any
+      : Promise.resolve({ data: [] }),
   ]);
+  const resolvedBattles = (resolvedBattlesRes.data ?? []).filter(
+    (b: any) =>
+      botCityIdsList.includes(b.attackerCityId) &&
+      b.resolvedAt &&
+      b.resolvedAt >= windowStartedIso &&
+      b.resolvedAt <= windowEndedIso
+  ).length;
+  const completedResearch = (completedResearchRes.data ?? []).filter(
+    (t: any) =>
+      botCityIdsList.includes(t.cityId) &&
+      t.unlockedAt &&
+      t.unlockedAt >= windowStartedIso &&
+      t.unlockedAt <= windowEndedIso
+  ).length;
 
   await writeBotMetrics({
     windowStartedAt: windowStartedAt.toISOString(),
@@ -575,6 +621,7 @@ export async function writeBotMetricsSnapshot(windowMinutes = 15) {
 
   console.log(`[bots] metrics ${JSON.stringify({
     attemptedByType,
+    errorsByType,
     successful: (logs as any[]).filter((log) => log.status === "SUCCESS").length,
     expectedBlocks: (logs as any[]).filter((log) => log.status === "EXPECTED_BLOCKED").length,
     unexpectedErrors: (logs as any[]).filter((log) => log.status === "UNEXPECTED_ERROR").length,

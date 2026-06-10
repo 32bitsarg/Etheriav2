@@ -69,7 +69,7 @@ export function Modal({
       <div
         ref={dialogRef}
         className={`
-          relative w-full ${SIZE_CLASSES[size]}
+          relative w-full ${SIZE_CLASSES[size]} max-sm:max-w-[calc(100vw-16px)]
           bg-white rounded-t-3xl sm:rounded-3xl
           shadow-2xl shadow-black/40
           flex flex-col
@@ -96,7 +96,7 @@ export function Modal({
             <button
               onClick={onClose}
               aria-label="Cerrar"
-              className="flex-shrink-0 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center text-white/90 text-sm font-bold"
+              className="flex-shrink-0 min-h-[44px] min-w-[44px] rounded-full bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center text-white/90 text-sm font-bold"
             >
               ✕
             </button>

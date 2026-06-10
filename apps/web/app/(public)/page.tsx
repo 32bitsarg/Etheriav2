@@ -1,5 +1,5 @@
 import { HeroSection } from "@/components/landing/HeroSection";
-import { LatestVersionSection } from "@/components/landing/LatestVersionSection";
+import { ChangelogSection } from "@/components/landing/ChangelogSection";
 import { FeaturesSection } from "@/components/landing/FeaturesSection";
 import { LoreSection } from "@/components/landing/LoreSection";
 import { HowToPlaySection } from "@/components/landing/HowToPlaySection";
@@ -9,7 +9,7 @@ export default function LandingPage() {
   return (
     <>
       <HeroSection />
-      <LatestVersionSection />
+      <ChangelogSection />
       <FeaturesSection />
       <LoreSection />
       <HowToPlaySection />

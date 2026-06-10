@@ -97,6 +97,89 @@ function capsOf(city: any) {
   };
 }
 
+const EDGE_CASE_PROBE_CHANCE = Number(process.env.BOT_PROBE_CHANCE ?? 0.04);
+
+// Edge-case probe: bot intentionally tries something mildly invalid to test validation.
+// Only fires ~4% of non-aggressive decisions. Returns null (no probe) most of the time.
+function maybeProbeEdgeCase(decision: BotDecision, snapshot: BotSnapshot, profile: BotProfile): BotDecision | null {
+  if (profile !== "CHAOTIC" && Math.random() > EDGE_CASE_PROBE_CHANCE) return null;
+  if (profile === "CHAOTIC" && Math.random() > 0.12) return null;
+
+  // Skip probes on attacks (too visible to players)
+  if (decision.type === "ATTACK_CITY" || decision.type === "ATTACK_BARBARIAN") return null;
+  if (decision.type === "IDLE") return null;
+
+  const probes: BotDecision[] = [];
+
+  if (decision.type === "UPGRADE_BUILDING") {
+    // Try upgrading to beyond max level
+    probes.push({
+      type: "UPGRADE_BUILDING",
+      reason: "CHAOTIC probe: upgrade beyond max level",
+      payload: { buildingId: decision.payload.buildingId, buildingType: decision.payload.buildingType },
+      score: 0,
+    });
+    // Try upgrading with insufficient resources
+    probes.push({
+      type: "UPGRADE_BUILDING",
+      reason: "CHAOTIC probe: upgrade with 0 gold",
+      payload: { buildingId: decision.payload.buildingId, buildingType: decision.payload.buildingType },
+      score: 0,
+    });
+  }
+
+  if (decision.type === "TRAIN_UNITS") {
+    // Try training 0 units
+    probes.push({
+      type: "TRAIN_UNITS",
+      reason: "CHAOTIC probe: train 0 units",
+      payload: { unitType: decision.payload.unitType, count: 0 },
+      score: 0,
+    });
+    // Try training with negative count (should be rejected by validation)
+    probes.push({
+      type: "TRAIN_UNITS",
+      reason: "CHAOTIC probe: train -1 units",
+      payload: { unitType: decision.payload.unitType, count: -1 },
+      score: 0,
+    });
+  }
+
+  if (decision.type === "SEND_RESOURCES") {
+    // Try sending 0 resources
+    probes.push({
+      type: "SEND_RESOURCES",
+      reason: "CHAOTIC probe: send 0 resources",
+      payload: { recipientCityId: decision.payload.recipientCityId, resources: { gold: 0, wood: 0, stone: 0, food: 0, gems: 0 } },
+      score: 0,
+    });
+  }
+
+  if (decision.type === "CREATE_MARKET_OFFER") {
+    // Try creating offer with 0 amount
+    probes.push({
+      type: "CREATE_MARKET_OFFER",
+      reason: "CHAOTIC probe: offer with 0 amount",
+      payload: { ...decision.payload, giveAmount: 0, wantAmount: 0 },
+      score: 0,
+    });
+  }
+
+  // For CHAOTIC bots, also probe alliance with bad data
+  if (profile === "CHAOTIC" && decision.type === "JOIN_ALLIANCE") {
+    probes.push({
+      type: "JOIN_ALLIANCE",
+      reason: "CHAOTIC probe: join nonexistent alliance",
+      payload: { allianceId: "00000000-0000-0000-0000-000000000000" },
+      score: 0,
+    });
+  }
+
+  if (probes.length === 0) return null;
+  const picked = probes[Math.floor(Math.random() * probes.length)];
+  return { ...picked, _probe: true } as unknown as BotDecision;
+}
+
 function criticalResources(snapshot: BotSnapshot, config: BotSimulationConfig) {
   const resources = resourcesOf(snapshot.city);
   const caps = capsOf(snapshot.city);
@@ -521,9 +604,16 @@ function chooseAttack(snapshot: BotSnapshot, profile: BotProfile, config: BotSim
   let target = snapshot.targets.find(t => recentAttackerCityIds.has(t.id));
   let isRevenge = !!target;
 
+  // Anti-bullying: hard cap — if we've hit a target 5+ times, permanently avoid them
+  const hardAvoidTargets = new Set<string>();
+  for (const [targetId, count] of mem.favoredTargetCounts) {
+    if (count >= 5) hardAvoidTargets.add(targetId);
+  }
+
   if (!target) {
     target = snapshot.targets.find((candidate) => {
       if (!mem.favoredTargets.has(candidate.id)) return false;
+      if (hardAvoidTargets.has(candidate.id)) return false;
       const successCount = [...mem.favoredTargetCounts.entries()]
         .filter(([id]) => id === candidate.id)
         .reduce((s, [, c]) => s + c, 0);
@@ -585,15 +675,25 @@ export function decideBotAction(snapshot: BotSnapshot, profile: BotProfile, conf
   ].filter(Boolean) as BotDecision[];
 
   const actionable = candidates.filter((candidate) => candidate.type !== "IDLE");
+  let decision: BotDecision;
   if (actionable.length > 0) {
-    return actionable.sort((a, b) => b.score - a.score)[0];
+    decision = actionable.sort((a, b) => b.score - a.score)[0];
+  } else {
+    const critical = criticalResources(snapshot, config);
+    if (critical.length > 0) {
+      decision = { type: "IDLE", reason: `recover economy: waiting for ${critical.join(",")}`, payload: {}, score: 0 };
+    } else {
+      decision = candidates[0] ?? { type: "IDLE", reason: "waiting for next strategic opportunity", payload: {}, score: 0 };
+    }
   }
 
-  const critical = criticalResources(snapshot, config);
-  if (critical.length > 0) {
-    return { type: "IDLE", reason: `recover economy: waiting for ${critical.join(",")}`, payload: {}, score: 0 };
+  // Edge-case probing (only for non-attack decisions, safe in production)
+  const probe = maybeProbeEdgeCase(decision, snapshot, profile);
+  if (probe) {
+    return probe;
   }
-  return candidates[0] ?? { type: "IDLE", reason: "waiting for next strategic opportunity", payload: {}, score: 0 };
+
+  return decision;
 }
 
 export function botActionType(decision: BotDecision): BotActionType {

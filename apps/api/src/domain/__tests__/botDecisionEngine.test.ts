@@ -31,12 +31,16 @@ const config: BotSimulationConfig = {
   attackCooldownRangeMinutes: [20, 60],
   errorRecoveryMinutes: 15,
   metricsWindowMinutes: 15,
-  profiles: ["ECONOMIST", "MILITARIST", "TECH_RUSHER", "BALANCED"],
+  sleepSimulationEnabled: false,
+  sleepWindowStartHour: 1,
+  sleepWindowEndHour: 5,
+  profiles: ["ECONOMIST", "MILITARIST", "TECH_RUSHER", "BALANCED", "CHAOTIC"],
   profileWeights: {
     ECONOMIST: { economy: 5, military: 1, research: 1, aggression: 0 },
     MILITARIST: { economy: 1, military: 5, research: 1, aggression: 3 },
     TECH_RUSHER: { economy: 1, military: 1, research: 5, aggression: 0 },
     BALANCED: { economy: 3, military: 3, research: 3, aggression: 1 },
+    CHAOTIC: { economy: 2, military: 4, research: 1, aggression: 3.5 },
   },
 };
 

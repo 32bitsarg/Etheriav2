@@ -272,7 +272,9 @@
       "v0_0_3": "The Forge of Weapons",
       "v0_0_2": "The First Wars",
       "v0_0_1": "The Foundation of Etheria",
-      "v0_2_4": "The Forge of War"
+      "v0_2_4": "The Forge of War",
+      "v0_5_0": "The Traveler's Era",
+      "v0_5_1": "The Awakening of the Lands"
     },
     "items": {
       "v0_2_2": {
@@ -491,6 +493,32 @@
           "[UI] Library modal broken (ACADEMY→LIBRARY).",
           "[UI] Barracks did not show trained units.",
           "[BOTS] Market accept now includes fee. Trade only to allies."
+        ]
+      },
+      "v0_5_0": {
+        "added": [
+          "[GAME] Quick navigation bar at the bottom to jump between your village, map, messages, alliance and rankings without getting lost.",
+          "[GAME] Improved build queue that repositions automatically so it doesn't cover your navigation buttons.",
+          "[GAME] Screen edges respected on phones with notch or bottom bar — nothing gets covered anymore.",
+          "[GAME] Active bonuses now visible by tapping their icons — no more mouse-only tooltips."
+        ],
+        "changed": [
+          "[GAME] Side menu replaced by the new bottom bar on phones — everything within thumb's reach.",
+          "[GAME] Improved windows: larger close buttons, full-screen adaptation without overflow, and rounded corners that adjust automatically.",
+          "[GAME] Better village view on your phone — you can now zoom out a bit more to see everything at a glance.",
+          "[GAME] Notifications repositioned so they don't overlap with the bottom buttons."
+        ],
+        "fixed": [
+          "[GAME] Window content that used to look cramped on phones now displays neatly and legibly.",
+          "[GAME] Buff info that only showed on mouse hover now also works when you tap with your finger."
+        ]
+      },
+      "v0_5_1": {
+        "fixed": [
+          "[GAME] Fair winter: cities no longer become corrupted when entering their first winter with troops. A bug caused food to vanish and the city to become unplayable.",
+          "[GAME] Barbarians across the map: the north, center, and south now have barbarian camps. Previously 3 out of 7 zones had zero activity.",
+          "[GAME] Advanced storage now works: the technology that promised to increase your storage capacity actually does so now. It had no effect before.",
+          "[GAME] Winter with personality: winter now hits harder in the north (+35%) and lighter in the south (-30%), matching each region's climate."
         ]
       }
     }
@@ -1177,19 +1205,27 @@
     "permanentChoice": "This decision cannot be changed later.",
     "human": {
       "name": "Humans",
-      "description": "Versatile and diplomatic. They adapt to any terrain with balanced production and trade bonuses."
+      "description": "Versatile and diplomatic. They adapt to any terrain with balanced production and trade bonuses.",
+      "loreTitle": "The Dawn Realms",
+      "lore": "When the First Sun illuminated Etheria, humans were the first to raise walls. Natural diplomats and merchants, they forge alliances where others see enemies. Their gold flows like rivers and their armies, though not the strongest, are the best organized."
     },
     "elf": {
       "name": "Elves",
-      "description": "Masters of the forest and the bow. They produce more wood and food, and their archers are lethal."
+      "description": "Masters of the forest and the bow. They produce more wood and food, and their archers are lethal.",
+      "loreTitle": "The Children of the Eternal Forest",
+      "lore": "Deep in the Eternal Forest, elves sing to the trees and they respond with fruit and endless wood. Their archers see in darkness and their arrows never miss. They prefer diplomacy, but their archer is feared throughout Etheria."
     },
     "orc": {
       "name": "Orcs",
-      "description": "Brutal warriors born for battle. They produce more stone and their units are tougher."
+      "description": "Brutal warriors born for battle. They produce more stone and their units are tougher.",
+      "loreTitle": "The Iron Horde",
+      "lore": "From the Broken Mountains rose the orcs, forged in fire and blood. They know neither fear nor defeat. Every orc is a warrior, every village a stronghold. They produce stone as they breathe and their armies do not stop until enemy walls crumble."
     },
     "dwarf": {
       "name": "Dwarves",
-      "description": "Unmatched forgers. They extract gold and stone faster, and their defenses are impenetrable."
+      "description": "Unmatched forgers. They extract gold and stone faster, and their defenses are impenetrable.",
+      "loreTitle": "The Mountain Forgers",
+      "lore": "Beneath the Eternal Mountains, dwarves have struck the anvil since before the surface realms existed. None extract gold and stone like them. Their defenses are legend — a single dwarven tower withstands what ten human walls cannot. They prefer peace, but in war they are unstoppable."
     },
     "bonus": {
       "goldProduction": "Gold production",
@@ -1211,5 +1247,13 @@
       "startingWood": "Starting wood",
       "startingStone": "Starting stone"
     }
+  },
+  "landing": {
+    "chooseFaction": "Choose your faction",
+    "fourRaces": "Four races rule Etheria. Each with its own history, bonuses and destiny. Which will you pledge loyalty to?",
+    "latestUpdate": "Latest update",
+    "etheriaGrows": "Etheria grows with every version. Here is what's new.",
+    "moreItems": "+{count} more",
+    "startPlaying": "Start playing →"
   }
 }

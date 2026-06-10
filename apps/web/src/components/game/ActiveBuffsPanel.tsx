@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useGameStore } from "@/stores/gameStore";
 import { useWorldSeason, useWinterPressure } from "@/hooks/useCity";
 import { useI18n } from "@/i18n";
@@ -15,10 +15,18 @@ function formatCountdown(expiresAt: string): string {
 }
 
 function BuffIcon({ buff }: { buff: ActiveBuff }) {
+  const [tapped, setTapped] = useState(false);
   return (
     <div className="relative group flex items-center">
-      <span className="text-base cursor-help leading-none">{buff.icon}</span>
-      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block z-[200] pointer-events-none">
+      <button
+        onClick={() => setTapped((prev) => !prev)}
+        onBlur={() => setTapped(false)}
+        className="text-base cursor-pointer leading-none min-h-[32px] min-w-[32px] flex items-center justify-center"
+        aria-label={buff.label}
+      >
+        {buff.icon}
+      </button>
+      <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[200] pointer-events-none ${tapped ? 'block' : 'hidden group-hover:block'}`}>
         <div className="bg-white border border-stone-200 rounded-xl p-3 text-xs min-w-[180px] max-w-[260px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-md">
           <div className={`font-bold text-sm mb-1 ${buff.type === "debuff" ? "text-red-600" : "text-emerald-600"}`}>
             {buff.label}

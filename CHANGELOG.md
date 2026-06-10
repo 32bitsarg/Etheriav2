@@ -15,6 +15,43 @@ Each release is named after a legendary era in the world of Etheria.
 
 ---
 
+## [0.5.1] - El Despertar de las Tierras - 2026-06-09
+
+> *"Las tierras dormidas despiertan. El norte ya no está vacío, el invierno golpea con justicia, y los almacenes por fin crecen."*
+
+### Fixed
+- **[JUEGO] Invierno justo:** las ciudades ya no se corrompen al entrar en su primer invierno con tropas. Un bug hacía que la comida desapareciera y la ciudad quedara injugable.
+- **[JUEGO] Bárbaros en todo el mapa:** el norte, centro y sur del mundo ahora tienen campamentos bárbaros. Antes estaban vacíos — 3 de las 7 zonas no recibían actividad.
+- **[JUEGO] Almacenamiento avanzado funcional:** la tecnología que prometía aumentar tu capacidad de almacenamiento ahora realmente lo hace. Antes investigarla no tenía ningún efecto.
+- **[JUEGO] Invierno con personalidad:** ahora el invierno pega más fuerte en el norte (+35%) y más leve en el sur (−30%), como corresponde al clima de cada región.
+
+---
+
+## [0.5.0] - La Era del Viajero - 2026-06-09
+
+> *"Las murallas caen, los horizontes se expanden. Etheria ahora viaja contigo, en tu bolsillo, en cualquier pantalla. El reino no conoce fronteras."*
+
+### Added
+- **[JUEGO] Barra de navegación rápida** en la parte inferior para moverte entre tu aldea, el mapa, mensajes, alianza y rankings sin perderte.
+- **[JUEGO] Cola de construcción mejorada** que se acomoda sola para no tapar los botones de navegación.
+- **[JUEGO] Bordes de pantalla respetados** en teléfonos con notch o barra inferior, ahora nada queda tapado.
+- **[JUEGO] Bonificaciones visibles al tocar** los íconos de mejoras activas, ahora también funcionan con el dedo.
+
+### Changed
+- **[JUEGO] Menú lateral reemplazado** por la nueva barra inferior en celulares, todo al alcance del pulgar.
+- **[JUEGO] Ventanas mejoradas**:
+  - Botones de cerrar más grandes y fáciles de tocar en todas las ventanas del juego.
+  - Las ventanas ahora ocupan toda tu pantalla y se adaptan perfecto, sin desbordes.
+  - Esquinas redondeadas que se ajustan solas según tu dispositivo.
+- **[JUEGO] Mejor visión de tu aldea** en el celular, ahora podés alejarte un poco más para ver todo de un vistazo.
+- **[JUEGO] Notificaciones reposicionadas** para que no se superpongan con los botones de abajo.
+
+### Fixed
+- **[JUEGO] Contenido de ventanas** que antes se veía amontonado en el celular ahora se muestra ordenado y legible.
+- **[JUEGO] Información de mejoras** que solo se veía pasando el mouse ahora también se ve al tocar con el dedo.
+
+---
+
 ## [0.2.4] - La Forja de la Guerra - 2026-05-08
 
 > *"Nuevas armas brillan en la forja. Piqueros, ballesteros y catapultas cambian el arte de la guerra. Los espias se mueven en las sombras, y cada ciudad siente el peso de sus decisiones."*

@@ -102,7 +102,10 @@ export default function RegistroPage() {
     if (!isFormValid()) return;
     try {
       const res = await auth.signUp(email, password, { name });
-      if ((res as any)?.error) throw new Error((res as any).error.message ?? "Register failed");
+      if ((res as any)?.error) {
+        setError((res as any).error.message ?? t("register.error"));
+        return;
+      }
       if (remember) localStorage.setItem(REMEMBER_EMAIL_KEY, email.trim().toLowerCase());
       else localStorage.removeItem(REMEMBER_EMAIL_KEY);
       localStorage.setItem("etheria_pending_city_name", cityName.trim());

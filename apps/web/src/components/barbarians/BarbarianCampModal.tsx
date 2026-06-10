@@ -158,7 +158,7 @@ export function BarbarianCampModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <Panel variant="default" animation="fade" className="w-full max-w-md p-0">
+      <Panel variant="default" animation="fade" className="w-full max-w-md max-sm:max-w-[calc(100vw-16px)] p-0">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-etheria-border/40 px-4 py-3">
           <div>

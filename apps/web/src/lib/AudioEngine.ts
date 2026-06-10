@@ -118,6 +118,22 @@ export const AudioEngine = {
       document.addEventListener(evt, handleUnlockEvent, { once: true });
     }
 
+    // Pause audio when page goes to background (mobile rotation / tab switch / lock screen)
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden || document.visibilityState === "hidden") {
+        AudioEngine.stop();
+        if (ctx && ctx.state === "running") {
+          ctx.suspend();
+        }
+      } else {
+        if (ctx && ctx.state === "suspended") {
+          ctx.resume().then(() => {
+            if (unlocked) AudioEngine.playScene();
+          });
+        }
+      }
+    });
+
     storeUnsubscribe = useAudioStore.subscribe((state, prev) => {
       if (state.musicVolume !== prev.musicVolume || state.isMuted !== prev.isMuted) {
         syncVolume();
