@@ -67,8 +67,12 @@ export function calculateHourlyFoodConsumption(
  * Uses effective food production (already includes season/zone modifiers)
  * and scales all effects by hoursElapsed derived from lastWinterEvaluatedAt.
  */
+// Acepta tanto la fila de Prisma (food plano) como el tipo compartido City
+// (resources.food anidado): producción pasa lo primero, los tests lo segundo.
+type WinterCity = City & { food?: number };
+
 export function evaluateWinterPressure(
-  city: City,
+  city: WinterCity,
   effectiveFoodProduction: number,
   units: Record<UnitType, number>,
   currentWinterState: CityWinterState | null,
@@ -86,7 +90,7 @@ export function evaluateWinterPressure(
 
   const state: CityWinterState = currentWinterState ?? {
     cityId: city.id,
-    foodBalance: city.food ?? 0,
+    foodBalance: city.food ?? city.resources?.food ?? 0,
     starvationHours: 0,
     isStarving: false,
     combatPenalty: 1.0,
@@ -155,7 +159,7 @@ export function resetWinterState(cityId: string, currentFood: number): CityWinte
 }
 
 export function getWinterPressureSummary(
-  city: City,
+  city: WinterCity,
   effectiveFoodProduction: number,
   units: Record<UnitType, number>,
   config: WinterPressureConfig = DEFAULT_WINTER_PRESSURE_CONFIG
