@@ -36,7 +36,7 @@ export function MobileHUD({
   };
 
   const moreItems = [
-    { icon: <SpeechIcon className="h-5 w-5" />, label: t("play.chat.title"), onClick: onOpenChat },
+    { icon: <SidebarNavIcon id="army" size={20} />, label: t("play.sidebar.alliances"), onClick: onOpenAlliance },
     { icon: <SidebarNavIcon id="summary" size={20} />, label: t("play.sidebar.ranking"), onClick: onOpenRankings },
     { icon: <ScrollIcon className="h-5 w-5" />, label: t("play.quests.title"), onClick: onOpenQuests },
     { icon: <ChecklistIcon className="h-5 w-5" />, label: t("play.sidebar.dailyQuests"), onClick: onOpenDailyQuests },
@@ -62,19 +62,19 @@ export function MobileHUD({
       onClick: () => onViewChange("mapa"),
     },
     {
+      id: "chat",
+      label: t("play.chat.title"),
+      icon: <SpeechIcon className="h-[21px] w-[21px]" />,
+      active: false,
+      onClick: onOpenChat,
+    },
+    {
       id: "mail",
       label: t("play.sidebar.mail"),
       icon: <SidebarNavIcon id="mail" size={21} />,
       badge: unreadCount,
       active: false,
       onClick: onOpenMail,
-    },
-    {
-      id: "alliance",
-      label: t("play.sidebar.alliances"),
-      icon: <SidebarNavIcon id="army" size={21} />,
-      active: false,
-      onClick: onOpenAlliance,
     },
     {
       id: "more",
@@ -87,23 +87,30 @@ export function MobileHUD({
 
   return (
     <>
-      {/* Topbar oscura: nombre de aldea + recursos completos + estación + campana */}
+      {/* Topbar: recursos a ancho completo + campana (el nombre vive en su placa) */}
       <header
         className="pointer-events-auto col-span-3 row-start-1 z-50 flex h-12 items-center gap-1.5 border-b border-white/10 bg-black/70 px-1.5 backdrop-blur-xl"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
+        <ResourceBar compact dark />
+        <NotificationBell />
+      </header>
+
+      {/* Placa de ciudad: nombre grande y legible + estación, flotando bajo la topbar */}
+      <div
+        className="pointer-events-none absolute left-1.5 z-40 flex items-center gap-1.5"
+        style={{ top: "calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + 6px)" }}
+      >
         <button
-          className="flex max-w-[28vw] shrink-0 items-center gap-1 rounded-full bg-white/10 px-2 py-1"
+          className="pointer-events-auto flex max-w-[52vw] items-center gap-1.5 rounded-xl border border-white/10 bg-black/65 px-2.5 py-1.5 backdrop-blur-md"
           onClick={onRename}
         >
-          <span className="truncate text-[11px] font-semibold text-amber-200">
+          <span className="truncate text-[12px] font-bold text-amber-200">
             {cityName || t("play.sidebar.village")}
           </span>
         </button>
-        <ResourceBar compact dark />
-        <span className="shrink-0"><SeasonHUD compact /></span>
-        <NotificationBell />
-      </header>
+        <span className="pointer-events-auto"><SeasonHUD compact /></span>
+      </div>
 
       {/* Dock inferior: 44px, sin scroll, highlight tipo pill */}
       <nav

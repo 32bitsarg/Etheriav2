@@ -662,6 +662,14 @@
       "achievements": "Achievements",
       "feed": "Feed"
     },
+    "hud": {
+      "groups": {
+        "views": "Views",
+        "social": "Social",
+        "progress": "Progress",
+        "world": "World"
+      }
+    },
     "chat": {
       "title": "Chat",
       "global": "Global",

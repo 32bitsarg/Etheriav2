@@ -46,7 +46,7 @@ export function BarbarianAttackAlertBanner() {
   const seconds = timeUntilArrival % 60;
 
   return (
-    <div className="fixed top-[calc(var(--topbar-height)+8px)] left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+    <div className="fixed top-[calc(var(--topbar-height)+8px)] md:top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
       <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50/95 px-4 py-2.5 shadow-lg shadow-red-900/10 backdrop-blur-xl">
         <span className="flex h-9 w-9 shrink-0 animate-pulse items-center justify-center rounded-xl bg-red-500 text-white text-lg">
           {ARCHETYPE_ICONS[urgentAlert.archetype] ?? "⚔️"}
