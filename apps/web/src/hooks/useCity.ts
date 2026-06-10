@@ -165,9 +165,13 @@ export function useCity(cityId: string | null) {
         .map((t) => new Date(t).getTime() - now)
         .sort((a, b) => a - b)[0] ?? Infinity;
 
-      return soonest < 10_000 ? 1000 : 2000;
+      // Countdown display is client-side (useCountdown); polling only needs to
+      // catch completions, so back off when nothing finishes soon.
+      if (soonest < 10_000) return 1_000;
+      if (soonest < 60_000) return 5_000;
+      return 20_000;
     },
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
   });
 }
 

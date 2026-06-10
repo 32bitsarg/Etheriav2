@@ -166,6 +166,29 @@ export function VillageView() {
   const selectedBuilding = uniqueBuildings.find((b) => b.id === selectedBuildingId);
   const isModalOpen = !!selectedBuilding || isMailOpen || isAllianceOpen || isQuestsOpen || isRenameOpen || isSettingsOpen || isDailyQuestsOpen || isNewRankingsOpen || isWonderOpen || isAchievementsOpen || isActivityFeedOpen;
 
+  // Escape closes whatever panel/modal is open
+  useEffect(() => {
+    if (!isModalOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      setSelectedBuildingId(null);
+      setIsMailOpen(false);
+      setIsAllianceOpen(false);
+      setIsQuestsOpen(false);
+      setIsRenameOpen(false);
+      setIsSettingsOpen(false);
+      setIsDailyQuestsOpen(false);
+      setIsNewRankingsOpen(false);
+      setIsWonderOpen(false);
+      setIsAchievementsOpen(false);
+      setIsActivityFeedOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isModalOpen]);
+
   const handleUpgrade = useCallback((id: string, type: string, currentLevel: number) => {
     if (!cityId) return;
     if (upgradeLockRef.current) return;

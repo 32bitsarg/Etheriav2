@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useI18n } from "@/i18n";
 import { ResourceBar } from "@/components/ui/ResourceBar";
+import { SeasonHUD } from "@/components/game/SeasonHUD";
 import { NotificationBell } from "@/components/game/NotificationBell";
 import { SidebarNavIcon } from "@/components/ui/SidebarNavIcon";
 import type { HudActions } from "./hudTypes";
@@ -84,14 +85,15 @@ export function MobileHUD({
     <>
       {/* Compact top bar: city name + critical resources only */}
       <header className="village-topbar pointer-events-auto col-span-3 row-start-1 flex items-center gap-1 px-2 z-50 h-12">
+        <SeasonHUD compact />
         <span
-          className="shrink-0 max-w-[28vw] text-xs font-semibold text-stone-700 tracking-wide truncate select-none"
+          className="shrink-0 max-w-[24vw] text-xs font-semibold text-stone-700 tracking-wide truncate select-none"
           onDoubleClick={onRename}
         >
           {cityName || t("play.sidebar.village")}
         </span>
         <div className="flex-1 min-w-0 flex items-center justify-end gap-1">
-          <ResourceBar />
+          <ResourceBar compact />
           <NotificationBell />
         </div>
       </header>
