@@ -64,3 +64,20 @@ export function GearIcon({ className = "w-5 h-5" }: { className?: string }) {
     </svg>
   );
 }
+
+export function SpeechIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M24 6C13 6 5 13 5 22c0 5 2.6 9.4 6.8 12.3L10 42l8.6-3.5c1.7.4 3.5.6 5.4.6 11 0 19-7 19-16S35 6 24 6Z" fill="url(#speech-grad)" stroke="#92400e" strokeWidth="2" strokeLinejoin="round"/>
+      <circle cx="16" cy="22" r="2.2" fill="#78350f"/>
+      <circle cx="24" cy="22" r="2.2" fill="#78350f"/>
+      <circle cx="32" cy="22" r="2.2" fill="#78350f"/>
+      <defs>
+        <linearGradient id="speech-grad" x1="5" y1="6" x2="43" y2="42">
+          <stop offset="0%" stopColor="#fde68a"/>
+          <stop offset="100%" stopColor="#f59e0b"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}

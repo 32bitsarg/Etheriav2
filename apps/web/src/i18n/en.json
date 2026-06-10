@@ -662,6 +662,16 @@
       "achievements": "Achievements",
       "feed": "Feed"
     },
+    "chat": {
+      "title": "Chat",
+      "global": "Global",
+      "alliance": "Alliance",
+      "placeholder": "Type a message...",
+      "send": "Send",
+      "empty": "No messages yet. Break the ice!",
+      "needAlliance": "You need to belong to an alliance to use this channel.",
+      "close": "Close chat"
+    },
     "queues": {
       "title": "Queues",
       "empty": "No active actions.",

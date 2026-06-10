@@ -27,6 +27,7 @@ import { RallyBanner } from "@/components/game/RallyBanner";
 import { WonderPanel } from "@/components/game/WonderPanel";
 import { AchievementsPanel } from "@/components/game/AchievementsPanel";
 import { ActivityFeedPanel } from "@/components/game/ActivityFeedPanel";
+import { ChatPanel } from "@/components/game/ChatPanel";
 import { useState, useMemo, useCallback, useEffect, useRef, memo, type ReactNode } from "react";
 import { useI18n } from "@/i18n";
 import { normalizeVillageLayout, resolveVillageRenderableBuildings } from "@/lib/villageLayout";
@@ -59,6 +60,7 @@ export function VillageView() {
   const [isWonderOpen, setIsWonderOpen] = useState(false);
   const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
   const [isActivityFeedOpen, setIsActivityFeedOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [runtimePollingEnabled, setRuntimePollingEnabled] = useState(false);
   const upgradeLockRef = useRef<string | null>(null);
   const shellRef = useRef<HTMLDivElement>(null);
@@ -169,6 +171,7 @@ export function VillageView() {
     onOpenAchievements: () => setIsAchievementsOpen(true),
     onOpenActivityFeed: () => setIsActivityFeedOpen(true),
     onOpenSettings: () => setIsSettingsOpen(true),
+    onOpenChat: () => setIsChatOpen((v) => !v),
   };
   const isPuebloView = activeView === "pueblo";
   const isMapView = activeView === "mapa";
@@ -363,6 +366,15 @@ export function VillageView() {
       {isWonderOpen && <WonderPanel onClose={() => setIsWonderOpen(false)} />}
       {isAchievementsOpen && <AchievementsPanel onClose={() => setIsAchievementsOpen(false)} />}
       {isActivityFeedOpen && <ActivityFeedPanel onClose={() => setIsActivityFeedOpen(false)} />}
+      {isChatOpen && isMobile !== null && (
+        isMobile ? (
+          <ChatPanel fullscreen onClose={() => setIsChatOpen(false)} />
+        ) : (
+          <div className="absolute bottom-16 right-3 z-[55] h-[min(60vh,460px)] w-80">
+            <ChatPanel onClose={() => setIsChatOpen(false)} />
+          </div>
+        )
+      )}
       <BarbarianCampModal />
 
       {/* Force landscape on mobile */}

@@ -6,7 +6,7 @@ import { ResourceBar } from "@/components/ui/ResourceBar";
 import { SeasonHUD } from "@/components/game/SeasonHUD";
 import { NotificationBell } from "@/components/game/NotificationBell";
 import { SidebarNavIcon } from "@/components/ui/SidebarNavIcon";
-import { ChecklistIcon, WonderIcon, LaurelsIcon, FeedIcon, GearIcon } from "./HudIcons";
+import { ChecklistIcon, WonderIcon, LaurelsIcon, FeedIcon, GearIcon, SpeechIcon } from "./HudIcons";
 import { ScrollIcon } from "@/components/landing/MedievalIcons";
 import type { HudActions } from "./hudTypes";
 
@@ -25,6 +25,7 @@ export function MobileHUD({
   onOpenAchievements,
   onOpenActivityFeed,
   onOpenSettings,
+  onOpenChat,
 }: HudActions) {
   const { t } = useI18n();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
@@ -35,6 +36,7 @@ export function MobileHUD({
   };
 
   const moreItems = [
+    { icon: <SpeechIcon className="h-5 w-5" />, label: t("play.chat.title"), onClick: onOpenChat },
     { icon: <SidebarNavIcon id="summary" size={20} />, label: t("play.sidebar.ranking"), onClick: onOpenRankings },
     { icon: <ScrollIcon className="h-5 w-5" />, label: t("play.quests.title"), onClick: onOpenQuests },
     { icon: <ChecklistIcon className="h-5 w-5" />, label: t("play.sidebar.dailyQuests"), onClick: onOpenDailyQuests },

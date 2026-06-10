@@ -1113,7 +1113,9 @@ export function useChatMessages(channel: ChatChannel, enabled = true) {
       return data.messages as ChatMessage[];
     },
     enabled,
-    staleTime: 5_000,
+    staleTime: 4_000,
+    refetchInterval: enabled ? 5_000 : false,
+    refetchIntervalInBackground: false,
   });
 }
 
