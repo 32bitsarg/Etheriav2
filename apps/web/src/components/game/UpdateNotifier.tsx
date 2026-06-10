@@ -6,6 +6,10 @@ import { getPublicRelease } from "@/lib/changelogPublic";
 import { useI18n } from "@/i18n";
 
 const CURRENT_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0";
+const CURRENT_BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || null;
+// In dev the baked sha and the last-generated version.json drift constantly;
+// only compare build ids on production builds.
+const COMPARE_BUILD_ID = process.env.NODE_ENV === "production" && !!CURRENT_BUILD_ID;
 const POLL_INTERVAL_MS = 90_000;
 const LAST_SEEN_KEY = "etheria_last_seen_version";
 const CHUNK_RELOAD_KEY = "etheria_chunk_reload_at";
@@ -26,17 +30,17 @@ function isChunkLoadError(message: string): boolean {
  */
 export function UpdateNotifier() {
   const { t } = useI18n();
-  const [remoteVersion, setRemoteVersion] = useState<string | null>(null);
-  const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
+  const [remote, setRemote] = useState<{ version: string; buildId: string | null } | null>(null);
+  const [dismissedKey, setDismissedKey] = useState<string | null>(null);
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
 
   const checkVersion = useCallback(async () => {
     try {
       const res = await fetch(`/version.json?t=${Date.now()}`, { cache: "no-store" });
       if (!res.ok) return;
-      const data = (await res.json()) as { version?: string };
+      const data = (await res.json()) as { version?: string; buildId?: string | null };
       if (typeof data.version === "string" && data.version.length > 0) {
-        setRemoteVersion(data.version);
+        setRemote({ version: data.version, buildId: data.buildId ?? null });
       }
     } catch {
       // offline or deploy in progress: try again on the next tick
@@ -91,9 +95,10 @@ export function UpdateNotifier() {
   }, []);
 
   const updateAvailable =
-    remoteVersion !== null &&
-    remoteVersion !== CURRENT_VERSION &&
-    remoteVersion !== dismissedVersion;
+    remote !== null &&
+    (remote.version !== CURRENT_VERSION ||
+      (COMPARE_BUILD_ID && !!remote.buildId && remote.buildId !== CURRENT_BUILD_ID)) &&
+    `${remote.version}|${remote.buildId}` !== dismissedKey;
 
   const release = getPublicRelease(CURRENT_VERSION);
 
@@ -115,7 +120,7 @@ export function UpdateNotifier() {
               <div className="min-w-0 flex-1">
                 <p className="text-[14px] font-bold text-amber-800">{t("update.available")}</p>
                 <p className="text-[12.5px] leading-snug text-amber-700">
-                  {t("update.description").replace("{version}", remoteVersion ?? "")}
+                  {t("update.description").replace("{version}", remote?.version ?? "")}
                 </p>
               </div>
               <div className="flex shrink-0 flex-col gap-1.5">
@@ -126,7 +131,7 @@ export function UpdateNotifier() {
                   {t("update.button")}
                 </button>
                 <button
-                  onClick={() => setDismissedVersion(remoteVersion)}
+                  onClick={() => setDismissedKey(`${remote?.version}|${remote?.buildId}`)}
                   className="rounded-full px-4 py-1 text-[11.5px] font-semibold text-amber-700/80 transition-colors hover:text-amber-800"
                 >
                   {t("update.later")}
