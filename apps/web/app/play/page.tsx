@@ -3,6 +3,7 @@
 import { I18nProvider } from "@/i18n";
 import { GameInitializer } from "@/components/game/GameInitializer";
 import { GameNotificationWatcher } from "@/components/game/GameNotificationWatcher";
+import { CityDataSync } from "@/components/game/CityDataSync";
 import { UpdateNotifier } from "@/components/game/UpdateNotifier";
 import { ToastContainer } from "@/components/ui/ToastContainer";
 import { VillageView } from "@/components/village/VillageView";
@@ -20,6 +21,7 @@ function PlayContent() {
       {canMountGame && (
         <>
           <GameNotificationWatcher />
+          <CityDataSync />
           <VillageView />
         </>
       )}
