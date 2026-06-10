@@ -15,6 +15,24 @@ Each release is named after a legendary era in the world of Etheria.
 
 ---
 
+## [0.5.4] - El Pulso de las Estaciones - 2026-06-10
+
+> *"La nieve por fin cae sobre la aldea, los íconos brillan sin marcos, y el tablero del reino se siente vivo."*
+
+### Added
+- Íconos ilustrados propios en todo el HUD: misiones, maravilla, logros, feed y configuración
+
+### Changed
+- HUD de escritorio y móvil pulidos: sin emojis, íconos consistentes y textos traducibles
+- Íconos del menú lateral rehechos: ahora con fondo transparente y 60 veces más livianos
+
+### Fixed
+- Efectos de estación: la nieve, hojas y pétalos ahora caen de verdad en el mapa y también se ven en la aldea (antes quedaban congelados o invisibles)
+- Los efectos de estación ya no se reinician solos cada vez que el juego actualiza datos
+- Íconos del menú lateral que aparecían con un cuadrado blanco de fondo
+
+---
+
 ## [0.5.3] - El Rostro de los Reinos - 2026-06-10
 
 > *"Etheria se mira al espejo: las razas ya tienen rostro, los mundos muestran su estación, y el reino avisa cuando cambia."*

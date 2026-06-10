@@ -6,6 +6,8 @@ import { ResourceBar } from "@/components/ui/ResourceBar";
 import { SeasonHUD } from "@/components/game/SeasonHUD";
 import { NotificationBell } from "@/components/game/NotificationBell";
 import { SidebarNavIcon } from "@/components/ui/SidebarNavIcon";
+import { ChecklistIcon, WonderIcon, LaurelsIcon, FeedIcon, GearIcon } from "./HudIcons";
+import { ScrollIcon } from "@/components/landing/MedievalIcons";
 import type { HudActions } from "./hudTypes";
 
 export function MobileHUD({
@@ -33,13 +35,13 @@ export function MobileHUD({
   };
 
   const moreItems = [
-    { icon: "📊", label: t("play.sidebar.ranking"), onClick: onOpenRankings },
-    { icon: "📜", label: t("play.quests.title"), onClick: onOpenQuests },
-    { icon: "📋", label: "Misiones", onClick: onOpenDailyQuests },
-    { icon: "🏛️", label: "Maravilla", onClick: onOpenWonder },
-    { icon: "🏆", label: "Logros", onClick: onOpenAchievements },
-    { icon: "📰", label: "Feed", onClick: onOpenActivityFeed },
-    { icon: "⚙️", label: t("play.settings.title"), onClick: onOpenSettings },
+    { icon: <SidebarNavIcon id="summary" size={20} />, label: t("play.sidebar.ranking"), onClick: onOpenRankings },
+    { icon: <ScrollIcon className="h-5 w-5" />, label: t("play.quests.title"), onClick: onOpenQuests },
+    { icon: <ChecklistIcon className="h-5 w-5" />, label: t("play.sidebar.dailyQuests"), onClick: onOpenDailyQuests },
+    { icon: <WonderIcon className="h-5 w-5" />, label: t("play.sidebar.wonder"), onClick: onOpenWonder },
+    { icon: <LaurelsIcon className="h-5 w-5" />, label: t("play.sidebar.achievements"), onClick: onOpenAchievements },
+    { icon: <FeedIcon className="h-5 w-5" />, label: t("play.sidebar.feed"), onClick: onOpenActivityFeed },
+    { icon: <GearIcon className="h-5 w-5" />, label: t("play.settings.title"), onClick: onOpenSettings },
   ];
 
   const dockItems = [

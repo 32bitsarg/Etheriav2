@@ -286,7 +286,8 @@
       "v0_2_4": "The Forge of War",
       "v0_5_0": "The Traveler's Era",
       "v0_5_1": "The Awakening of the Lands",
-      "v0_5_3": "The Face of the Realms"
+      "v0_5_3": "The Face of the Realms",
+      "v0_5_4": "The Pulse of the Seasons"
     },
     "items": {
       "v0_2_2": {
@@ -552,6 +553,20 @@
           "The public changelog no longer shows internal entries on the landing page.",
           "Automatic recovery when the game is left on a stale version after a deploy."
         ]
+      },
+      "v0_5_4": {
+        "added": [
+          "Custom illustrated icons across the HUD: quests, wonder, achievements, feed and settings."
+        ],
+        "changed": [
+          "Polished desktop and mobile HUD: no emojis, consistent icons and translatable labels.",
+          "Sidebar icons rebuilt: now with transparent background and 60x lighter."
+        ],
+        "fixed": [
+          "Season effects: snow, leaves and petals now actually fall on the map and also show in the village (they used to freeze or stay invisible).",
+          "Season effects no longer restart on their own every time the game refreshes data.",
+          "Sidebar icons that showed up with a white square background."
+        ]
       }
     }
   },
@@ -636,7 +651,12 @@
       "alliances": "Alliances",
       "construction": "Construction",
       "training": "Training",
-      "renameCity": "Rename City"
+      "renameCity": "Rename City",
+      "renameHint": "Double click to rename",
+      "dailyQuests": "Quests",
+      "wonder": "Wonder",
+      "achievements": "Achievements",
+      "feed": "Feed"
     },
     "queues": {
       "title": "Queues",

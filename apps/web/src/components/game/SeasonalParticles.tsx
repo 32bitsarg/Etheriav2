@@ -17,6 +17,9 @@ function mulberry32(seed: number) {
 const SEASON_PARTICLES: Record<Season, {
   count: number;
   animation: string;
+  // Falling particles travel the full viewport via keyframes, so they must all
+  // start at the top; hovering ones (fireflies) scatter across the screen.
+  scatterY?: boolean;
   render: (rnd: () => number) => React.CSSProperties;
 }> = {
   WINTER: {
@@ -44,6 +47,7 @@ const SEASON_PARTICLES: Record<Season, {
   SUMMER: {
     count: 10,
     animation: "season-firefly",
+    scatterY: true,
     render: (rnd) => ({
       width: 3,
       height: 3,
@@ -69,11 +73,14 @@ const SEASON_PARTICLES: Record<Season, {
 // transform-only animations → composited on GPU, zero JS per frame.
 export function SeasonalParticles({ season, intensity = 1 }: { season?: string | null; intensity?: number }) {
   const config = season ? SEASON_PARTICLES[season as Season] : undefined;
+  // Quantize so tiny server-side intensity drift doesn't recreate the particles
+  // (recreating restarts every CSS animation — looks like the effect "freezes").
+  const intensityStep = Math.round(Math.min(1, Math.max(0.3, intensity)) * 10) / 10;
 
   const particles = useMemo(() => {
     if (!config) return [];
     const rnd = mulberry32(season!.length * 7919);
-    const count = Math.max(4, Math.round(config.count * Math.min(1, Math.max(0.3, intensity))));
+    const count = Math.max(4, Math.round(config.count * intensityStep));
     return Array.from({ length: count }, (_, i) => {
       const style = config.render(rnd);
       const dur = 6 + rnd() * 9;
@@ -85,14 +92,17 @@ export function SeasonalParticles({ season, intensity = 1 }: { season?: string |
           style={{
             ...style,
             left: `${rnd() * 100}%`,
-            top: `${rnd() * 100}%`,
+            // Falling particles start above the viewport (the keyframes carry them
+            // from -10vh to 110vh); a random top offset pushed most of them
+            // permanently below the screen.
+            top: config.scatterY ? `${rnd() * 100}%` : 0,
             animation: `${config.animation} ${dur.toFixed(1)}s ${delay.toFixed(1)}s linear infinite`,
             willChange: "transform",
           }}
         />
       );
     });
-  }, [config, season, intensity]);
+  }, [config, season, intensityStep]);
 
   if (!config) return null;
 

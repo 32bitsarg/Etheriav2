@@ -8,6 +8,7 @@ import { ActiveBuffsPanel } from "@/components/game/ActiveBuffsPanel";
 import { DailyEventBanner } from "@/components/game/DailyEventBanner";
 import { NotificationBell } from "@/components/game/NotificationBell";
 import { SidebarNavIcon } from "@/components/ui/SidebarNavIcon";
+import { ChecklistIcon, WonderIcon, LaurelsIcon, FeedIcon, GearIcon } from "./HudIcons";
 import type { HudActions } from "./hudTypes";
 
 export function DesktopHUD({
@@ -54,7 +55,7 @@ export function DesktopHUD({
         <span
           className="flex-1 text-center text-sm font-semibold text-stone-700 tracking-wide truncate cursor-pointer hover:text-amber-600 select-none"
           onDoubleClick={onRename}
-          title="Doble click para renombrar"
+          title={t("play.sidebar.renameHint")}
         >
           {cityName || t("play.sidebar.village")}
         </span>
@@ -113,27 +114,27 @@ export function DesktopHUD({
           <div className="grepolis-sidebar__divider" />
 
           <button onClick={onOpenDailyQuests} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap"><span style={{ fontSize: 20 }}>📋</span></span>
-            <span className="grepolis-nav-item__label">Misiones</span>
+            <span className="grepolis-nav-item__icon-wrap"><ChecklistIcon className="h-[22px] w-[22px]" /></span>
+            <span className="grepolis-nav-item__label">{t("play.sidebar.dailyQuests")}</span>
           </button>
           <button onClick={onOpenWonder} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap"><span style={{ fontSize: 20 }}>🏛️</span></span>
-            <span className="grepolis-nav-item__label">Maravilla</span>
+            <span className="grepolis-nav-item__icon-wrap"><WonderIcon className="h-[22px] w-[22px]" /></span>
+            <span className="grepolis-nav-item__label">{t("play.sidebar.wonder")}</span>
           </button>
           <button onClick={onOpenAchievements} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap"><span style={{ fontSize: 20 }}>🏆</span></span>
-            <span className="grepolis-nav-item__label">Logros</span>
+            <span className="grepolis-nav-item__icon-wrap"><LaurelsIcon className="h-[22px] w-[22px]" /></span>
+            <span className="grepolis-nav-item__label">{t("play.sidebar.achievements")}</span>
           </button>
           <button onClick={onOpenActivityFeed} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap"><span style={{ fontSize: 20 }}>📰</span></span>
-            <span className="grepolis-nav-item__label">Feed</span>
+            <span className="grepolis-nav-item__icon-wrap"><FeedIcon className="h-[22px] w-[22px]" /></span>
+            <span className="grepolis-nav-item__label">{t("play.sidebar.feed")}</span>
           </button>
 
           <div className="grepolis-sidebar__divider" />
 
           <button onClick={onOpenSettings} className="grepolis-nav-item">
             <span className="grepolis-nav-item__icon-wrap">
-              <span style={{ fontSize: 20 }}>⚙️</span>
+              <GearIcon className="h-[22px] w-[22px]" />
             </span>
             <span className="grepolis-nav-item__label">{t("play.settings.title")}</span>
           </button>

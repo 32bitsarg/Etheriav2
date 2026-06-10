@@ -286,7 +286,8 @@
       "v0_2_4": "La Forja de la Guerra",
       "v0_5_0": "La Era del Viajero",
       "v0_5_1": "El Despertar de las Tierras",
-      "v0_5_3": "El Rostro de los Reinos"
+      "v0_5_3": "El Rostro de los Reinos",
+      "v0_5_4": "El Pulso de las Estaciones"
     },
     "items": {
       "v0_2_0": {
@@ -552,6 +553,20 @@
           "El changelog público ya no muestra entradas internas en la página principal.",
           "Recuperación automática cuando el juego queda con una versión vieja tras una actualización."
         ]
+      },
+      "v0_5_4": {
+        "added": [
+          "Íconos ilustrados propios en todo el HUD: misiones, maravilla, logros, feed y configuración."
+        ],
+        "changed": [
+          "HUD de escritorio y móvil pulidos: sin emojis, íconos consistentes y textos traducibles.",
+          "Íconos del menú lateral rehechos: ahora con fondo transparente y 60 veces más livianos."
+        ],
+        "fixed": [
+          "Efectos de estación: la nieve, hojas y pétalos ahora caen de verdad en el mapa y también se ven en la aldea (antes quedaban congelados o invisibles).",
+          "Los efectos de estación ya no se reinician solos cada vez que el juego actualiza datos.",
+          "Íconos del menú lateral que aparecían con un cuadrado blanco de fondo."
+        ]
       }
     }
   },
@@ -636,7 +651,12 @@
       "alliances": "Alianzas",
       "construction": "Construcción",
       "training": "Entrenamiento",
-      "renameCity": "Renombrar Ciudad"
+      "renameCity": "Renombrar Ciudad",
+      "renameHint": "Doble click para renombrar",
+      "dailyQuests": "Misiones",
+      "wonder": "Maravilla",
+      "achievements": "Logros",
+      "feed": "Feed"
     },
     "queues": {
       "title": "Colas",
