@@ -812,15 +812,38 @@ cityRouter.get("/world-map", async (c) => {
     db.from(COLLECTIONS.BARBARIAN_CAMPS).eq("status", "ACTIVE").get() as any,
   ]);
 
+  const mapUserIds = [...new Set((cities.data ?? []).map((city: any) => city.userId))] as string[];
+  const mapMemberships = mapUserIds.length > 0
+    ? await prisma.allianceMember.findMany({
+        where: { userId: { in: mapUserIds } },
+        select: { userId: true, allianceId: true },
+      })
+    : [];
+  const mapAllianceByUser = new Map(mapMemberships.map((m: any) => [m.userId, m.allianceId]));
+
+  // Whitelist public fields only — full city rows include resources, tech
+  // bonuses and other private state that must not leak to other players.
+  const publicCities = (cities.data ?? []).map((city: any) => ({
+    id: city.id,
+    name: city.name,
+    posX: city.posX,
+    posY: city.posY,
+    userId: city.userId,
+    worldId: city.worldId,
+    power: city.power,
+    race: city.race,
+    allianceId: mapAllianceByUser.get(city.userId) ?? null,
+  }));
+
   return c.json({
     map: config.map,
     spawn: config.spawn,
-    cities: cities.data ?? [],
+    cities: publicCities,
     barbarianCamps: camps.data ?? [],
   });
 });
 
-cityRouter.get("/world/movements", async (c) => {
+cityRouter.get("/world/movements", requireMatecitoAuth(), async (c) => {
   const movements = await getActiveMovements();
   return c.json({ movements });
 });

@@ -1,11 +1,12 @@
 import type { ChatChannel } from "@etheria/shared";
 import type { UnitType } from "@etheria/shared";
+import { prisma } from "@etheria/database";
 import { db, COLLECTIONS } from "../infrastructure/matecito.js";
 import { mergeRecordByLogicalId } from "../infrastructure/matecitoRecord.js";
 import { createStarterCityForUser } from "./cityCreation.js";
 import { getBotSimulationConfig, type BotSimulationConfig } from "./botConfigData.js";
 import { botActionType, decideBotAction, type BotActionType, type BotDecision, updateBotMemory } from "./botDecisionEngine.js";
-import { createBotRecord, deleteBotRecord, listBots, listDueBots, listRecentBotLogs, logBotAction, updateBotRecord, writeBotMetrics } from "./botRepository.js";
+import { createBotRecord, deleteBotRecord, listBots, listDueBots, listRecentBotLogs, logBotAction, pruneOldBotLogs, updateBotRecord, writeBotMetrics } from "./botRepository.js";
 import {
   attackCityAction,
   CityActionError,
@@ -96,6 +97,11 @@ async function logAction(input: {
   await logBotAction(input);
 }
 
+// Population/name repair barely changes: doing it on every tick cost
+// 2 reads por bot por mundo por tick. Once every 10 minutes is plenty.
+const ENSURE_POPULATION_INTERVAL_MS = 10 * 60_000;
+const lastEnsuredAt = new Map<string, number>();
+
 export async function ensureBotPopulation(config = getBotSimulationConfig(), worldId = "default") {
   const existing = await listBots(worldId);
   for (const bot of existing) {
@@ -153,11 +159,22 @@ export async function ensureBotPopulation(config = getBotSimulationConfig(), wor
   return created;
 }
 
-async function loadGlobalBotSnapshot(worldId: string): Promise<BotGlobalSnapshot> {
-  const [targetsRes, barbarianCampsRes, recentGlobalBattlesRes, seasonRes, alliancesRes, marketOffersRes] = await Promise.all([
+async function loadGlobalBotSnapshot(worldId: string, config: BotSimulationConfig): Promise<BotGlobalSnapshot> {
+  // The protection rules (anti-ganging cooldown, incoming attacks, post-raid
+  // recovery) only look back a bounded window — query exactly that window.
+  // The previous version took 200 arbitrary rows from BATTLES, so the
+  // protections silently degraded as the table grew.
+  const lookbackMinutes = Math.max(config.globalTargetCooldownMinutes, 120);
+  const battleCutoff = new Date(Date.now() - lookbackMinutes * 60_000);
+
+  const [targetsRes, barbarianCampsRes, recentGlobalBattles, seasonRes, alliancesRes, marketOffersRes] = await Promise.all([
     db.from(COLLECTIONS.CITIES).eq("worldId", worldId).limit(200).get() as any,
     db.from(COLLECTIONS.BARBARIAN_CAMPS).eq("worldId", worldId).eq("status", "ACTIVE").get() as any,
-    db.from(COLLECTIONS.BATTLES).limit(200).get() as any,
+    prisma.battle.findMany({
+      where: { startedAt: { gte: battleCutoff } },
+      orderBy: { startedAt: "desc" },
+      take: 500,
+    }),
     db.from(COLLECTIONS.WORLD_SEASON_STATE).eq("worldId", worldId).getFirst() as any,
     db.from(COLLECTIONS.ALLIANCES).eq("worldId", worldId).limit(100).get() as any,
     db.from(COLLECTIONS.MARKET_OFFERS).eq("status", "OPEN").limit(100).get() as any,
@@ -165,7 +182,11 @@ async function loadGlobalBotSnapshot(worldId: string): Promise<BotGlobalSnapshot
   return {
     targets: targetsRes.data ?? [],
     barbarianCamps: barbarianCampsRes.data ?? [],
-    recentGlobalBattles: recentGlobalBattlesRes.data ?? [],
+    recentGlobalBattles: recentGlobalBattles.map((b) => ({
+      ...b,
+      startedAt: b.startedAt.toISOString(),
+      resolvedAt: b.resolvedAt?.toISOString() ?? null,
+    })),
     seasonState: seasonRes.data ?? null,
     alliances: alliancesRes.data ?? [],
     marketOffers: marketOffersRes.data ?? [],
@@ -456,8 +477,11 @@ function updateStateAfterDecision(state: any, decision: BotDecision, now: Date) 
 export async function processDueBots(config = getBotSimulationConfig(), worldId = "default") {
   if (!config.enabled) return { processed: 0, errors: 0 };
 
-  await ensureBotPopulation(config, worldId);
   const now = new Date();
+  if ((lastEnsuredAt.get(worldId) ?? 0) < now.getTime() - ENSURE_POPULATION_INTERVAL_MS) {
+    lastEnsuredAt.set(worldId, now.getTime());
+    await ensureBotPopulation(config, worldId);
+  }
 
   // Recover ERROR bots after cooldown (with backoff)
   const allBots = await listBots(worldId);
@@ -477,10 +501,37 @@ export async function processDueBots(config = getBotSimulationConfig(), worldId 
   }
 
   const bots = await listDueBots(now, config.maxBotsPerTick, worldId);
-  const globalSnapshot = await loadGlobalBotSnapshot(worldId);
+  const globalSnapshot = await loadGlobalBotSnapshot(worldId, config);
 
+  // Each bot needs ~9 reads for its snapshot; running them strictly in
+  // sequence made the tick latency scale linearly with due bots.
+  const CONCURRENCY = 4;
   let errors = 0;
-  for (const bot of bots) {
+  for (let i = 0; i < bots.length; i += CONCURRENCY) {
+    const chunk = bots.slice(i, i + CONCURRENCY);
+    const results = await Promise.allSettled(
+      chunk.map((bot: any) => processSingleBot(bot, config, globalSnapshot, now))
+    );
+    for (const r of results) {
+      if (r.status === "rejected") {
+        errors++;
+        console.error("Bot processing crashed:", r.reason);
+      } else if (r.value.errored) {
+        errors++;
+      }
+    }
+  }
+
+  return { processed: bots.length, errors };
+}
+
+async function processSingleBot(
+  bot: { id: string; userId: string; cityId: string; state: any; profile: string },
+  config: BotSimulationConfig,
+  globalSnapshot: BotGlobalSnapshot,
+  now: Date
+): Promise<{ errored: boolean }> {
+  {
     // Simulate offline periods — bots shouldn't be active 24/7
     if (botShouldSleep(bot.id, now, config)) {
       await updateBotRecord(bot.id, {
@@ -488,11 +539,11 @@ export async function processDueBots(config = getBotSimulationConfig(), worldId 
         lastTickAt: now,
         nextTickAt: nextTickDate(config, config.tickSeconds),
       });
-      continue;
+      return { errored: false };
     }
 
     const snapshot = await loadBotSnapshot(bot, config, globalSnapshot);
-    const decision = decideBotAction(snapshot, bot.profile, config, now);
+    const decision = decideBotAction(snapshot, bot.profile as Parameters<typeof decideBotAction>[1], config, now);
     const actionType = botActionType(decision);
 
     try {
@@ -511,8 +562,8 @@ export async function processDueBots(config = getBotSimulationConfig(), worldId 
         lastTickAt: now,
         nextTickAt: nextTickDate(config),
       });
+      return { errored: false };
     } catch (error) {
-      errors++;
       const classified = classifyError(error);
       await logAction({
         botId: bot.id,
@@ -552,10 +603,9 @@ export async function processDueBots(config = getBotSimulationConfig(), worldId 
         nextTickAt: nextTickDate(config),
         state: updateBotMemory({ ...bot.state, errorCount }, decision, classified.status === "EXPECTED_BLOCKED" ? "blocked" : "error", now),
       });
+      return { errored: true };
     }
   }
-
-  return { processed: bots.length, errors };
 }
 
 export async function writeBotMetricsSnapshot(windowMinutes = 15) {
@@ -577,31 +627,24 @@ export async function writeBotMetricsSnapshot(windowMinutes = 15) {
     if (log.status === "EXPECTED_BLOCKED") errorsByType[realType].blocked++;
   }
 
-  const botCityIdsList = [...botCityIds];
-  const windowStartedIso = windowStartedAt.toISOString();
-  const windowEndedIso = windowEndedAt.toISOString();
-  const [resolvedBattlesRes, completedResearchRes] = await Promise.all([
-    botCityIdsList.length > 0
-      ? db.from(COLLECTIONS.BATTLES).limit(5000).get() as any
-      : Promise.resolve({ data: [] }),
-    botCityIdsList.length > 0
-      ? db.from(COLLECTIONS.CITY_TECHS).limit(5000).get() as any
-      : Promise.resolve({ data: [] }),
+  // Query only the metric window (the old version scanned 5000 rows of each
+  // table and filtered with Array.includes — O(n·m) per snapshot)
+  const [windowBattles, windowResearch] = await Promise.all([
+    botCityIds.size > 0
+      ? prisma.battle.findMany({
+          where: { resolvedAt: { gte: windowStartedAt, lte: windowEndedAt } },
+          select: { attackerCityId: true },
+        })
+      : Promise.resolve([]),
+    botCityIds.size > 0
+      ? prisma.cityTech.findMany({
+          where: { unlockedAt: { gte: windowStartedAt, lte: windowEndedAt } },
+          select: { cityId: true },
+        })
+      : Promise.resolve([]),
   ]);
-  const resolvedBattles = (resolvedBattlesRes.data ?? []).filter(
-    (b: any) =>
-      botCityIdsList.includes(b.attackerCityId) &&
-      b.resolvedAt &&
-      b.resolvedAt >= windowStartedIso &&
-      b.resolvedAt <= windowEndedIso
-  ).length;
-  const completedResearch = (completedResearchRes.data ?? []).filter(
-    (t: any) =>
-      botCityIdsList.includes(t.cityId) &&
-      t.unlockedAt &&
-      t.unlockedAt >= windowStartedIso &&
-      t.unlockedAt <= windowEndedIso
-  ).length;
+  const resolvedBattles = windowBattles.filter((b) => botCityIds.has(b.attackerCityId)).length;
+  const completedResearch = windowResearch.filter((t) => botCityIds.has(t.cityId)).length;
 
   await writeBotMetrics({
     windowStartedAt: windowStartedAt.toISOString(),
@@ -626,4 +669,8 @@ export async function writeBotMetricsSnapshot(windowMinutes = 15) {
     expectedBlocks: (logs as any[]).filter((log) => log.status === "EXPECTED_BLOCKED").length,
     unexpectedErrors: (logs as any[]).filter((log) => log.status === "UNEXPECTED_ERROR").length,
   })}`);
+
+  // Piggyback log retention on the metrics cadence
+  const pruned = await pruneOldBotLogs().catch(() => 0);
+  if (pruned > 0) console.log(`[bots] pruned ${pruned} old action logs`);
 }

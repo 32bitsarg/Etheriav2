@@ -12,7 +12,7 @@ const RESOURCES = [
   { key: "food", prodKey: "foodPerHour", storageKey: "maxFood" },
 ] as const;
 
-export function ResourceBar() {
+export function ResourceBar({ compact = false }: { compact?: boolean }) {
   const resources = useGameStore((s) => s.resources);
   const production = useGameStore((s) => s.production);
   const storage = useGameStore((s) => s.storage);
@@ -40,7 +40,7 @@ export function ResourceBar() {
 
   return (
     <div className="resource-bar-shell pointer-events-auto">
-      <div className="flex items-center gap-4">
+      <div className={`flex items-center ${compact ? "gap-2" : "gap-4"}`}>
         {RESOURCES.map(({ key, prodKey, storageKey }) => {
           const value = liveResources[key as keyof typeof liveResources] ?? 0;
           const prod = production[prodKey as keyof typeof production] ?? 0;
@@ -49,24 +49,28 @@ export function ResourceBar() {
           const near = pct >= 90;
 
           return (
-            <div key={key} className="flex items-center gap-1.5 shrink-0">
-              <ResourceIconSVG type={key as any} size={14} />
-              <span className="text-[13px] font-bold tabular-nums text-stone-800">
+            <div key={key} className={`flex items-center shrink-0 ${compact ? "gap-1" : "gap-1.5"}`}>
+              <ResourceIconSVG type={key as any} size={compact ? 12 : 14} />
+              <span className={`font-bold tabular-nums ${compact ? "text-[11px]" : "text-[13px]"} ${near ? "text-rose-600" : "text-stone-800"}`}>
                 {formatNumber(Math.floor(value))}
               </span>
-              <span className={`text-[10px] font-semibold ${near ? "text-rose-600" : "text-emerald-600"}`}>
-                +{prod}/h
-              </span>
+              {!compact && (
+                <span className={`text-[10px] font-semibold ${near ? "text-rose-600" : "text-emerald-600"}`}>
+                  +{prod}/h
+                </span>
+              )}
             </div>
           );
         })}
 
-        <div className="flex items-center gap-1.5 border-l border-stone-200 pl-3 shrink-0">
-          <ResourceIconSVG type="gems" size={14} />
-          <span className="text-[13px] font-bold tabular-nums text-stone-800">
-            {formatNumber(Math.floor(liveResources.gems))}
-          </span>
-        </div>
+        {(!compact || liveResources.gems > 0) && (
+          <div className={`flex items-center shrink-0 border-l border-stone-200 ${compact ? "gap-1 pl-2" : "gap-1.5 pl-3"}`}>
+            <ResourceIconSVG type="gems" size={compact ? 12 : 14} />
+            <span className={`font-bold tabular-nums text-stone-800 ${compact ? "text-[11px]" : "text-[13px]"}`}>
+              {formatNumber(Math.floor(liveResources.gems))}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

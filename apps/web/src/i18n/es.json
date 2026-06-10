@@ -879,7 +879,11 @@
       "fog": "Niebla de Guerra",
       "caravan": "Caravana Comercial",
       "army": "Ejército en Marcha",
-      "discovery": "Territorio Descubierto"
+      "discovery": "Territorio Descubierto",
+      "march": {
+        "attack": "Marcha militar",
+        "trade": "Caravana comercial"
+      }
     },
     "rename": {
       "title": "Cambiar Nombre",
@@ -1226,6 +1230,14 @@
       "joinTitle": "Unirse al Rally",
       "troopsPrompt": "¿Cuántas tropas envías?",
       "confirmJoin": "Unirme al Rally"
+    },
+    "mobile": {
+      "more": "Más"
+    },
+    "march": {
+      "attackArrived": "⚔️ Tu ejército llegó a destino",
+      "tradeArrived": "📦 Tu caravana llegó a destino",
+      "troopsReturned": "🏠 Tus tropas volvieron a casa"
     }
   },
   "race": {

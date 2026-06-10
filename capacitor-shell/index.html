@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Conquest of Etheria</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0b1111; color: #e9e2cf; font-family: system-ui, sans-serif; }
+    .wrap { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; padding: 24px; }
+    button { background: #d7a84c; color: #0b1111; border: 0; border-radius: 12px; padding: 14px 28px; font-size: 16px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <!-- Fallback local: solo se muestra si no hay conexión con conquestofetheria.com -->
+  <div class="wrap">
+    <h1>Conquest of Etheria</h1>
+    <p>No pudimos conectar con el servidor.<br/>Verificá tu conexión a internet.</p>
+    <button onclick="location.reload()">Reintentar</button>
+  </div>
+</body>
+</html>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { BuildingType, UnitType } from "@etheria/shared";
 import { useCountdown } from "@/hooks/useCountdown";
@@ -141,37 +141,27 @@ export function VillageImmersiveDock() {
     cancelResearchQueue.variables?.queueId ??
     null;
 
+  const sections = [
+    { label: t("play.dock.construction"), emoji: "🏗️", items: constructionItems },
+    { label: t("play.dock.training"), emoji: "🛡️", items: trainingItems },
+    { label: t("play.dock.research"), emoji: "📚", items: researchItems },
+  ];
+
   return (
     <aside className="pointer-events-auto absolute inset-x-3 bottom-3 max-md:bottom-[4.5rem] z-40 flex items-center gap-1.5 rounded-2xl border border-stone-200/70 bg-white/82 px-3 py-2 shadow-lg shadow-stone-900/5 backdrop-blur-xl">
-      <QueueSection
-        label={t("play.dock.construction")}
-        emoji="🏗️"
-        accentColor="#d97706"
-        items={constructionItems}
-        cancellingId={cancellingId}
-        onCancel={handleCancel}
-        cancelLabel={t("play.dock.cancel")}
-      />
-      <div className="mx-1 h-8 w-px shrink-0 bg-stone-200" />
-      <QueueSection
-        label={t("play.dock.training")}
-        emoji="🛡️"
-        accentColor="#0284c7"
-        items={trainingItems}
-        cancellingId={cancellingId}
-        onCancel={handleCancel}
-        cancelLabel={t("play.dock.cancel")}
-      />
-      <div className="mx-1 h-8 w-px shrink-0 bg-stone-200" />
-      <QueueSection
-        label={t("play.dock.research")}
-        emoji="📚"
-        accentColor="#7c3aed"
-        items={researchItems}
-        cancellingId={cancellingId}
-        onCancel={handleCancel}
-        cancelLabel={t("play.dock.cancel")}
-      />
+      {sections.map((section, i) => (
+        <React.Fragment key={section.label}>
+          {i > 0 && <div className={`mx-1 h-8 w-px shrink-0 bg-stone-200 max-md:hidden`} />}
+          <QueueSection
+            label={section.label}
+            emoji={section.emoji}
+            items={section.items}
+            cancellingId={cancellingId}
+            onCancel={handleCancel}
+            cancelLabel={t("play.dock.cancel")}
+          />
+        </React.Fragment>
+      ))}
     </aside>
   );
 }
@@ -179,7 +169,6 @@ export function VillageImmersiveDock() {
 function QueueSection({
   label,
   emoji,
-  accentColor,
   items,
   cancellingId,
   onCancel,
@@ -187,21 +176,21 @@ function QueueSection({
 }: {
   label: string;
   emoji: string;
-  accentColor: string;
   items: QueueItem[];
   cancellingId: string | null;
   onCancel: (item: QueueItem) => void;
   cancelLabel: string;
 }) {
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-1.5">
+    // On mobile, sections with nothing queued disappear so active items get the space
+    <div className={`flex min-w-0 flex-1 items-center gap-1.5 ${items.length === 0 ? "max-md:hidden" : ""}`}>
       {/* Section label */}
       <div className="flex shrink-0 flex-col items-center gap-0.5 pr-1">
         <span className="text-[15px] leading-none">{emoji}</span>
         <span className="text-[8px] font-bold uppercase tracking-wider text-stone-400">{label}</span>
       </div>
 
-      {/* 3 horizontal slots */}
+      {/* 3 horizontal slots (empty placeholders are desktop-only) */}
       {Array.from({ length: MAX_SLOTS }).map((_, i) => {
         const item = items[i];
         return item ? (
@@ -297,7 +286,7 @@ function QueueSlot({
 
 function EmptySlot() {
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-dashed border-stone-150 px-2 py-1.5 opacity-30">
+    <div className="max-md:hidden flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-dashed border-stone-150 px-2 py-1.5 opacity-30">
       <div className="h-7 w-7 shrink-0 rounded-lg bg-stone-100" />
       <div className="flex-1">
         <div className="h-2 w-12 rounded bg-stone-100" />

@@ -70,7 +70,7 @@ function formatTimeRemaining(endsAt: string): string {
   return days > 0 ? `${days}d ${hours}h` : `${hours}h`;
 }
 
-export function SeasonHUD() {
+export function SeasonHUD({ compact = false }: { compact?: boolean }) {
   const { t } = useI18n();
   const cachedSeasonState = useGameStore((s) => s.seasonState);
   const { data, isLoading } = useWorldSeason(!cachedSeasonState);
@@ -81,6 +81,20 @@ export function SeasonHUD() {
   const intensityPct = Math.round(intensity * 100);
   const modifiers = SEASON_MODIFIERS[currentSeason] ?? [];
   const asset = SEASON_ASSETS[currentSeason];
+
+  if (compact) {
+    return (
+      <div className="pointer-events-auto flex shrink-0 items-center gap-1 rounded-lg border border-stone-200 bg-white/85 px-1.5 py-1 backdrop-blur-md shadow-sm">
+        {asset ? (
+          <img src={asset.icon} alt={t(SEASON_KEYS[currentSeason] ?? "")} className="h-5 w-5 object-contain" />
+        ) : (
+          <span className="text-[9px] text-stone-400">{currentSeason.slice(0, 2)}</span>
+        )}
+        <span className="font-mono text-[9px] text-stone-500">{formatTimeRemaining(endsAt)}</span>
+        {currentSeason === "WINTER" && <span className="text-[10px]">⚠️</span>}
+      </div>
+    );
+  }
 
   return (
     <div className="pointer-events-auto flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white/85 px-2.5 py-1.5 backdrop-blur-md shadow-sm">

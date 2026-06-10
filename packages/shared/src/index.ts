@@ -502,6 +502,9 @@ export const WorldMovementSchema = z.object({
   arrivesAt: z.string().datetime(),
   resolvedAt: z.string().datetime().optional(),
   returnsAt: z.string().datetime().optional(),
+  playerName: z.string().optional(),
+  allianceId: z.string().optional(),
+  allianceTag: z.string().optional(),
 });
 
 export type WorldMovement = z.infer<typeof WorldMovementSchema>;

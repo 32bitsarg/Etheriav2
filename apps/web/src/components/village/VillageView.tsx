@@ -13,19 +13,17 @@ import { WorldMapHTMLCanvas } from "@/components/worldmap/WorldMapHTMLCanvas";
 import { BarbarianAttackAlertBanner } from "@/components/barbarians/BarbarianAttackAlertBanner";
 import { WinterPressureBanner } from "@/components/barbarians/WinterPressureBanner";
 import { BarbarianCampModal } from "@/components/barbarians/BarbarianCampModal";
-import { ResourceBar } from "@/components/ui/ResourceBar";
-import { SeasonHUD } from "@/components/game/SeasonHUD";
-import { ActiveBuffsPanel } from "@/components/game/ActiveBuffsPanel";
 import { SettingsModal } from "@/components/village/SettingsModal";
-import { SidebarNavIcon } from "@/components/ui/SidebarNavIcon";
 import { VillageImmersiveDock } from "@/components/village/VillageImmersiveDock";
-import { MobileBottomNav } from "@/components/ui/MobileBottomNav";
+import { MobileHUD } from "@/components/hud/MobileHUD";
+import { DesktopHUD } from "@/components/hud/DesktopHUD";
+import type { HudActions } from "@/components/hud/hudTypes";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { OrientationLock } from "@/components/game/OrientationLock";
-import { NotificationBell } from "@/components/game/NotificationBell";
+import { SeasonalParticles } from "@/components/game/SeasonalParticles";
 import { DailyQuestsPanel } from "@/components/game/DailyQuestsPanel";
 import { RankingsPanel } from "@/components/game/RankingsPanel";
 import { RallyBanner } from "@/components/game/RallyBanner";
-import { DailyEventBanner } from "@/components/game/DailyEventBanner";
 import { WonderPanel } from "@/components/game/WonderPanel";
 import { AchievementsPanel } from "@/components/game/AchievementsPanel";
 import { ActivityFeedPanel } from "@/components/game/ActivityFeedPanel";
@@ -120,7 +118,56 @@ export function VillageView() {
     (m) => m.type === "TRADE" && (m.from.name === myName || m.to.name === myName)
   );
 
+  // Notificación de llegada: detecta transiciones de mis marchas entre polls
+  const prevOwnMovesRef = useRef<Map<string, { status: string; toName: string; type: string }>>(new Map());
+  useEffect(() => {
+    if (!worldMoves || !myName) return;
+    const ownNow = new Map(
+      worldMoves
+        .filter((m) => m.from.name === myName)
+        .map((m) => [m.id, { status: m.status, toName: m.to.name, type: m.type }])
+    );
+    const prev = prevOwnMovesRef.current;
+    if (prev.size > 0) {
+      for (const [id, before] of prev) {
+        const after = ownNow.get(id);
+        if (before.status === "MARCHING" && after?.status === "RETURNING") {
+          addToast({
+            type: "info",
+            title: before.type === "TRADE" ? t("play.march.tradeArrived") : t("play.march.attackArrived"),
+            message: before.toName,
+          });
+        } else if (!after && before.status === "RETURNING") {
+          addToast({ type: "success", title: t("play.march.troopsReturned"), message: "" });
+        }
+      }
+    }
+    prevOwnMovesRef.current = ownNow;
+  }, [worldMoves, myName, addToast, t]);
+
   const resources = getLiveResources();
+  const isMobile = useIsMobile();
+  const unreadTotal = (mailData?.unreadCount ?? 0) + (reportsData?.unreadCount ?? 0) + unreadBattleReports;
+  const handleViewChange = useCallback((view: ViewId) => {
+    setActiveView(view);
+    setSelectedBuildingId(null);
+  }, []);
+  const hudProps: HudActions = {
+    activeView,
+    onViewChange: handleViewChange,
+    cityName,
+    onRename: () => setIsRenameOpen(true),
+    unreadCount: unreadTotal,
+    onOpenMail: () => setIsMailOpen(true),
+    onOpenAlliance: () => setIsAllianceOpen(true),
+    onOpenQuests: () => setIsQuestsOpen(true),
+    onOpenDailyQuests: () => setIsDailyQuestsOpen(true),
+    onOpenRankings: () => setIsNewRankingsOpen(true),
+    onOpenWonder: () => setIsWonderOpen(true),
+    onOpenAchievements: () => setIsAchievementsOpen(true),
+    onOpenActivityFeed: () => setIsActivityFeedOpen(true),
+    onOpenSettings: () => setIsSettingsOpen(true),
+  };
   const isPuebloView = activeView === "pueblo";
   const isMapView = activeView === "mapa";
   const isFullscreenView = isPuebloView || isMapView; 
@@ -146,6 +193,29 @@ export function VillageView() {
 
   const selectedBuilding = uniqueBuildings.find((b) => b.id === selectedBuildingId);
   const isModalOpen = !!selectedBuilding || isMailOpen || isAllianceOpen || isQuestsOpen || isRenameOpen || isSettingsOpen || isDailyQuestsOpen || isNewRankingsOpen || isWonderOpen || isAchievementsOpen || isActivityFeedOpen;
+
+  // Escape closes whatever panel/modal is open
+  useEffect(() => {
+    if (!isModalOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      setSelectedBuildingId(null);
+      setIsMailOpen(false);
+      setIsAllianceOpen(false);
+      setIsQuestsOpen(false);
+      setIsRenameOpen(false);
+      setIsSettingsOpen(false);
+      setIsDailyQuestsOpen(false);
+      setIsNewRankingsOpen(false);
+      setIsWonderOpen(false);
+      setIsAchievementsOpen(false);
+      setIsActivityFeedOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isModalOpen]);
 
   const handleUpgrade = useCallback((id: string, type: string, currentLevel: number) => {
     if (!cityId) return;
@@ -220,107 +290,12 @@ export function VillageView() {
       <BarbarianAttackAlertBanner />
       <WinterPressureBanner />
 
-      {/* Top Bar — full width, grid row 1 */}
-      <header className="village-topbar pointer-events-auto col-span-3 row-start-1 flex items-center gap-1 px-2 sm:gap-2 sm:px-4 z-50 h-12">
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          <span className="hidden sm:contents">
-            <SeasonHUD />
-            <ActiveBuffsPanel />
-            <DailyEventBanner />
-          </span>
-        </div>
-        <span
-          className="flex-1 text-center text-xs sm:text-sm font-semibold text-stone-700 tracking-wide truncate cursor-pointer hover:text-amber-600 select-none"
-          onDoubleClick={() => setIsRenameOpen(true)}
-          title="Doble click para renombrar"
-        >
-          {cityName || t("play.sidebar.village")}
-        </span>
-        <div className="shrink-0 flex items-center gap-1 sm:gap-2">
-          <ResourceBar />
-          <NotificationBell />
-        </div>
-      </header>
-
-      <aside className="grepolis-sidebar village-sidebar max-md:hidden">
-        <nav className="grepolis-sidebar__nav relative pb-2">
-          {/* View switchers */}
-          <button onClick={() => { setActiveView("pueblo"); setSelectedBuildingId(null); }} className={`grepolis-nav-item ${activeView === "pueblo" ? "active" : ""}`}>
-            <span className="grepolis-nav-item__icon-wrap">
-              <SidebarNavIcon id="village" size={22} />
-            </span>
-            <span className="grepolis-nav-item__label">{t("play.sidebar.village")}</span>
-          </button>
-          <button onClick={() => { setActiveView("mapa"); setSelectedBuildingId(null); }} className={`grepolis-nav-item ${activeView === "mapa" ? "active" : ""}`}>
-            <span className="grepolis-nav-item__icon-wrap">
-              <SidebarNavIcon id="map" size={22} />
-            </span>
-            <span className="grepolis-nav-item__label">{t("play.sidebar.map")}</span>
-          </button>
-
-          <div className="grepolis-sidebar__divider" />
-
-          <button onClick={() => setIsNewRankingsOpen(true)} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap">
-              <SidebarNavIcon id="summary" size={22} />
-            </span>
-            <span className="grepolis-nav-item__label">{t("play.sidebar.ranking")}</span>
-          </button>
-          <button onClick={() => setIsMailOpen(true)} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap relative">
-              <SidebarNavIcon id="mail" size={22} />
-              {((mailData?.unreadCount ?? 0) + (reportsData?.unreadCount ?? 0) + unreadBattleReports) > 0 && (
-                <span className="grepolis-nav-item__badge">{(mailData?.unreadCount ?? 0) + (reportsData?.unreadCount ?? 0) + unreadBattleReports}</span>
-              )}
-            </span>
-            <span className="grepolis-nav-item__label">{t("play.sidebar.mail")}</span>
-          </button>
-          <button onClick={() => setIsQuestsOpen(true)} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap">
-              <SidebarNavIcon id="quests" size={22} />
-            </span>
-            <span className="grepolis-nav-item__label">{t("play.quests.title")}</span>
-          </button>
-          <button onClick={() => setIsAllianceOpen(true)} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap">
-              <SidebarNavIcon id="army" size={22} />
-            </span>
-            <span className="grepolis-nav-item__label">{t("play.sidebar.alliances")}</span>
-          </button>
-
-          <div className="grepolis-sidebar__divider" />
-
-          <button onClick={() => setIsDailyQuestsOpen(true)} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap"><span style={{ fontSize: 20 }}>📋</span></span>
-            <span className="grepolis-nav-item__label">Misiones</span>
-          </button>
-          <button onClick={() => setIsNewRankingsOpen(true)} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap"><span style={{ fontSize: 20 }}>📊</span></span>
-            <span className="grepolis-nav-item__label">Rankings</span>
-          </button>
-          <button onClick={() => setIsWonderOpen(true)} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap"><span style={{ fontSize: 20 }}>🏛️</span></span>
-            <span className="grepolis-nav-item__label">Maravilla</span>
-          </button>
-          <button onClick={() => setIsAchievementsOpen(true)} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap"><span style={{ fontSize: 20 }}>🏆</span></span>
-            <span className="grepolis-nav-item__label">Logros</span>
-          </button>
-          <button onClick={() => setIsActivityFeedOpen(true)} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap"><span style={{ fontSize: 20 }}>📰</span></span>
-            <span className="grepolis-nav-item__label">Feed</span>
-          </button>
-
-          <div className="grepolis-sidebar__divider" />
-
-          <button onClick={() => setIsSettingsOpen(true)} className="grepolis-nav-item">
-            <span className="grepolis-nav-item__icon-wrap">
-              <span style={{ fontSize: 20 }}>⚙️</span>
-            </span>
-            <span className="grepolis-nav-item__label">{t("play.settings.title")}</span>
-          </button>
-        </nav>
-      </aside>
+      {/* HUD: layouts separados mobile/desktop (sin display:none compartido) */}
+      {isMobile !== null && (isMobile ? (
+        <MobileHUD {...hudProps} />
+      ) : (
+        <DesktopHUD {...hudProps} />
+      ))}
 
       {/* Main Content — absolute full-width behind sidebars */}
       <main className={`absolute top-[var(--topbar-height)] left-0 right-0 bottom-0 z-10 min-w-0 min-h-0 overflow-hidden ${isModalOpen ? "pointer-events-none" : ""}`}>
@@ -354,6 +329,10 @@ export function VillageView() {
             t={t}
           />
         )}
+        <SeasonalParticles
+          season={seasonData?.season?.currentSeason}
+          intensity={seasonData?.season?.intensity}
+        />
       </main>
 
       {/* Bottom dock — queues */}
@@ -393,16 +372,6 @@ export function VillageView() {
       {isAchievementsOpen && <AchievementsPanel onClose={() => setIsAchievementsOpen(false)} />}
       {isActivityFeedOpen && <ActivityFeedPanel onClose={() => setIsActivityFeedOpen(false)} />}
       <BarbarianCampModal />
-
-      {/* Mobile bottom navigation dock */}
-      <MobileBottomNav
-        activeView={activeView}
-        onViewChange={setActiveView}
-        onRankingsOpen={() => setIsNewRankingsOpen(true)}
-        onMailOpen={() => setIsMailOpen(true)}
-        onAllianceOpen={() => setIsAllianceOpen(true)}
-        unreadCount={(mailData?.unreadCount ?? 0) + (reportsData?.unreadCount ?? 0) + unreadBattleReports}
-      />
 
       {/* Force landscape on mobile */}
       <OrientationLock />
@@ -790,7 +759,12 @@ function MapaView({ cityName, resources, storage, production, allianceData, move
           mapConfig={worldMap?.map ?? null}
           myCityId={myCityId}
           barbarianCamps={barbarianCamps}
-          movements={movements}
+          movements={movements.map((m: any) => ({
+            ...m,
+            relation: m.from.name === cityName || m.to.name === cityName
+              ? "own"
+              : getMapRelation({ allianceId: m.allianceId }, allianceData),
+          }))}
           seasonState={seasonData?.season ?? null}
           onSelectCityId={(cityId, position) => {
             setSelectedCityId(cityId);

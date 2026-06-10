@@ -46,6 +46,15 @@ const ARCHETYPE_COLORS: Record<string, string> = {
 
 const ZOOM_STEP = 0.06;
 const PAN_THRESHOLD = 6;
+const FOG_RADIUS = 140;
+
+const MOVEMENT_RELATION_COLORS: Record<string, string> = {
+  own: "#e8c468",
+  ally: "#49f0c5",
+  peace: "#6fc8ff",
+  hostile: "#d75f43",
+  neutral: "#b9b3a4",
+};
 
 export function WorldMapHTMLCanvas({
   cities,
@@ -65,15 +74,19 @@ export function WorldMapHTMLCanvas({
   onCenterMyCity?: () => void;
   barbarianCamps?: BarbarianCamp[];
   onSelectCamp?: (camp: BarbarianCamp, position: { x: number; y: number }) => void;
-  movements?: WorldMovement[];
+  movements?: (WorldMovement & { relation?: "ally" | "peace" | "hostile" | "neutral" | "own" })[];
   seasonState?: any;
 }) {
   const { t } = useI18n();
+  const [hoveredMovementId, setHoveredMovementId] = useState<string | null>(null);
   const outerRef = useRef<HTMLDivElement>(null);
   const cameraRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 900, h: 620 });
 
   const cam = useRef({ x: 0, y: 0, zoom: 1 });
+  // Camera/fog only repaint when something actually changed — the rAF loop
+  // checks this flag instead of redrawing the full fog canvas every frame.
+  const camDirty = useRef(true);
   const hasStarted = useRef(false);
   const pointerState = useRef<{
     startClientX: number; startClientY: number;
@@ -187,6 +200,7 @@ export function WorldMapHTMLCanvas({
 
   const updateMovements = useCallback(() => {
     const now = Date.now();
+    const myCity = myCityId ? cities.find((c) => c.id === myCityId) : null;
     for (const m of movements) {
       const isReturning = m.status === "RETURNING" && !!m.returnsAt;
       const startT = isReturning
@@ -208,11 +222,18 @@ export function WorldMapHTMLCanvas({
       const wy = origin.y + (destination.y - origin.y) * progress;
       const el = movementEls.current.get(m.id);
       if (!el) continue;
+      // Fog of war: foreign marches only show while inside my visibility circle
+      if (myCity && m.relation !== "own") {
+        const dist = Math.hypot(wx - myCity.posX, wy - myCity.posY);
+        const visible = dist <= FOG_RADIUS;
+        el.style.display = visible ? "" : "none";
+        if (!visible) continue;
+      }
       const l = worldToLocal(wx, wy);
       el.style.left = `${l.x}px`;
       el.style.top = `${l.y}px`;
     }
-  }, [movements, worldToLocal]);
+  }, [movements, worldToLocal, cities, myCityId]);
 
   // ─── rAF loop ────────────────────────────────────────────────────────────
 
@@ -222,13 +243,29 @@ export function WorldMapHTMLCanvas({
   drawFogRef.current = drawFog;
   const updateMovementsRef = useRef(updateMovements);
   updateMovementsRef.current = updateMovements;
+  const movementsRef = useRef(movements);
+  movementsRef.current = movements;
+
+  // Repaint camera/fog when data they depend on changes (not just input)
+  useEffect(() => {
+    camDirty.current = true;
+  }, [cities, myCityId, seasonState, size, movements]);
 
   useEffect(() => {
     let raf = 0;
-    const loop = () => {
-      applyCameraRef.current();
-      drawFogRef.current();
-      updateMovementsRef.current();
+    let lastMovementTick = 0;
+    const loop = (now: number) => {
+      if (camDirty.current) {
+        camDirty.current = false;
+        applyCameraRef.current();
+        drawFogRef.current();
+      }
+      // March interpolation is slow-moving: ~7fps is visually identical and
+      // avoids per-frame layout writes when the map is idle.
+      if (movementsRef.current.length > 0 && now - lastMovementTick > 140) {
+        lastMovementTick = now;
+        updateMovementsRef.current();
+      }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -273,6 +310,7 @@ export function WorldMapHTMLCanvas({
     }
     const clamped = clampCamera(cx, cy, initialZoom);
     cam.current = clamped;
+    camDirty.current = true;
     hasStarted.current = true;
   }, [mapConfig, cities, myCityId, halfW, halfH, clampCamera]);
 
@@ -293,6 +331,7 @@ export function WorldMapHTMLCanvas({
       cam.current.y * (1 - s) + ty * s,
       cam.current.zoom * (1 - s) + z * s
     );
+    camDirty.current = true;
   }, [cities, myCityId, size, halfW, halfH, mapConfig, clampCamera]);
 
   // ── Input: wheel zoom ────────────────────────────────────────────────────
@@ -313,6 +352,7 @@ export function WorldMapHTMLCanvas({
       const cx = mx - (mx - cam.current.x) * s;
       const cy = my - (my - cam.current.y) * s;
       cam.current = clampCamera(cx, cy, newZoom);
+      camDirty.current = true;
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
@@ -338,6 +378,7 @@ export function WorldMapHTMLCanvas({
     if (!ps.hasPanned && dist < PAN_THRESHOLD) return;
     ps.hasPanned = true;
     cam.current = clampCamera(ps.startCamX + dx, ps.startCamY + dy, cam.current.zoom);
+    camDirty.current = true;
   }, [clampCamera]);
 
   const onPointerUp = useCallback(() => { pointerState.current = null; }, []);
@@ -366,6 +407,7 @@ export function WorldMapHTMLCanvas({
     const newZoom = Math.min(zMax, Math.max(zMin, oldZoom * factor));
     const s = newZoom / oldZoom;
     cam.current = clampCamera(midX - (midX - cam.current.x) * s, midY - (midY - cam.current.y) * s, newZoom);
+    camDirty.current = true;
     pinch.current.dist = newDist;
   }, [clampCamera, zMin, zMax]);
 
@@ -479,7 +521,7 @@ export function WorldMapHTMLCanvas({
                 />
                 {isMe && (
                   <div
-                    className="absolute rounded-full pointer-events-none"
+                    className="absolute rounded-full pointer-events-none animate-pulse"
                     style={{
                       width: 28, height: 28, top: -4,
                       border: `2px solid ${color}`,
@@ -534,12 +576,42 @@ export function WorldMapHTMLCanvas({
               );
             })}
 
+          {/* March trail for the hovered movement */}
+          {(() => {
+            const hovered = movements.find((m) => m.id === hoveredMovementId);
+            if (!hovered) return null;
+            const from = worldToLocal(hovered.from.x, hovered.from.y);
+            const to = worldToLocal(hovered.to.x, hovered.to.y);
+            const color = MOVEMENT_RELATION_COLORS[hovered.relation ?? "neutral"];
+            return (
+              <svg
+                className="absolute inset-0 pointer-events-none"
+                width={worldW}
+                height={worldH}
+                style={{ zIndex: 7 }}
+              >
+                <line
+                  x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+                  stroke={color} strokeWidth={1.5} strokeDasharray="6 5"
+                  strokeLinecap="round" opacity={0.8}
+                  style={{ animation: "march-trail-dash 0.8s linear infinite" }}
+                />
+                <circle cx={from.x} cy={from.y} r={3} fill="none" stroke={color} strokeWidth={1.2} opacity={0.7} />
+                <circle cx={to.x} cy={to.y} r={4} fill={color} opacity={0.55} />
+              </svg>
+            );
+          })()}
+
           {/* Movement markers */}
           {movements.map((m) => {
             const isTrade = m.type === "TRADE";
             const l = worldToLocal(m.from.x, m.from.y);
-            const color = isTrade ? "#ffe066" : "#ff8888";
+            const color = MOVEMENT_RELATION_COLORS[m.relation ?? "neutral"] ?? (isTrade ? "#ffe066" : "#ff8888");
             const icon = isTrade ? "📦" : "⚔️";
+            const isHovered = hoveredMovementId === m.id;
+            const etaMs = new Date(m.status === "RETURNING" && m.returnsAt ? m.returnsAt : m.arrivesAt).getTime() - Date.now();
+            const etaMin = Math.max(0, Math.floor(etaMs / 60000));
+            const etaSec = Math.max(0, Math.floor((etaMs % 60000) / 1000));
             return (
               <div
                 key={m.id}
@@ -547,15 +619,34 @@ export function WorldMapHTMLCanvas({
                   if (el) movementEls.current.set(m.id, el);
                   else movementEls.current.delete(m.id);
                 }}
-                className="absolute flex flex-col items-center pointer-events-none"
+                className="absolute flex flex-col items-center pointer-events-auto cursor-pointer"
                 style={{
                   left: l.x, top: l.y,
                   transform: "translate(-50%, -50%)",
-                  zIndex: 8, willChange: "left, top",
+                  zIndex: isHovered ? 9 : 8, willChange: "left, top",
                 }}
+                onPointerEnter={() => setHoveredMovementId(m.id)}
+                onPointerLeave={() => setHoveredMovementId((id) => (id === m.id ? null : id))}
+                onClick={(e) => { e.stopPropagation(); setHoveredMovementId((id) => (id === m.id ? null : m.id)); }}
               >
                 <span style={{ fontSize: 11, filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.7))" }}>{icon}</span>
                 <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}` }} />
+                {isHovered && (
+                  <div
+                    className="absolute bottom-full mb-1 whitespace-nowrap rounded-md border px-2 py-1 text-[9px] leading-snug pointer-events-none"
+                    style={{ backgroundColor: "rgba(5,7,7,0.92)", borderColor: `${color}66`, color: "#e9e2cf" }}
+                  >
+                    <span style={{ color }}>
+                      {m.playerName ?? m.from.name}
+                      {m.allianceTag ? ` [${m.allianceTag}]` : ""}
+                    </span>
+                    {" → "}
+                    {m.status === "RETURNING" ? m.from.name : m.to.name}
+                    <div className="text-white/60">
+                      {isTrade ? t("play.map.march.trade") : t("play.map.march.attack")} · {etaMin}m {etaSec}s
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}

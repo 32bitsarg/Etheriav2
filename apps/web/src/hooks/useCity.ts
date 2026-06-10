@@ -4,6 +4,7 @@ import type { VillageLayoutData } from "@/lib/villageLayout";
 import type { WorldTerrainMaskData } from "@/lib/worldTerrainMask";
 import villageLayoutJson from "@/data/village-layout.json";
 import { normalizeVillageLayout } from "@/lib/villageLayout";
+import { adminHeaders } from "@/lib/adminClient";
 const API_BASE = "/api";
 const pendingUpgradeKeys = new Set<string>();
 export const PLAY_INITIAL_TIMEOUT_MS = 15_000;
@@ -165,9 +166,13 @@ export function useCity(cityId: string | null) {
         .map((t) => new Date(t).getTime() - now)
         .sort((a, b) => a - b)[0] ?? Infinity;
 
-      return soonest < 10_000 ? 1000 : 2000;
+      // Countdown display is client-side (useCountdown); polling only needs to
+      // catch completions, so back off when nothing finishes soon.
+      if (soonest < 10_000) return 1_000;
+      if (soonest < 60_000) return 5_000;
+      return 20_000;
     },
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -554,7 +559,7 @@ export function useSaveVillageLayout() {
     mutationFn: async (layout: VillageLayoutData) => {
       const res = await fetch("/api/editor/layout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: adminHeaders(),
         body: JSON.stringify(layout),
       });
       if (!res.ok) throw new Error("Failed to save village layout");
@@ -587,7 +592,7 @@ export function useSaveWorldTerrainMask() {
     mutationFn: async (mask: WorldTerrainMaskData) => {
       const res = await fetch("/api/editor/world-terrain", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: adminHeaders(),
         body: JSON.stringify(mask),
       });
       if (!res.ok) throw new Error("Failed to save world terrain mask");

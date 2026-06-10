@@ -1,3 +1,4 @@
+import { prisma } from "@etheria/database";
 import { db, COLLECTIONS } from "../infrastructure/matecito.js";
 import { mergeRecordByLogicalId } from "../infrastructure/matecitoRecord.js";
 
@@ -90,10 +91,21 @@ export async function logBotAction(input: {
 }
 
 export async function listRecentBotLogs(since: Date) {
-  // MatecitoDB doesn't support .gte() — fetch recent logs and filter in JS
-  const res = await db.from(COLLECTIONS.BOT_ACTION_LOGS).get() as any;
-  const sinceIso = since.toISOString();
-  return (res.data ?? []).filter((log: any) => log.createdAt && log.createdAt >= sinceIso);
+  // Filter server-side: the logs table grows unbounded, fetching it whole
+  // and filtering in JS got slower with every passing day.
+  const logs = await prisma.botActionLog.findMany({
+    where: { createdAt: { gte: since } },
+    orderBy: { createdAt: "desc" },
+    take: 10_000,
+  });
+  return logs.map((log) => ({ ...log, createdAt: log.createdAt.toISOString() }));
+}
+
+// Keep the action-log table bounded; logs older than this add nothing
+export async function pruneOldBotLogs(maxAgeDays = 7): Promise<number> {
+  const cutoff = new Date(Date.now() - maxAgeDays * 24 * 60 * 60 * 1000);
+  const result = await prisma.botActionLog.deleteMany({ where: { createdAt: { lt: cutoff } } });
+  return result.count;
 }
 
 export async function writeBotMetrics(input: Record<string, unknown>) {
