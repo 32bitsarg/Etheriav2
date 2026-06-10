@@ -40,17 +40,23 @@ function serializeWorld(w: any): WorldRecord {
 }
 
 export async function listActiveWorlds(): Promise<WorldListItem[]> {
-  const worlds = await prisma.world.findMany({
-    where: { status: "ACTIVE" },
-    orderBy: { sortOrder: "asc" },
-  });
+  const [worlds, cityCounts] = await Promise.all([
+    prisma.world.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { sortOrder: "asc" },
+    }),
+    // The stored playerCount column was never updated (always 0); derive the
+    // real population from cities instead.
+    prisma.city.groupBy({ by: ["worldId"], _count: { _all: true } }),
+  ]);
+  const countByWorld = new Map(cityCounts.map((c) => [c.worldId, c._count._all]));
   return worlds.map((w) => ({
     id: w.id,
     slug: w.slug,
     name: w.name,
     description: w.description,
     status: w.status,
-    playerCount: w.playerCount,
+    playerCount: countByWorld.get(w.id) ?? 0,
     sortOrder: w.sortOrder,
   }));
 }

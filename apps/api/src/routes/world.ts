@@ -264,7 +264,7 @@ worldRouter.post('/barbarians/:id/attack', requireMatecitoAuth(), zValidator('js
   const distance = Math.sqrt(
     Math.pow(camp.posX - city.posX, 2) + Math.pow(camp.posY - city.posY, 2)
   );
-  const world = await getWorldConfig();
+  const world = await getWorldConfig(city.worldId);
   const terrainSpeed = calculatePathSpeedMultiplier(city.posX, city.posY, camp.posX, camp.posY, world.map.width, world.map.height);
   const travelTime = Math.max(10, Math.floor(distance / Math.max(1, minSpeed * terrainSpeed) * 60)); // seconds, min 10s
 
