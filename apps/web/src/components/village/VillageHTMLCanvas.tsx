@@ -399,6 +399,20 @@ export const VillageHTMLCanvas = memo(function VillageHTMLCanvas({
     [editorMode]
   );
 
+  const handleBuildingWheel = useCallback(
+    (e: React.WheelEvent<HTMLButtonElement>, building: Building) => {
+      if (!editorMode || !onAnchorChange) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const tileKey = getVillageTileKey(building.positionX, building.positionY);
+      const current = normalizedLayout.anchors[tileKey] ?? { x: 0.5, y: 0.5, scale: 1 };
+      const delta = e.deltaY < 0 ? 0.05 : -0.05;
+      const newScale = Number(Math.min(3, Math.max(0.35, (current.scale ?? 1) + delta)).toFixed(2));
+      onAnchorChange({ tileKey, anchor: { ...current, scale: newScale } });
+    },
+    [editorMode, onAnchorChange, normalizedLayout.anchors]
+  );
+
   // ── Editor overlays (memoized — don't recreate on every render) ────────────
 
   const gridOverlay = useMemo(() => {
@@ -548,6 +562,7 @@ export const VillageHTMLCanvas = memo(function VillageHTMLCanvas({
               interactionsDisabled={interactionsDisabled}
               onClick={handleBuildingClick}
               onPointerDown={handleBuildingPointerDown}
+              onWheel={editorMode ? handleBuildingWheel : undefined}
             />
           );
         })}
@@ -572,6 +587,7 @@ interface BuildingButtonProps {
   interactionsDisabled: boolean;
   onClick: (id: string) => void;
   onPointerDown: (e: React.PointerEvent<HTMLButtonElement>, b: Building) => void;
+  onWheel?: (e: React.WheelEvent<HTMLButtonElement>, b: Building) => void;
 }
 
 const BuildingButton = memo(function BuildingButton({
@@ -587,6 +603,7 @@ const BuildingButton = memo(function BuildingButton({
   interactionsDisabled,
   onClick,
   onPointerDown,
+  onWheel,
 }: BuildingButtonProps) {
   const imgSrc = getBuildingImagePath(building.type, building.level);
 
@@ -595,6 +612,7 @@ const BuildingButton = memo(function BuildingButton({
       data-building-id={building.id}
       onClick={() => onClick(building.id)}
       onPointerDown={(e) => onPointerDown(e, building)}
+      onWheel={onWheel ? (e) => onWheel(e, building) : undefined}
       disabled={interactionsDisabled && !editorMode}
       className="village-building group absolute cursor-pointer disabled:cursor-default"
       style={{

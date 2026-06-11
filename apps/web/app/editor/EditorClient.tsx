@@ -65,6 +65,7 @@ function VillageLayoutEditorContent() {
   const [selectedTerrain, setSelectedTerrain] = useState<TerrainKind>("MOUNTAIN");
   const [brushSize, setBrushSize] = useState(2);
   const [showTerrainOverlay, setShowTerrainOverlay] = useState(true);
+  const [terrainTool, setTerrainTool] = useState<"brush" | "fill" | "picker">("brush");
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [panelPos, setPanelPos] = useState({ x: 16, y: 16 });
   const [editorCenterVersion, setEditorCenterVersion] = useState(0);
@@ -397,34 +398,67 @@ function VillageLayoutEditorContent() {
                 </div>
               </>
             ) : (
-              <div className="mt-4 space-y-4">
+              <div className="mt-4 space-y-3">
                 <p className="text-sm text-etheria-text-muted">{t("editor.mask.description")}</p>
+
+                {/* Save / reset / overlay */}
                 <div className="flex flex-wrap gap-2">
                   <button onClick={handleSaveTerrain} className="gold-btn px-4 py-2 text-sm" disabled={saveTerrainMutation.isPending}>{saveTerrainMutation.isPending ? t("editor.saving") : t("editor.mask.save")}</button>
-                  <button onClick={handleResetTerrain} className="rounded-lg border border-etheria-border px-4 py-2 text-sm">{t("editor.mask.resetPlains")}</button>
-                  <button onClick={() => setShowTerrainOverlay((value) => !value)} className="rounded-lg border border-etheria-border px-4 py-2 text-sm">{showTerrainOverlay ? t("editor.mask.hideOverlay") : t("editor.mask.showOverlay")}</button>
+                  <button onClick={handleResetTerrain} className="rounded-lg border border-etheria-border px-3 py-2 text-xs">{t("editor.mask.resetPlains")}</button>
+                  <button onClick={() => setShowTerrainOverlay((value) => !value)} className={`rounded-lg border px-3 py-2 text-xs ${showTerrainOverlay ? "border-etheria-gold bg-etheria-gold/10" : "border-etheria-border-dim"}`}>
+                    {showTerrainOverlay ? "👁 overlay" : "👁 off"}
+                  </button>
                 </div>
-                <div className="rounded-xl border border-etheria-border-dim bg-black/20 p-3 text-xs text-etheria-text-muted">
-                  <div>{t("editor.file")}: <span className="font-mono text-etheria-text">apps/web/src/data/world-terrain-mask.json</span></div>
-                  <div>{t("editor.mask.grid")}: <span className="font-mono text-etheria-text">{terrainMask.columns} x {terrainMask.rows}</span></div>
-                  <div>{t("editor.mask.rule")}: <span className="font-mono text-etheria-text">{t("editor.mask.spawn")} {selectedRule.buildable ? "OK" : "NO"} / {t("editor.mask.path")} {selectedRule.walkable ? "OK" : "NO"} / {t("editor.mask.speed")} {selectedRule.speedMultiplier}</span></div>
+
+                {/* Herramientas */}
+                <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-etheria-border-dim bg-black/20 p-1.5">
+                  {([["brush", "🖌 Pincel"], ["fill", "🪣 Relleno"], ["picker", "💧 Cuentagotas"]] as [typeof terrainTool, string][]).map(([tool, label]) => (
+                    <button key={tool} onClick={() => setTerrainTool(tool)}
+                      className={`rounded-lg px-2 py-2 text-[11px] leading-tight ${terrainTool === tool ? "bg-etheria-gold text-black font-semibold" : "text-etheria-text"}`}>
+                      {label}
+                    </button>
+                  ))}
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+
+                {/* Paleta de terrenos */}
+                <div className="grid grid-cols-2 gap-1.5">
                   {TERRAIN_KINDS.map((kind) => {
                     const rule = TERRAIN_RULES[kind];
                     return (
-                      <button key={kind} onClick={() => setSelectedTerrain(kind)} className={`rounded-lg border px-3 py-2 text-left text-xs ${selectedTerrain === kind ? "border-etheria-gold bg-etheria-gold/10" : "border-etheria-border-dim bg-black/10"}`}>
-                        <span className="mb-1 inline-block h-3 w-8 rounded" style={{ backgroundColor: TERRAIN_COLOR_HEX[kind] }} />
-                        <div>{t(`editor.terrain.${kind.toLowerCase()}`)}</div>
-                        <div className="font-mono text-[10px] text-etheria-text-muted">{rule.buildable ? t("editor.mask.spawn") : t("editor.mask.noSpawn")} / {rule.walkable ? t("editor.mask.path") : t("editor.mask.block")}</div>
+                      <button key={kind} onClick={() => { setSelectedTerrain(kind); setTerrainTool("brush"); }}
+                        className={`rounded-lg border px-2 py-2 text-left text-xs transition-colors ${selectedTerrain === kind ? "border-etheria-gold bg-etheria-gold/10" : "border-etheria-border-dim bg-black/10 hover:border-etheria-border"}`}>
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="inline-block h-3 w-5 rounded-sm shrink-0" style={{ backgroundColor: TERRAIN_COLOR_HEX[kind] }} />
+                          <span className="font-medium truncate">{t(`editor.terrain.${kind.toLowerCase()}`)}</span>
+                        </div>
+                        <div className="font-mono text-[9px] text-etheria-text-muted">
+                          {rule.buildable ? "✓spawn" : "✗spawn"} · {rule.walkable ? `${rule.speedMultiplier}x` : "bloq"}
+                        </div>
                       </button>
                     );
                   })}
                 </div>
-                <div className="flex items-center gap-2 rounded-lg border border-etheria-border-dim px-3 py-2 text-xs">
-                  <button onClick={() => setBrushSize((value) => Math.max(1, value - 1))} className="rounded border border-etheria-border px-2">-</button>
-                  <span className="min-w-[70px] text-center font-mono text-etheria-gold-soft">{t("editor.mask.brush")} {brushSize}</span>
-                  <button onClick={() => setBrushSize((value) => Math.min(8, value + 1))} className="rounded border border-etheria-border px-2">+</button>
+
+                {/* Tamaño de pincel */}
+                {terrainTool === "brush" && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs text-etheria-text-muted">
+                      <span>{t("editor.mask.brush")}</span>
+                      <span className="font-mono text-etheria-gold-soft">{brushSize}</span>
+                    </div>
+                    <input
+                      type="range" min={1} max={8} value={brushSize}
+                      onChange={(e) => setBrushSize(Number(e.target.value))}
+                      className="w-full accent-amber-400"
+                    />
+                    <div className="flex justify-between text-[9px] text-etheria-text-muted"><span>1</span><span>8</span></div>
+                  </div>
+                )}
+
+                <div className="rounded-xl border border-etheria-border-dim bg-black/20 p-2.5 text-[10px] text-etheria-text-muted space-y-0.5">
+                  <div><span className="font-mono">{terrainMask.columns}×{terrainMask.rows}</span> celdas</div>
+                  <div>Regla: {t("editor.mask.spawn")} {selectedRule.buildable ? "✓" : "✗"} · vel {selectedRule.speedMultiplier}x</div>
+                  <div className="mt-1 text-[9px] opacity-60">Click izq = pintar · Click der = panear · Scroll = zoom</div>
                 </div>
               </div>
             )}
@@ -463,7 +497,9 @@ function VillageLayoutEditorContent() {
                 selectedTerrain={selectedTerrain}
                 brushSize={brushSize}
                 showTerrainOverlay={showTerrainOverlay}
+                terrainTool={terrainTool}
                 onTerrainChange={setTerrainDraft}
+                onPickTerrain={(kind) => { setSelectedTerrain(kind); setTerrainTool("brush"); }}
               />
             </div>
           )}
@@ -474,9 +510,18 @@ function VillageLayoutEditorContent() {
                 <button onClick={handleSave} className="gold-btn px-4 text-xs" disabled={saveMutation.isPending}>{saveMutation.isPending ? t("editor.saving") : t("editor.save")}</button>
                 <button onClick={handleResetSelected} className="rounded-lg border border-etheria-border px-3 py-1.5 text-xs text-etheria-text">{t("editor.reset")}</button>
                 <div className="flex items-center gap-1 rounded-lg border border-etheria-border px-2 py-1 text-xs">
-                  <button onClick={() => handleScaleChange(-0.05)} className="text-etheria-text">-</button>
-                  <span className="min-w-[54px] text-center font-mono text-etheria-gold-soft">{selectedAnchor ? `${(selectedAnchor.scale ?? 1).toFixed(2)}x` : "1.00x"}</span>
-                  <button onClick={() => handleScaleChange(0.05)} className="text-etheria-text">+</button>
+                  <button onClick={() => handleScaleChange(-0.05)} className="text-etheria-text px-0.5">-</button>
+                  <input
+                    type="number" step="0.05" min="0.35" max="3"
+                    value={(selectedAnchor?.scale ?? 1).toFixed(2)}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      if (!isNaN(val)) handleScaleChange(val - (selectedAnchor?.scale ?? 1));
+                    }}
+                    className="w-[52px] bg-transparent font-mono text-etheria-gold-soft outline-none text-center"
+                    title="Escala (scroll en el edificio)"
+                  />
+                  <button onClick={() => handleScaleChange(0.05)} className="text-etheria-text px-0.5">+</button>
                 </div>
                 <div className="flex items-center gap-1 rounded-lg border border-etheria-border px-2 py-1 text-xs">
                   <button onClick={() => nudgeSelected(-0.005, 0)} className="text-etheria-text px-1">◀</button>
@@ -515,7 +560,7 @@ function VillageLayoutEditorContent() {
                     />
                   </div>
                 )}
-                <span className="text-[10px] text-etheria-text-muted hidden xl:block" title="Arrow keys to nudge, Shift+arrow for ×5, =/-  for scale">↑↓←→ / Shift×5</span>
+                <span className="text-[10px] text-etheria-text-muted hidden xl:block" title="Arrow keys to nudge, Shift+arrow for ×5, scroll sobre edificio para escala">↑↓←→ / Scroll=escala</span>
                 <span className={`text-[11px] font-mono ${hasUnsavedChanges ? "text-amber-300" : "text-etheria-text-muted"}`}>{hasUnsavedChanges ? t("editor.unsaved") : t("editor.noChanges")}</span>
                 {saveMutation.isError && <span className="text-[11px] text-rose-300">{t("editor.saveError")}</span>}
               </>

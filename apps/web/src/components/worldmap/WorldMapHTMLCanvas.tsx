@@ -73,7 +73,9 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   selectedTerrain,
   brushSize = 2,
   showTerrainOverlay = true,
+  terrainTool = "brush",
   onTerrainChange,
+  onPickTerrain,
 }: {
   cities: WorldCity[];
   mapConfig: MapConfig | null;
@@ -90,7 +92,9 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   selectedTerrain?: TerrainKind;
   brushSize?: number;
   showTerrainOverlay?: boolean;
+  terrainTool?: "brush" | "fill" | "picker";
   onTerrainChange?: (mask: WorldTerrainMaskData) => void;
+  onPickTerrain?: (kind: TerrainKind) => void;
 }) {
   const { t } = useI18n();
   const [hoveredMovementId, setHoveredMovementId] = useState<string | null>(null);
@@ -116,6 +120,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   const isPaintingRef = useRef(false);
   const terrainMaskRef = useRef(terrainMask);
   terrainMaskRef.current = terrainMask;
+  const [brushCursor, setBrushCursor] = useState<{ x: number; y: number } | null>(null);
   const movementEls = useRef(new Map<string, HTMLDivElement>());
 
   const worldW = mapConfig?.width ?? 3600;
@@ -275,6 +280,57 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     onTerrainChange(newMask);
     drawTerrainOverlay();
   }, [selectedTerrain, brushSize, onTerrainChange, mapConfig, screenToWorld, halfW, halfH, worldW, worldH, drawTerrainOverlay]);
+
+  const floodFill = useCallback((screenX: number, screenY: number) => {
+    const mask = terrainMaskRef.current;
+    if (!mask || !selectedTerrain || !onTerrainChange || !mapConfig) return;
+    const rect = outerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const { x: wx, y: wy } = screenToWorld(screenX - rect.left, screenY - rect.top);
+    const nx = (wx + halfW) / worldW;
+    const ny = (wy + halfH) / worldH;
+    const startCol = Math.floor(nx * mask.columns);
+    const startRow = Math.floor(ny * mask.rows);
+    if (startCol < 0 || startRow < 0 || startCol >= mask.columns || startRow >= mask.rows) return;
+    const startIdx = startRow * mask.columns + startCol;
+    const targetKind = mask.cells[startIdx] as TerrainKind;
+    if (targetKind === selectedTerrain) return;
+    const newCells = [...mask.cells];
+    const stack = [startIdx];
+    const visited = new Set<number>();
+    while (stack.length) {
+      const idx = stack.pop()!;
+      if (visited.has(idx)) continue;
+      visited.add(idx);
+      if (newCells[idx] !== targetKind) continue;
+      newCells[idx] = selectedTerrain;
+      const row = Math.floor(idx / mask.columns);
+      const col = idx % mask.columns;
+      if (col > 0) stack.push(idx - 1);
+      if (col < mask.columns - 1) stack.push(idx + 1);
+      if (row > 0) stack.push(idx - mask.columns);
+      if (row < mask.rows - 1) stack.push(idx + mask.columns);
+    }
+    const newMask = { ...mask, cells: newCells };
+    terrainMaskRef.current = newMask;
+    onTerrainChange(newMask);
+    drawTerrainOverlay();
+  }, [selectedTerrain, onTerrainChange, mapConfig, screenToWorld, halfW, halfH, worldW, worldH, drawTerrainOverlay]);
+
+  const pickTerrain = useCallback((screenX: number, screenY: number) => {
+    const mask = terrainMaskRef.current;
+    if (!mask || !onPickTerrain || !mapConfig) return;
+    const rect = outerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const { x: wx, y: wy } = screenToWorld(screenX - rect.left, screenY - rect.top);
+    const nx = (wx + halfW) / worldW;
+    const ny = (wy + halfH) / worldH;
+    const col = Math.floor(nx * mask.columns);
+    const row = Math.floor(ny * mask.rows);
+    if (col < 0 || row < 0 || col >= mask.columns || row >= mask.rows) return;
+    const kind = mask.cells[row * mask.columns + col] as TerrainKind;
+    if (kind) onPickTerrain(kind);
+  }, [onPickTerrain, mapConfig, screenToWorld, halfW, halfH, worldW, worldH]);
 
   // ─── Movement update ─────────────────────────────────────────────────────
 
@@ -457,15 +513,27 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
 
   const paintCellRef = useRef(paintCell);
   paintCellRef.current = paintCell;
+  const floodFillRef = useRef(floodFill);
+  floodFillRef.current = floodFill;
+  const pickTerrainRef = useRef(pickTerrain);
+  pickTerrainRef.current = pickTerrain;
+  const terrainToolRef = useRef(terrainTool);
+  terrainToolRef.current = terrainTool;
 
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    // In editor mode: left-click = paint terrain, right-click = pan
+    // In editor mode: left-click = paint/fill/pick, right-click = pan
     if (editorMode && e.button === 0 && e.pointerType !== "touch") {
+      e.preventDefault();
+      const tool = terrainToolRef.current;
+      if (tool === "fill") { floodFillRef.current(e.clientX, e.clientY); return; }
+      if (tool === "picker") { pickTerrainRef.current(e.clientX, e.clientY); return; }
       isPaintingRef.current = true;
       paintCellRef.current(e.clientX, e.clientY);
       return;
     }
-    if (e.button !== 0 && e.pointerType !== "touch") return;
+    // right-click or any click outside editor → pan
+    if (e.button === 2 || (editorMode && e.button !== 0)) { e.preventDefault(); }
+    if (!editorMode && e.button !== 0 && e.pointerType !== "touch") return;
     pointerState.current = {
       startClientX: e.clientX, startClientY: e.clientY,
       startCamX: cam.current.x, startCamY: cam.current.y,
@@ -474,6 +542,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   }, [editorMode]);
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (editorMode) setBrushCursor({ x: e.clientX, y: e.clientY });
     if (isPaintingRef.current) { paintCellRef.current(e.clientX, e.clientY); return; }
     if (pinch.current) return; // pinch takes priority — don't pan while zooming
     const ps = pointerState.current;
@@ -486,6 +555,8 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     cam.current = clampCamera(ps.startCamX + dx, ps.startCamY + dy, cam.current.zoom);
     camDirty.current = true;
   }, [clampCamera]);
+
+  const onPointerLeave = useCallback(() => { if (editorMode) setBrushCursor(null); }, [editorMode]);
 
   const onPointerUp = useCallback(() => {
     isPaintingRef.current = false;
@@ -564,11 +635,13 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
       <div
         ref={outerRef}
         className="relative h-full w-full overflow-hidden select-none md:rounded-lg md:border md:border-etheria-border/30"
-        style={{ background: "#070a0a", touchAction: "none", cursor: editorMode ? "crosshair" : "default" }}
+        style={{ background: "#070a0a", touchAction: "none", cursor: editorMode ? (terrainTool === "picker" ? "crosshair" : "none") : "default" }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        onPointerLeave={onPointerLeave}
+        onContextMenu={(e) => { if (editorMode) e.preventDefault(); }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -782,6 +855,30 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
           ))}
         </div>
       )}
+      {/* Brush cursor overlay */}
+      {editorMode && brushCursor && terrainTool === "brush" && (() => {
+        const rect = outerRef.current?.getBoundingClientRect();
+        if (!rect) return null;
+        const zoom = cam.current.zoom;
+        const cellW = (worldW / (terrainMaskRef.current?.columns ?? 100)) * zoom;
+        const cellH = (worldH / (terrainMaskRef.current?.rows ?? 66)) * zoom;
+        const brushPx = brushSize * 2 - 1;
+        const w = cellW * brushPx;
+        const h = cellH * brushPx;
+        const color = selectedTerrain ? TERRAIN_COLOR_HEX[selectedTerrain] : "#ffffff";
+        return (
+          <div
+            className="pointer-events-none fixed z-[300] border-2 rounded-sm"
+            style={{
+              left: brushCursor.x - rect.left - w / 2,
+              top: brushCursor.y - rect.top - h / 2,
+              width: w, height: h,
+              borderColor: color,
+              boxShadow: `0 0 0 1px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(0,0,0,0.3)`,
+            }}
+          />
+        );
+      })()}
     </div>
   );
 });
