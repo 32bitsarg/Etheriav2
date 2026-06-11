@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 
-const MOBILE_QUERY = "(max-width: 767px)";
+// Un teléfono apaisado mide >=768px de ancho pero sigue siendo un teléfono:
+// lo detectamos por puntero táctil + pantalla baja.
+const MOBILE_QUERY = "(max-width: 767px), ((pointer: coarse) and (max-height: 500px))";
 
 // Single source of truth for the mobile/desktop HUD split. Returns null until
 // mounted so SSR markup doesn't commit to either layout.

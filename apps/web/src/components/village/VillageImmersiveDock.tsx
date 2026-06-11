@@ -151,7 +151,7 @@ export function VillageImmersiveDock() {
   return (
     <>
       {/* Desktop: horizontal three-section rail */}
-      <aside className="pointer-events-auto absolute inset-x-3 bottom-3 z-40 hidden items-center gap-1.5 rounded-2xl border border-white/10 bg-[#0b0f0e]/85 px-3 py-2 shadow-lg shadow-black/30 backdrop-blur-xl md:flex">
+      <aside className="dock-desktop pointer-events-auto absolute inset-x-3 bottom-3 z-40 hidden items-center gap-1.5 rounded-2xl border border-white/10 bg-[#0b0f0e]/85 px-3 py-2 shadow-lg shadow-black/30 backdrop-blur-xl md:flex">
         {sections.map((section, i) => (
           <React.Fragment key={section.label}>
             {i > 0 && <div className="mx-1 h-8 w-px shrink-0 bg-white/10" />}
@@ -169,7 +169,7 @@ export function VillageImmersiveDock() {
 
       {/* Mobile: compact vertical stack bottom-left — readable rows, no crushing */}
       <div
-        className="pointer-events-auto absolute left-2 z-40 flex w-[min(64vw,270px)] flex-col gap-1 md:hidden"
+        className="dock-mobile pointer-events-auto absolute left-2 z-40 flex w-[min(64vw,270px)] flex-col gap-1 md:hidden"
         style={{ bottom: "calc(50px + env(safe-area-inset-bottom, 0px))" }}
       >
         {allItems.slice(0, 4).map((item) => (
