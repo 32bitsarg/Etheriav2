@@ -970,6 +970,12 @@
       "march": {
         "attack": "Marcha militar",
         "trade": "Caravana comercial"
+      },
+      "legend": {
+        "own": "Tu ciudad",
+        "ally": "Aliado",
+        "peace": "Paz",
+        "hostile": "Hostil"
       }
     },
     "rename": {

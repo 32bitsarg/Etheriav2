@@ -62,6 +62,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   myCityId,
   onSelectCityId,
   onCenterMyCity,
+  onDoubleClickMyCity,
   barbarianCamps = [],
   onSelectCamp,
   movements = [],
@@ -72,6 +73,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   myCityId?: string | null;
   onSelectCityId?: (cityId: string, position: { x: number; y: number }) => void;
   onCenterMyCity?: () => void;
+  onDoubleClickMyCity?: () => void;
   barbarianCamps?: BarbarianCamp[];
   onSelectCamp?: (camp: BarbarianCamp, position: { x: number; y: number }) => void;
   movements?: (WorldMovement & { relation?: "ally" | "peace" | "hostile" | "neutral" | "own" })[];
@@ -338,6 +340,18 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     camDirty.current = true;
   }, [cities, myCityId, size, halfW, halfH, mapConfig, clampCamera]);
 
+  const zoomBy = useCallback((factor: number) => {
+    const vw = outerRef.current?.clientWidth ?? size.w;
+    const vh = outerRef.current?.clientHeight ?? size.h;
+    const oldZoom = cam.current.zoom;
+    const newZoom = Math.min(zMax, Math.max(zMin, oldZoom * factor));
+    const s = newZoom / oldZoom;
+    const mx = vw / 2;
+    const my = vh / 2;
+    cam.current = clampCamera((mx + halfW) - (mx + halfW - cam.current.x) * s, (my + halfH) - (my + halfH - cam.current.y) * s, newZoom);
+    camDirty.current = true;
+  }, [clampCamera, zMin, zMax, size, halfW, halfH]);
+
   // ── Input: wheel zoom ────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -460,7 +474,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     <div className="relative h-full w-full">
       <div
         ref={outerRef}
-        className="relative h-full w-full overflow-hidden select-none rounded-lg border border-etheria-border/40 shadow-[0_28px_80px_rgba(0,0,0,.55)]"
+        className="relative h-full w-full overflow-hidden select-none md:rounded-lg md:border md:border-etheria-border/30"
         style={{ background: "#070a0a", touchAction: "none" }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -500,6 +514,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
               y={city.posY + halfH}
               isMe={city.id === myCityId}
               onClick={handleCityClick}
+              onDoubleClick={onDoubleClickMyCity}
             />
           ))}
 
@@ -633,14 +648,34 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
         <div ref={weatherRef} className="absolute inset-0 pointer-events-none" style={{ transition: "background-color 0.6s" }} />
       </div>
 
-      {/* Center on my city button */}
-      <button
-        type="button"
-        onClick={() => { centerOnMyCity(); onCenterMyCity?.(); }}
-        className="absolute right-3 top-3 z-10 rounded-lg border border-etheria-border bg-black/55 px-3 py-2 text-xs text-etheria-gold-soft backdrop-blur-[2px] hover:bg-black/65"
-      >
-        {t("play.map.centerMyVillage")}
-      </button>
+      {/* Top-right controls: zoom +/- and center */}
+      <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
+        <button type="button" onClick={() => zoomBy(1 + ZOOM_STEP * 4)}
+          className="w-8 h-8 rounded-lg border border-etheria-border bg-black/55 text-etheria-gold-soft backdrop-blur-[2px] hover:bg-black/75 text-base font-bold flex items-center justify-center"
+          aria-label="Zoom in">+</button>
+        <button type="button" onClick={() => zoomBy(1 - ZOOM_STEP * 4)}
+          className="w-8 h-8 rounded-lg border border-etheria-border bg-black/55 text-etheria-gold-soft backdrop-blur-[2px] hover:bg-black/75 text-base font-bold flex items-center justify-center"
+          aria-label="Zoom out">−</button>
+        <button type="button" onClick={() => { centerOnMyCity(); onCenterMyCity?.(); }}
+          className="rounded-lg border border-etheria-border bg-black/55 px-3 h-8 text-xs text-etheria-gold-soft backdrop-blur-[2px] hover:bg-black/75">
+          {t("play.map.centerMyVillage")}
+        </button>
+      </div>
+
+      {/* Bottom-left legend */}
+      <div className="absolute left-3 bottom-3 z-10 flex flex-col gap-1 rounded-lg bg-black/50 px-2 py-1.5 backdrop-blur-sm pointer-events-none">
+        {([
+          ["#e8c468", t("play.map.legend.own")],
+          ["#49f0c5", t("play.map.legend.ally")],
+          ["#6fc8ff", t("play.map.legend.peace")],
+          ["#d75f43", t("play.map.legend.hostile")],
+        ] as [string, string][]).map(([color, label]) => (
+          <div key={label} className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+            <span className="text-[9px] text-white/55 leading-none">{label}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 });
@@ -654,17 +689,19 @@ function relationColor(relation?: string) {
 
 // Memoized: city markers can number in the hundreds and only change when the
 // map data does — hover/poll re-renders of the canvas must not rebuild them.
-const CityMarker = memo(function CityMarker({ city, x, y, isMe, onClick }: {
+const CityMarker = memo(function CityMarker({ city, x, y, isMe, onClick, onDoubleClick }: {
   city: WorldCity;
   x: number;
   y: number;
   isMe: boolean;
   onClick: (city: WorldCity, e: React.MouseEvent) => void;
+  onDoubleClick?: () => void;
 }) {
   const color = relationColor(city.relation);
   return (
     <button
       onClick={(e) => onClick(city, e)}
+      onDoubleClick={isMe ? onDoubleClick : undefined}
       className="absolute flex flex-col items-center cursor-pointer"
       style={{
         left: x, top: y,

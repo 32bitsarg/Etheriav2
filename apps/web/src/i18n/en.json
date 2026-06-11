@@ -970,6 +970,12 @@
       "march": {
         "attack": "Army march",
         "trade": "Trade caravan"
+      },
+      "legend": {
+        "own": "Your city",
+        "ally": "Ally",
+        "peace": "Peace",
+        "hostile": "Hostile"
       }
     },
     "rename": {

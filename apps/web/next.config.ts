@@ -29,29 +29,21 @@ function gitBuildId(): string {
 
 const withPWA = withPWAInit({
   dest: "public",
-  cacheOnFrontEndNav: true,
-  aggressiveFrontEndNavCaching: true,
+  // Only cache static game images — never JS/CSS/HTML.
+  // Caching Next.js chunks causes "Failed to find Server Action" after redeploys.
+  cacheOnFrontEndNav: false,
+  aggressiveFrontEndNavCaching: false,
   reloadOnOnline: true,
+  disable: process.env.NODE_ENV === "development",
   workboxOptions: {
-    // Don't precache audio/large assets — they're streamed on demand
-    exclude: [/assets\/audio\//, /assets\/buildings\/.*\.png$/],
-    // Cache game assets for 30 days
+    exclude: [/\.js$/, /\.css$/, /\/_next\//, /assets\/audio\//],
     runtimeCaching: [
       {
-        urlPattern: /\/assets\/(backgrounds|map|ui|races|buildings)\//,
+        urlPattern: /\/assets\/(backgrounds|map|ui|races|buildings|notifications)\//,
         handler: "CacheFirst",
         options: {
-          cacheName: "game-assets",
+          cacheName: "game-assets-v1",
           expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 30 },
-        },
-      },
-      {
-        urlPattern: /\/api\/(city|world|auth)\//,
-        handler: "NetworkFirst",
-        options: {
-          cacheName: "api-runtime",
-          networkTimeoutSeconds: 10,
-          expiration: { maxEntries: 50, maxAgeSeconds: 60 * 5 },
         },
       },
     ],

@@ -778,6 +778,7 @@ const MapaView = memo(function MapaView({ cityName, allianceData, movements, wor
           seasonState={seasonData?.season ?? null}
           onSelectCityId={handleSelectCityId}
           onSelectCamp={handleSelectCamp}
+          onDoubleClickMyCity={onEnterVillage}
         />
       </div>
       {selectedCity && (
@@ -911,6 +912,46 @@ function MapCityRadial({ cityName, isOwnCity, position, t, onClose, onEnter, onA
   onAttack: () => void;
   onSpy: () => void;
 }) {
+  const isMobile = useIsMobile();
+
+  // Mobile: bottom sheet — the radial popup appears at cursor position which
+  // can go off-screen on small displays and has tiny tap targets.
+  if (isMobile) {
+    return (
+      <div className="fixed inset-0 z-30">
+        <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+        <div className="absolute inset-x-0 bottom-0 animate-slide-in-up rounded-t-3xl border-t border-white/10 bg-[#0b1111] shadow-[0_-8px_40px_rgba(0,0,0,0.6)]"
+          style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+          <div className="flex justify-center pt-3 pb-1">
+            <div className="h-1 w-10 rounded-full bg-white/20" />
+          </div>
+          <div className="px-5 pb-6 pt-3">
+            <p className="text-[10px] uppercase tracking-widest text-etheria-gold-soft/60 mb-0.5">{t("play.map.villageLabel")}</p>
+            <h3 className="font-serif text-lg text-etheria-gold mb-4 truncate">{cityName}</h3>
+            {isOwnCity ? (
+              <button onClick={onEnter}
+                className="w-full min-h-[52px] rounded-2xl bg-etheria-gold text-black font-bold text-sm">
+                {t("play.map.enter")}
+              </button>
+            ) : (
+              <div className="flex gap-3">
+                <button onClick={onAttack}
+                  className="flex-1 min-h-[52px] rounded-2xl bg-red-600/30 border border-red-500/30 text-red-300 font-bold text-sm">
+                  {t("play.map.attack")}
+                </button>
+                <button onClick={onSpy}
+                  className="flex-1 min-h-[52px] rounded-2xl bg-teal-600/30 border border-teal-500/30 text-teal-300 font-bold text-sm">
+                  {t("play.map.spy")}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop: radial popup at cursor position
   return (
     <div className="absolute inset-0 z-30 pointer-events-none">
       <div className="absolute inset-0 bg-black/15 pointer-events-auto" onClick={onClose} />
