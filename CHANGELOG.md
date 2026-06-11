@@ -15,6 +15,27 @@ Each release is named after a legendary era in the world of Etheria.
 
 ---
 
+## [0.5.8] - Velocidad del Viento - 2026-06-11
+
+> *"El mapa fluye, el HUD respira, y el mundo sigue girando aunque el teléfono duerma."*
+
+### Performance
+- Marcadores de movimiento en el mapa ahora usan `transform: translate3d` en vez de `left/top` — elimina reflow del DOM cada 140ms con marchas activas
+- Canvas de niebla de guerra escala por `devicePixelRatio` (cap 2) — niebla nítida en pantallas de alta densidad
+- `backdrop-filter` y glints ambientales desactivados en dispositivos táctiles (`pointer: coarse`) — ganancia directa de fluidez al panear bajo el HUD
+- `willChange` en botones de edificios pasa de permanente a condicional — reduce capas de compositor permanentes en GPU de gama baja
+- HUDs (`MobileHUD`, `DesktopHUD`) envueltos en `React.memo` + callbacks estables vía `useMemo` — abrir un modal ya no re-renderiza el HUD completo
+- 9 paneles/modales secundarios migrados a `next/dynamic` — menos JS parseado al arrancar `/play`
+- Queries de reportes en Mail ahora solo se disparan al abrir la pestaña "Reportes"
+- Polling adaptativo (`etaInterval`) aplicado a `useWorldMovements` (idle 30s) y `useActiveBattles` (idle 45s)
+- `useMailMessages`, `useBarbarianAttackAlerts`, `useWinterPressure`, `useConquestStatus` — interval subido a 60s en idle
+- `focusManager` de React Query conectado a `visibilitychange` — polls se pausan garantizadamente al backgroundear el APK
+
+### Changed
+- APK actualizado a versión 0.5.8 (versionCode 4)
+
+---
+
 ## [0.5.7] - El Mundo Vivo - 2026-06-11
 
 > *"Los espías regresan, las maravillas se ganan en batalla, y el mundo tiene memoria."*

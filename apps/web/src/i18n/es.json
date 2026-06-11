@@ -288,7 +288,10 @@
       "v0_5_1": "El Despertar de las Tierras",
       "v0_5_3": "El Rostro de los Reinos",
       "v0_5_5": "Las Ventanas del Reino",
-      "v0_5_4": "El Pulso de las Estaciones"
+      "v0_5_4": "El Pulso de las Estaciones",
+      "v0_5_6": "La Era del Comercio",
+      "v0_5_7": "El Mundo Vivo",
+      "v0_5_8": "Velocidad del Viento"
     },
     "items": {
       "v0_2_0": {
@@ -583,6 +586,52 @@
           "Efectos de estación: la nieve, hojas y pétalos ahora caen de verdad en el mapa y también se ven en la aldea (antes quedaban congelados o invisibles).",
           "Los efectos de estación ya no se reinician solos cada vez que el juego actualiza datos.",
           "Íconos del menú lateral que aparecían con un cuadrado blanco de fondo."
+        ]
+      },
+      "v0_5_6": {
+        "added": [
+          "Mercado entre jugadores: crear y aceptar ofertas de recursos con comisión del 5%, accesible desde el HUD en móvil y escritorio.",
+          "Rally de alianza: convoca tropas de aliados para atacar ciudades enemigas o campamentos bárbaros juntos; el worker lanza el rally automáticamente.",
+          "Tutorial de bienvenida: banner inferior no bloqueante de 4 pasos que guía a los nuevos jugadores; guarda el progreso por usuario.",
+          "Perfil de jugador: modal con raza, alianza, poder y rango, accesible desde el ranking.",
+          "Eventos diarios en el HUD mobile: banner compacto con ícono y cuenta regresiva del evento activo."
+        ],
+        "changed": [
+          "El endpoint de inicio ahora devuelve el paso de tutorial del jugador.",
+          "Nuevas claves de traducción para mercado, perfil, tutorial y eventos diarios."
+        ]
+      },
+      "v0_5_7": {
+        "added": [
+          "Feed de actividad global enriquecido: batallas mayores, campamentos bárbaros destruidos, nuevas alianzas y nuevos jugadores aparecen en el feed con íconos por tipo.",
+          "La Maravilla Mundial ahora se conquista en batalla real: las unidades atacan y defienden, se pierden tropas, y el control solo cambia si el atacante gana.",
+          "La Maravilla acumula días de control reales (tick diario): al llegar a 7 días, la alianza ganadora recibe una notificación de victoria en el feed global.",
+          "Barra de progreso de asedio en el mapa: al seleccionar una ciudad enemiga bajo asedio activo, se muestra N/3 victorias con barra roja en escritorio y móvil.",
+          "Nuevas claves de traducción: play.feed.* y play.conquest.siege."
+        ],
+        "fixed": [
+          "Bug crítico: las misiones de espionaje se quedaban viajando para siempre; el worker ahora las resuelve al llegar.",
+          "La Maravilla Mundial ya no cambia de dueño instantáneamente sin combate."
+        ],
+        "changed": [
+          "APK: versionCode 3, versionName 0.5.7."
+        ]
+      },
+      "v0_5_8": {
+        "performance": [
+          "Marcadores de movimiento usan `transform: translate3d` en vez de `left/top` — elimina reflow cada 140ms con marchas activas",
+          "Canvas de niebla escala por `devicePixelRatio` (cap 2) — niebla nítida en pantallas de alta densidad",
+          "`backdrop-filter` y glints ambientales desactivados en táctil (`pointer: coarse`) — mayor fluidez al panear el HUD",
+          "`willChange` en botones de edificios ahora es condicional — menos capas de compositor en GPU de gama baja",
+          "HUDs (`MobileHUD`, `DesktopHUD`) con `React.memo` y callbacks estables — abrir un modal ya no re-renderiza el HUD",
+          "9 paneles migrados a `next/dynamic` — menos JS parseado al arrancar `/play`",
+          "Queries de reportes en Mail solo se disparan al abrir la pestaña correspondiente",
+          "Polling adaptativo (`etaInterval`) en movimientos (idle 30s) y batallas (idle 45s)",
+          "Mail, alertas bárbaras, presión invernal y conquista subidos a 60s en idle",
+          "Polls se pausan garantizadamente al backgroundear el APK via `focusManager`"
+        ],
+        "changed": [
+          "APK actualizado a versión 0.5.8 (versionCode 4)"
         ]
       }
     }
@@ -1166,10 +1215,22 @@
       "next": "Siguiente →",
       "finish": "¡Empezar!",
       "skip": "Saltar tutorial",
-      "step1": { "title": "¡Bienvenido a Etheria!", "body": "Esta es tu aldea. Construye edificios, entrena tropas y domina el mundo." },
-      "step2": { "title": "Construye una Granja", "body": "Toca el edificio de Granja y mejóralo para producir más comida para tus tropas." },
-      "step3": { "title": "Entrena tropas", "body": "En el Cuartel puedes reclutar guerreros, arqueros y caballería para defenderte y atacar." },
-      "step4": { "title": "Explora el mapa", "body": "Abre el Mapa Mundial para ver otros reinos, atacar campos bárbaros y coordinar con aliados." }
+      "step1": {
+        "title": "¡Bienvenido a Etheria!",
+        "body": "Esta es tu aldea. Construye edificios, entrena tropas y domina el mundo."
+      },
+      "step2": {
+        "title": "Construye una Granja",
+        "body": "Toca el edificio de Granja y mejóralo para producir más comida para tus tropas."
+      },
+      "step3": {
+        "title": "Entrena tropas",
+        "body": "En el Cuartel puedes reclutar guerreros, arqueros y caballería para defenderte y atacar."
+      },
+      "step4": {
+        "title": "Explora el mapa",
+        "body": "Abre el Mapa Mundial para ver otros reinos, atacar campos bárbaros y coordinar con aliados."
+      }
     },
     "espionage": {
       "title": "Espionaje",

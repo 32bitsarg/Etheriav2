@@ -288,7 +288,10 @@
       "v0_5_1": "The Awakening of the Lands",
       "v0_5_3": "The Face of the Realms",
       "v0_5_5": "The Windows of the Realm",
-      "v0_5_4": "The Pulse of the Seasons"
+      "v0_5_4": "The Pulse of the Seasons",
+      "v0_5_6": "The Era of Trade",
+      "v0_5_7": "The Living World",
+      "v0_5_8": "Speed of Wind"
     },
     "items": {
       "v0_2_2": {
@@ -583,6 +586,52 @@
           "Season effects: snow, leaves and petals now actually fall on the map and also show in the village (they used to freeze or stay invisible).",
           "Season effects no longer restart on their own every time the game refreshes data.",
           "Sidebar icons that showed up with a white square background."
+        ]
+      },
+      "v0_5_6": {
+        "added": [
+          "Player-to-player market: buy and sell resources in real time",
+          "Attack rally system with configurable departure time",
+          "Interactive tutorial for new players with step-by-step guide",
+          "Player profile with stats, history, and honor ranking",
+          "Daily world events: barbarian invasions, winter pressure, wonder cycles"
+        ],
+        "changed": [
+          "Rebuilt world map with better rendering and performance",
+          "APK updated to version 0.5.6 (versionCode 2)"
+        ]
+      },
+      "v0_5_7": {
+        "added": [
+          "Activity Feed with live world events (battles, alliances, wonder sieges)",
+          "Real combat mechanics for Wonder attacks using the battle engine",
+          "Daily Wonder tick: control accumulates, victory at 7 days",
+          "Siege progress indicator on world map for contested Wonders",
+          "More i18n coverage and multilingual fixes"
+        ],
+        "fixed": [
+          "Espionage missions no longer get stuck — worker resolves them automatically",
+          "Wonder attack no longer ends without a real battle"
+        ],
+        "changed": [
+          "APK updated to version 0.5.7 (versionCode 3)"
+        ]
+      },
+      "v0_5_8": {
+        "performance": [
+          "Movement markers use `transform: translate3d` instead of `left/top` — eliminates DOM reflow every 140ms with active marches",
+          "Fog canvas scales by `devicePixelRatio` (cap 2) — crisp fog on high-density screens",
+          "`backdrop-filter` and ambient glints disabled on touch devices (`pointer: coarse`) — smoother panning under HUD",
+          "`willChange` on building buttons is now conditional — fewer permanent compositor layers on low-end GPU",
+          "HUDs (`MobileHUD`, `DesktopHUD`) wrapped in `React.memo` with stable callbacks — opening a modal no longer re-renders the HUD",
+          "9 panels migrated to `next/dynamic` — less JS parsed on `/play` startup",
+          "Report queries in Mail only fire when the Reports tab is opened",
+          "Adaptive polling (`etaInterval`) for movements (idle 30s) and battles (idle 45s)",
+          "Mail, barbarian alerts, winter pressure and conquest status raised to 60s idle interval",
+          "Polls reliably pause when the APK is backgrounded via `focusManager`"
+        ],
+        "changed": [
+          "APK updated to version 0.5.8 (versionCode 4)"
         ]
       }
     }
@@ -1166,10 +1215,22 @@
       "next": "Next →",
       "finish": "Let's go!",
       "skip": "Skip tutorial",
-      "step1": { "title": "Welcome to Etheria!", "body": "This is your village. Build, train troops, and conquer the world." },
-      "step2": { "title": "Build a Farm", "body": "Tap the Farm building and upgrade it to produce more food for your troops." },
-      "step3": { "title": "Train troops", "body": "In the Barracks you can recruit warriors, archers and cavalry to defend and attack." },
-      "step4": { "title": "Explore the map", "body": "Open the World Map to see other kingdoms, attack barbarian camps and coordinate with allies." }
+      "step1": {
+        "title": "Welcome to Etheria!",
+        "body": "This is your village. Build, train troops, and conquer the world."
+      },
+      "step2": {
+        "title": "Build a Farm",
+        "body": "Tap the Farm building and upgrade it to produce more food for your troops."
+      },
+      "step3": {
+        "title": "Train troops",
+        "body": "In the Barracks you can recruit warriors, archers and cavalry to defend and attack."
+      },
+      "step4": {
+        "title": "Explore the map",
+        "body": "Open the World Map to see other kingdoms, attack barbarian camps and coordinate with allies."
+      }
     },
     "espionage": {
       "title": "Espionage",

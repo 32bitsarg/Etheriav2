@@ -17,6 +17,97 @@ export interface ChangelogRelease {
 
 export const changelogReleases: ChangelogRelease[] = [
   {
+    version: "0.5.8",
+    nameKey: "changelog.releases.v0_5_8",
+    date: "2026-06-11",
+    sections: [
+      {
+        heading: "Performance",
+        itemKeys: [
+          "changelog.items.v0_5_8.performance.0",
+          "changelog.items.v0_5_8.performance.1",
+          "changelog.items.v0_5_8.performance.2",
+          "changelog.items.v0_5_8.performance.3",
+          "changelog.items.v0_5_8.performance.4",
+          "changelog.items.v0_5_8.performance.5",
+          "changelog.items.v0_5_8.performance.6",
+          "changelog.items.v0_5_8.performance.7",
+          "changelog.items.v0_5_8.performance.8",
+          "changelog.items.v0_5_8.performance.9"
+        ],
+        internalItemKeys: [
+          "changelog.items.v0_5_8.performance.9"
+        ],
+      },
+      {
+        heading: "Changed",
+        itemKeys: [
+          "changelog.items.v0_5_8.changed.0"
+        ],
+      }
+    ],
+  },
+  {
+    version: "0.5.7",
+    nameKey: "changelog.releases.v0_5_7",
+    date: "2026-06-11",
+    sections: [
+      {
+        heading: "Added",
+        itemKeys: [
+          "changelog.items.v0_5_7.added.0",
+          "changelog.items.v0_5_7.added.1",
+          "changelog.items.v0_5_7.added.2",
+          "changelog.items.v0_5_7.added.3",
+          "changelog.items.v0_5_7.added.4"
+        ],
+      },
+      {
+        heading: "Fixed",
+        itemKeys: [
+          "changelog.items.v0_5_7.fixed.0",
+          "changelog.items.v0_5_7.fixed.1"
+        ],
+        internalItemKeys: [
+          "changelog.items.v0_5_7.fixed.0"
+        ],
+      },
+      {
+        heading: "Changed",
+        itemKeys: [
+          "changelog.items.v0_5_7.changed.0"
+        ],
+      }
+    ],
+  },
+  {
+    version: "0.5.6",
+    nameKey: "changelog.releases.v0_5_6",
+    date: "2026-06-10",
+    sections: [
+      {
+        heading: "Added",
+        itemKeys: [
+          "changelog.items.v0_5_6.added.0",
+          "changelog.items.v0_5_6.added.1",
+          "changelog.items.v0_5_6.added.2",
+          "changelog.items.v0_5_6.added.3",
+          "changelog.items.v0_5_6.added.4"
+        ],
+        internalItemKeys: [
+          "changelog.items.v0_5_6.added.1"
+        ],
+      },
+      {
+        heading: "Changed",
+        itemKeys: [
+          "changelog.items.v0_5_6.changed.0",
+          "changelog.items.v0_5_6.changed.1"
+        ],
+      }
+    ],
+  },
+  {
     version: "0.5.5",
     nameKey: "changelog.releases.v0_5_5",
     date: "2026-06-10",
