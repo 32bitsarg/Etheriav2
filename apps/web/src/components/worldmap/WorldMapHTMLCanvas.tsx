@@ -222,8 +222,11 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
       const wy = origin.y + (destination.y - origin.y) * progress;
       const el = movementEls.current.get(m.id);
       if (!el) continue;
-      // Fog of war: foreign marches only show while inside my visibility circle
-      if (myCity && m.relation !== "own") {
+      // Fog of war: PvP foreign marches only show inside visibility circle.
+      // Barbarian movements (BARBARIAN_ATTACK / BARBARIAN_RAID) are always visible
+      // so the world feels alive with bot activity.
+      const isBarbarian = m.type === "BARBARIAN_ATTACK" || m.type === "BARBARIAN_RAID";
+      if (!isBarbarian && myCity && m.relation !== "own") {
         const dist = Math.hypot(wx - myCity.posX, wy - myCity.posY);
         const visible = dist <= FOG_RADIUS;
         el.style.display = visible ? "" : "none";

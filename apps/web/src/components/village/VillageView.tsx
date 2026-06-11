@@ -733,9 +733,11 @@ const MapaView = memo(function MapaView({ cityName, allianceData, movements, wor
   const movementsWithRelation = useMemo(
     () => movements.map((m: any) => ({
       ...m,
-      relation: m.from.name === cityName || m.to.name === cityName
-        ? "own"
-        : getMapRelation({ allianceId: m.allianceId }, allianceData),
+      relation: (m.type === "BARBARIAN_ATTACK" || m.type === "BARBARIAN_RAID")
+        ? (m.from.name === cityName || m.to.name === cityName ? "own" : "neutral")
+        : m.from.name === cityName || m.to.name === cityName
+          ? "own"
+          : getMapRelation({ allianceId: m.allianceId }, allianceData),
     })),
     [movements, cityName, allianceData]
   );
