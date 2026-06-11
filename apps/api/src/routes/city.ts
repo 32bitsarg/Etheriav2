@@ -676,9 +676,10 @@ cityRouter.post("/bootstrap", requireMatecitoAuth(), async (c) => {
       cityId = created.cityId;
     }
 
+    const userRow = await prisma.user.findUnique({ where: { id: userId }, select: { tutorialStep: true } });
     const durationMs = Math.round(performance.now() - startedAt);
     if (durationMs >= 500) console.info(`[perf] bootstrap user=${userId} city=${cityId} ${durationMs}ms`);
-    return c.json({ city: { id: cityId }, cityId });
+    return c.json({ city: { id: cityId }, cityId, tutorialStep: userRow?.tutorialStep ?? 0 });
   } catch (error) {
     const durationMs = Math.round(performance.now() - startedAt);
     console.error(`[bootstrap] failed user=${userId} ${durationMs}ms`, error);
@@ -870,6 +871,32 @@ cityRouter.get("/:id/play-initial", requireMatecitoAuth(), async (c) => {
 });
 
 // Get city
+cityRouter.get("/:id/public", async (c) => {
+  const id = c.req.param("id");
+  const city = await prisma.city.findUnique({ where: { id }, select: { id: true, name: true, race: true, userId: true, posX: true, posY: true, createdAt: true } });
+  if (!city) return c.json({ error: "City not found" }, 404);
+  const [powerMap, membership] = await Promise.all([
+    getCityPowerMap([id]),
+    prisma.allianceMember.findFirst({ where: { userId: city.userId }, select: { allianceId: true } }),
+  ]);
+  const alliance = membership ? await prisma.alliance.findUnique({ where: { id: membership.allianceId }, select: { name: true, tag: true } }) : null;
+  const allCities = await prisma.city.findMany({ select: { id: true }, orderBy: { createdAt: 'asc' } });
+  const rank = allCities.findIndex((c: any) => c.id === id) + 1;
+  const power = powerMap.get(id);
+  return c.json({
+    id: city.id,
+    name: city.name,
+    race: city.race,
+    posX: city.posX,
+    posY: city.posY,
+    createdAt: city.createdAt,
+    power: power?.total ?? 0,
+    allianceName: alliance?.name ?? null,
+    allianceTag: alliance?.tag ?? null,
+    rank,
+  });
+});
+
 cityRouter.get("/:id", requireMatecitoAuth(), async (c) => {
   const id = c.req.param("id");
   const userId = c.get("userId");

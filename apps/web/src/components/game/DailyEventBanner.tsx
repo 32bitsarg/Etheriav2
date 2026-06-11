@@ -39,7 +39,7 @@ function useCountdownStr(target: string | undefined) {
   return str;
 }
 
-export function DailyEventBanner() {
+export function DailyEventBanner({ compact }: { compact?: boolean } = {}) {
   const { locale } = useI18n();
   const { data } = useQuery<EventsResponse>({
     queryKey: ["daily-events"],
@@ -66,8 +66,9 @@ export function DailyEventBanner() {
         style={{ background: activeEvent.color }}
       >
         <span className="text-base">{activeEvent.icon}</span>
-        <span>{activeEvent.name}</span>
-        <span className="opacity-80">— {countdownEnds}</span>
+        {!compact && <span>{activeEvent.name}</span>}
+        {!compact && <span className="opacity-80">— {countdownEnds}</span>}
+        {compact && <span className="font-bold">{activeEvent.name}</span>}
       </div>
     );
   }
@@ -76,8 +77,8 @@ export function DailyEventBanner() {
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 text-white/70 text-xs font-medium">
         <span className="text-base">{todayEvent.icon}</span>
-        <span className="hidden sm:inline">{todayEvent.name} en</span>
-        <span className="font-bold text-white/85">{countdownStarts}</span>
+        {!compact && <><span className="hidden sm:inline">{todayEvent.name} en</span><span className="font-bold text-white/85">{countdownStarts}</span></>}
+        {compact && <span className="font-bold text-white/85">{countdownStarts}</span>}
       </div>
     );
   }
@@ -87,7 +88,7 @@ export function DailyEventBanner() {
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 text-white/60 text-xs">
         <span>{nextEvent.icon}</span>
-        <span className="hidden sm:inline">{nextEvent.name} — {tomorrow} 20:00</span>
+        {!compact && <span className="hidden sm:inline">{nextEvent.name} — {tomorrow} 20:00</span>}
       </div>
     );
   }

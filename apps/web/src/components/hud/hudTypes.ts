@@ -18,4 +18,5 @@ export type HudActions = {
   onOpenActivityFeed: () => void;
   onOpenSettings: () => void;
   onOpenChat: () => void;
+  onOpenMarket?: () => void;
 };

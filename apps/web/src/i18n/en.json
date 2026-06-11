@@ -673,7 +673,8 @@
       "dailyQuests": "Quests",
       "wonder": "Wonder",
       "achievements": "Achievements",
-      "feed": "Feed"
+      "feed": "Feed",
+      "market": "Market"
     },
     "hud": {
       "groups": {
@@ -1148,7 +1149,27 @@
       "create": "Create offer",
       "publish": "Publish",
       "accept": "Accept",
-      "for": "for"
+      "for": "for",
+      "fee": "Fee",
+      "expires": "Expires",
+      "noOffers": "No active offers at the moment.",
+      "seller": "Seller",
+      "viewProfile": "View profile"
+    },
+    "profile": {
+      "title": "Profile",
+      "power": "Power",
+      "rank": "Rank"
+    },
+    "tutorial": {
+      "step": "Step",
+      "next": "Next →",
+      "finish": "Let's go!",
+      "skip": "Skip tutorial",
+      "step1": { "title": "Welcome to Etheria!", "body": "This is your village. Build, train troops, and conquer the world." },
+      "step2": { "title": "Build a Farm", "body": "Tap the Farm building and upgrade it to produce more food for your troops." },
+      "step3": { "title": "Train troops", "body": "In the Barracks you can recruit warriors, archers and cavalry to defend and attack." },
+      "step4": { "title": "Explore the map", "body": "Open the World Map to see other kingdoms, attack barbarian camps and coordinate with allies." }
     },
     "espionage": {
       "title": "Espionage",

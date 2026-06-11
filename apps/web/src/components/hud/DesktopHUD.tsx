@@ -29,6 +29,7 @@ export function DesktopHUD({
   onOpenActivityFeed,
   onOpenSettings,
   onOpenChat,
+  onOpenMarket,
 }: HudActions) {
   const { t } = useI18n();
 
@@ -63,6 +64,7 @@ export function DesktopHUD({
         { key: "mail", icon: <SidebarNavIcon id="mail" size={22} />, label: t("play.sidebar.mail"), onClick: onOpenMail, badge: unreadCount },
         { key: "chat", icon: <SpeechIcon className="h-[22px] w-[22px]" />, label: t("play.chat.title"), onClick: onOpenChat },
         { key: "alliance", icon: <SidebarNavIcon id="army" size={22} />, label: t("play.sidebar.alliances"), onClick: onOpenAlliance },
+        ...(onOpenMarket ? [{ key: "market", icon: <span style={{ fontSize: 18, lineHeight: 1 }}>⚖️</span>, label: t("play.sidebar.market"), onClick: onOpenMarket }] : []),
       ],
     },
     {

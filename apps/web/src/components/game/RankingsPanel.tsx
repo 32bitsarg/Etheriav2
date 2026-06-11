@@ -12,7 +12,7 @@ interface RankingRow {
   power: number;
 }
 
-export function RankingsPanel({ onClose }: { onClose: () => void }) {
+export function RankingsPanel({ onClose, onOpenProfile }: { onClose: () => void; onOpenProfile?: (cityId: string) => void }) {
   const cityId = useGameStore((s) => s.cityId);
 
   const { data, isLoading } = useQuery<{ rankings: RankingRow[] }>({
@@ -70,7 +70,7 @@ export function RankingsPanel({ onClose }: { onClose: () => void }) {
             const isMe = row.cityId === cityId;
             const medal = row.rank === 1 ? "🥇" : row.rank === 2 ? "🥈" : row.rank === 3 ? "🥉" : null;
             return (
-              <li key={row.cityId} className={`flex items-center gap-3 px-4 py-2.5 ${isMe ? "bg-violet-50" : "hover:bg-stone-50"}`}>
+              <li key={row.cityId} onClick={() => !isMe && onOpenProfile?.(row.cityId)} className={`flex items-center gap-3 px-4 py-2.5 ${isMe ? "bg-violet-50" : "hover:bg-stone-50 cursor-pointer"}`}>
                 <span className="w-7 text-center text-sm font-bold text-stone-400">
                   {medal ?? `#${row.rank}`}
                 </span>

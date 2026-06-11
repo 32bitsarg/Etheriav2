@@ -8,7 +8,7 @@ import { BUILDING_INFO, BUILDING_NAMES, BUILDING_SIZES, MAX_BUILDING_LEVEL, getU
 import { BuildingSprite } from "@/components/village/BuildingIcon";
 import { VillageHTMLCanvas } from "@/components/village/VillageHTMLCanvas";
 import { ResourceIconSVG } from "@/components/village/ResourceIconSVG";
-import { useAcceptMarketOffer, useActiveBattles, useAllCities, useAllianceMembership, useAttackCity, useBarbarianAttackAlerts, useBattleReports, useBreakTreaty, useCancelBuildQueue, useCancelResearchQueue, useCancelTrainingQueue, useCityRanking, useClaimQuest, useContributeAllianceObjective, useCreateAlliance, useCreateMarketOffer, useDisbandAlliance, useGameReports, useJoinAlliance, useKickAllianceMember, useLeaveAlliance, useMailMessages, useMarkGameReportRead, useMarkMailRead, useMarkMapOpened, useMarkReportRead, useMarketOffers, usePlayerQuests, useProposePeace, useRenameCity, useResearchTech, useScoutTarget, useSendMailMessage, useTechs, useTrainUnits, useTransferAllianceLeadership, useUpdateAlliance, useUpdateAllianceMemberRole, useUpgradeBuilding, useVillageLayout, useWorldMap, useWorldMovements, useWorldSeason } from "@/hooks/useCity";
+import { useAcceptMarketOffer, useActiveBattles, useAllCities, useAllianceMembership, useAttackCity, useBarbarianAttackAlerts, useBattleReports, useBreakTreaty, useCancelBuildQueue, useCancelResearchQueue, useCancelTrainingQueue, useCityRanking, useClaimQuest, useContributeAllianceObjective, useCreateAlliance, useCreateMarketOffer, useDisbandAlliance, useGameReports, useJoinAlliance, useKickAllianceMember, useLeaveAlliance, useMailMessages, useMarkGameReportRead, useMarkMailRead, useMarkMapOpened, useMarkReportRead, useMarketOffers, usePlayerQuests, useProposePeace, useRenameCity, useResearchTech, useScoutTarget, useSendMailMessage, useTechs, useTrainUnits, useTransferAllianceLeadership, useUpdateAlliance, useUpdateAllianceMemberRole, useUpgradeBuilding, useVillageLayout, useWorldMap, useWorldMovements, useWorldSeason, useTutorialStep } from "@/hooks/useCity";
 import { WorldMapHTMLCanvas } from "@/components/worldmap/WorldMapHTMLCanvas";
 import { BarbarianAttackAlertBanner } from "@/components/barbarians/BarbarianAttackAlertBanner";
 import { WinterPressureBanner } from "@/components/barbarians/WinterPressureBanner";
@@ -29,6 +29,8 @@ import { WonderPanel } from "@/components/game/WonderPanel";
 import { AchievementsPanel } from "@/components/game/AchievementsPanel";
 import { ActivityFeedPanel } from "@/components/game/ActivityFeedPanel";
 import { ChatPanel } from "@/components/game/ChatPanel";
+import { PlayerProfileModal } from "@/components/game/PlayerProfileModal";
+import { TutorialOverlay } from "@/components/game/TutorialOverlay";
 import { useState, useMemo, useCallback, useEffect, useRef, memo, startTransition, type ReactNode } from "react";
 import { useI18n } from "@/i18n";
 import { normalizeVillageLayout, resolveVillageRenderableBuildings } from "@/lib/villageLayout";
@@ -62,6 +64,8 @@ export function VillageView() {
   const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
   const [isActivityFeedOpen, setIsActivityFeedOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isMarketOpen, setIsMarketOpen] = useState(false);
+  const [profileCityId, setProfileCityId] = useState<string | null>(null);
   const [runtimePollingEnabled, setRuntimePollingEnabled] = useState(false);
   const upgradeLockRef = useRef<string | null>(null);
   const shellRef = useRef<HTMLDivElement>(null);
@@ -108,6 +112,7 @@ export function VillageView() {
   const worldId = useGameStore((s) => s.worldId);
   const { data: worldMap } = useWorldMap(worldId);
   const { data: seasonData } = useWorldSeason();
+  const { data: tutorialData } = useTutorialStep();
 
   useEffect(() => {
     const id = window.setTimeout(() => setRuntimePollingEnabled(true), 12_000);
@@ -173,6 +178,7 @@ export function VillageView() {
     onOpenActivityFeed: () => startTransition(() => setIsActivityFeedOpen(true)),
     onOpenSettings: () => startTransition(() => setIsSettingsOpen(true)),
     onOpenChat: () => setIsChatOpen((v) => !v),
+    onOpenMarket: () => startTransition(() => setIsMarketOpen(true)),
   };
   const isPuebloView = activeView === "pueblo";
   const isMapView = activeView === "mapa";
@@ -363,10 +369,13 @@ export function VillageView() {
       {isRenameOpen && <RenameCityModal cityId={cityId} currentName={cityName} onClose={() => setIsRenameOpen(false)} t={t} />}
       {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
       {isDailyQuestsOpen && <DailyQuestsPanel onClose={() => setIsDailyQuestsOpen(false)} />}
-      {isNewRankingsOpen && <RankingsPanel onClose={() => setIsNewRankingsOpen(false)} />}
+      {isNewRankingsOpen && <RankingsPanel onClose={() => setIsNewRankingsOpen(false)} onOpenProfile={(id) => { setIsNewRankingsOpen(false); setProfileCityId(id); }} />}
       {isWonderOpen && <WonderPanel onClose={() => setIsWonderOpen(false)} />}
       {isAchievementsOpen && <AchievementsPanel onClose={() => setIsAchievementsOpen(false)} />}
       {isActivityFeedOpen && <ActivityFeedPanel onClose={() => setIsActivityFeedOpen(false)} />}
+      {isMarketOpen && <MarketModal cityId={cityId} onClose={() => setIsMarketOpen(false)} t={t} />}
+      {profileCityId && <PlayerProfileModal cityId={profileCityId} onClose={() => setProfileCityId(null)} onOpenMail={() => setIsMailOpen(true)} />}
+      {tutorialData && tutorialData.step < 4 && <TutorialOverlay initialStep={tutorialData.step} />}
       {isChatOpen && isMobile !== null && (
         isMobile ? (
           <ChatPanel fullscreen onClose={() => setIsChatOpen(false)} />
@@ -1928,38 +1937,111 @@ function MarketModal({ cityId, onClose, t }: any) {
   );
 }
 
+const RESOURCE_ICONS: Record<string, string> = { gold: "💰", wood: "🪵", stone: "🪨", food: "🌾" };
+
 function MarketPanel({ cityId, t }: any) {
   const { data: offers } = useMarketOffers();
+  const { data: allCities } = useAllCities();
   const createOffer = useCreateMarketOffer();
   const acceptOffer = useAcceptMarketOffer();
+  const addToast = useToastStore((s) => s.addToast);
   const [giveResource, setGiveResource] = useState("wood");
   const [wantResource, setWantResource] = useState("stone");
   const [giveAmount, setGiveAmount] = useState(100);
   const [wantAmount, setWantAmount] = useState(100);
+  const [createOpen, setCreateOpen] = useState(true);
   const resourceOptions = ["gold", "wood", "stone", "food"];
+  const feePreview = Math.ceil(giveAmount * 0.05);
+  const cityMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const c of allCities ?? []) m[c.id] = c.name;
+    return m;
+  }, [allCities]);
+
+  function handlePublish() {
+    if (!cityId) return;
+    createOffer.mutate({ cityId, giveResource, giveAmount, wantResource, wantAmount }, {
+      onSuccess: () => { addToast({ type: "success", title: t("play.market.title"), message: t("play.market.publish") }); setCreateOpen(false); },
+      onError: (e: any) => addToast({ type: "error", title: t("play.market.title"), message: e.message }),
+    });
+  }
+
   return (
-        <div className="grid max-h-[calc(88vh-74px)] gap-5 overflow-y-auto p-5 lg:grid-cols-[320px_1fr]">
-          <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-            <h3 className="font-serif text-lg text-white">{t("play.market.create")}</h3>
-            <select value={giveResource} onChange={(e) => setGiveResource(e.target.value)} className="mt-3 w-full rounded-lg border border-white/10 bg-black/35 p-2 text-sm text-white">{resourceOptions.map((r) => <option key={r} value={r}>{t(`play.resources.${r}`)}</option>)}</select>
-            <input type="number" min={1} value={giveAmount} onChange={(e) => setGiveAmount(Number(e.target.value))} className="mt-2 w-full rounded-lg border border-white/10 bg-black/35 p-2 text-sm text-white" />
-            <select value={wantResource} onChange={(e) => setWantResource(e.target.value)} className="mt-3 w-full rounded-lg border border-white/10 bg-black/35 p-2 text-sm text-white">{resourceOptions.map((r) => <option key={r} value={r}>{t(`play.resources.${r}`)}</option>)}</select>
-            <input type="number" min={1} value={wantAmount} onChange={(e) => setWantAmount(Number(e.target.value))} className="mt-2 w-full rounded-lg border border-white/10 bg-black/35 p-2 text-sm text-white" />
-            <button disabled={!cityId || createOffer.isPending} onClick={() => cityId && createOffer.mutate({ cityId, giveResource, giveAmount, wantResource, wantAmount })} className="mt-4 w-full rounded-xl bg-etheria-gold py-3 text-sm font-bold text-black disabled:opacity-30">{t("play.market.publish")}</button>
-          </section>
-          <section className="space-y-3">
-            {(offers ?? []).map((offer) => (
-              <div key={offer.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="text-sm text-white/75">
-                  <span className="text-etheria-gold-soft">{offer.giveAmount} {t(`play.resources.${offer.giveResource}`)}</span>
-                  {" "}{t("play.market.for")}{" "}
-                  <span className="text-etheria-gold-soft">{offer.wantAmount} {t(`play.resources.${offer.wantResource}`)}</span>
+    <div className="grid max-h-[calc(88vh-74px)] gap-5 overflow-y-auto p-5 lg:grid-cols-[320px_1fr]">
+      {/* Create offer */}
+      <section className="rounded-xl border border-white/10 bg-white/[0.03]">
+        <button onClick={() => setCreateOpen(v => !v)} className="flex w-full items-center justify-between px-4 py-3 text-left">
+          <h3 className="font-serif text-lg text-white">{t("play.market.create")}</h3>
+          <span className="text-white/40 text-xs">{createOpen ? "▲" : "▼"}</span>
+        </button>
+        {createOpen && (
+          <div className="px-4 pb-4 space-y-2">
+            <div className="grid grid-cols-[1fr_80px] gap-2">
+              <select value={giveResource} onChange={(e) => setGiveResource(e.target.value)} className="rounded-lg border border-white/10 bg-black/35 p-2 text-sm text-white">
+                {resourceOptions.map((r) => <option key={r} value={r}>{RESOURCE_ICONS[r]} {t(`play.resources.${r}`)}</option>)}
+              </select>
+              <input type="number" min={1} value={giveAmount} onChange={(e) => setGiveAmount(Number(e.target.value))} className="rounded-lg border border-white/10 bg-black/35 p-2 text-sm text-white" />
+            </div>
+            <div className="text-center text-xs text-white/40">↕ {t("play.market.for")}</div>
+            <div className="grid grid-cols-[1fr_80px] gap-2">
+              <select value={wantResource} onChange={(e) => setWantResource(e.target.value)} className="rounded-lg border border-white/10 bg-black/35 p-2 text-sm text-white">
+                {resourceOptions.map((r) => <option key={r} value={r}>{RESOURCE_ICONS[r]} {t(`play.resources.${r}`)}</option>)}
+              </select>
+              <input type="number" min={1} value={wantAmount} onChange={(e) => setWantAmount(Number(e.target.value))} className="rounded-lg border border-white/10 bg-black/35 p-2 text-sm text-white" />
+            </div>
+            <p className="text-xs text-white/40">{t("play.market.fee")}: {feePreview} {t(`play.resources.${giveResource}`)}</p>
+            <button disabled={!cityId || createOffer.isPending} onClick={handlePublish} className="mt-1 w-full rounded-xl bg-etheria-gold py-3 text-sm font-bold text-black disabled:opacity-30">
+              {createOffer.isPending ? "..." : t("play.market.publish")}
+            </button>
+          </div>
+        )}
+      </section>
+
+      {/* Offers list */}
+      <section className="space-y-3">
+        {(offers ?? []).length === 0 && (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-8 text-center text-sm text-white/40">
+            <span className="mb-2 text-3xl">⚖️</span>
+            {t("play.market.noOffers")}
+          </div>
+        )}
+        {(offers ?? []).map((offer: any) => {
+          const isOwn = offer.creatorCityId === cityId;
+          const sellerName = cityMap[offer.creatorCityId] ?? "?";
+          const expiresIn = offer.expiresAt ? Math.max(0, Math.round((new Date(offer.expiresAt).getTime() - Date.now()) / 3600000)) : null;
+          return (
+            <div key={offer.id} className={`rounded-xl border p-4 ${isOwn ? "border-etheria-gold/30 bg-etheria-gold/5" : "border-white/10 bg-white/[0.03]"}`}>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                    <span>{RESOURCE_ICONS[offer.giveResource]} {offer.giveAmount} {t(`play.resources.${offer.giveResource}`)}</span>
+                    <span className="text-white/30">→</span>
+                    <span>{RESOURCE_ICONS[offer.wantResource]} {offer.wantAmount} {t(`play.resources.${offer.wantResource}`)}</span>
+                  </div>
+                  <div className="mt-1 flex items-center gap-3 text-[11px] text-white/40">
+                    <span>{t("play.market.seller")}: <span className="text-white/60">{sellerName}</span></span>
+                    {expiresIn !== null && <span>{t("play.market.expires")}: {expiresIn}h</span>}
+                  </div>
                 </div>
-                <button disabled={!cityId || offer.creatorCityId === cityId || acceptOffer.isPending} onClick={() => cityId && acceptOffer.mutate({ offerId: offer.id, cityId })} className="rounded-lg border border-etheria-gold/40 px-3 py-2 text-xs text-etheria-gold-soft disabled:opacity-30">{t("play.market.accept")}</button>
+                {!isOwn && (
+                  <button
+                    disabled={!cityId || acceptOffer.isPending}
+                    onClick={() => cityId && acceptOffer.mutate({ offerId: offer.id, cityId }, {
+                      onSuccess: () => addToast({ type: "success", title: t("play.market.title"), message: t("play.market.accept") }),
+                      onError: (e: any) => addToast({ type: "error", title: t("play.market.title"), message: e.message }),
+                    })}
+                    className="shrink-0 rounded-lg border border-etheria-gold/40 px-4 py-2.5 text-xs font-semibold text-etheria-gold-soft hover:bg-etheria-gold/10 disabled:opacity-30 min-h-[44px]"
+                  >
+                    {t("play.market.accept")}
+                  </button>
+                )}
+                {isOwn && <span className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-[10px] text-white/40">{t("play.market.create")}</span>}
               </div>
-            ))}
-          </section>
-        </div>
+            </div>
+          );
+        })}
+      </section>
+    </div>
   );
 }
 

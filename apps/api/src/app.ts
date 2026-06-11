@@ -20,6 +20,7 @@ import { eventsRouter } from './routes/events.js';
 import { wonderRouter } from './routes/wonder.js';
 import { achievementsRouter } from './routes/achievements.js';
 import { activityFeedRouter } from './routes/activityFeed.js';
+import { tutorialRouter } from './routes/tutorial.js';
 import { adminBotsRouter } from './routes/adminBots.js';
 import { loadBuildingConfigs } from './domain/buildings.js';
 import { loadUnitConfigs } from './domain/units.js';
@@ -96,6 +97,7 @@ export function createApiApp() {
   app.route('/achievements', achievementsRouter);
   app.route('/activity', activityFeedRouter);
   app.route('/admin/bots', adminBotsRouter);
+  app.route('/tutorial', tutorialRouter);
 
   return app;
 }

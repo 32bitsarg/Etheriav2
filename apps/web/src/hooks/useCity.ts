@@ -1448,3 +1448,78 @@ export function useWinterPressure(cityId: string | null, enabled = true) {
     refetchInterval: 30_000,
   });
 }
+
+export function usePublicCityProfile(cityId: string | null) {
+  return useQuery({
+    queryKey: ["city", "public", cityId],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/city/${cityId}/public`);
+      if (!res.ok) throw new Error("City not found");
+      return res.json() as Promise<{ id: string; name: string; race: string; posX: number; posY: number; createdAt: string; power: number; allianceName: string | null; allianceTag: string | null; rank: number }>;
+    },
+    enabled: !!cityId,
+    staleTime: 30_000,
+  });
+}
+
+export function useActiveRallies(cityId: string | null) {
+  return useQuery({
+    queryKey: ["rallies", "active", cityId],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/rally/active?cityId=${cityId}`);
+      if (!res.ok) throw new Error("Failed to fetch rallies");
+      return res.json() as Promise<{ rallies: any[] }>;
+    },
+    enabled: !!cityId,
+    staleTime: 15_000,
+    refetchInterval: 15_000,
+  });
+}
+
+export function useCreateRally() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { cityId: string; targetCityId?: string; targetCampId?: string; minutesUntilLaunch: number }) => {
+      const res = await fetch(`${API_BASE}/rally`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed to create rally"); }
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["rallies"] }),
+  });
+}
+
+export function useJoinRally() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ rallyId, cityId, units }: { rallyId: string; cityId: string; units: { type: string; count: number }[] }) => {
+      const res = await fetch(`${API_BASE}/rally/${rallyId}/join`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cityId, units }) });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed to join rally"); }
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["rallies"] }),
+  });
+}
+
+export function useCancelRally() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ rallyId, cityId }: { rallyId: string; cityId: string }) => {
+      const res = await fetch(`${API_BASE}/rally/${rallyId}/cancel`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cityId }) });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed to cancel rally"); }
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["rallies"] }),
+  });
+}
+
+export function useTutorialStep() {
+  return useQuery({
+    queryKey: ["tutorial", "step"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/tutorial/step`);
+      if (!res.ok) return { step: 5 };
+      return res.json() as Promise<{ step: number }>;
+    },
+    staleTime: Infinity,
+  });
+}

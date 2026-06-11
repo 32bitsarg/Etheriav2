@@ -673,7 +673,8 @@
       "dailyQuests": "Misiones",
       "wonder": "Maravilla",
       "achievements": "Logros",
-      "feed": "Feed"
+      "feed": "Feed",
+      "market": "Mercado"
     },
     "hud": {
       "groups": {
@@ -1148,7 +1149,27 @@
       "create": "Crear oferta",
       "publish": "Publicar",
       "accept": "Aceptar",
-      "for": "por"
+      "for": "por",
+      "fee": "Comisión",
+      "expires": "Expira",
+      "noOffers": "No hay ofertas activas en este momento.",
+      "seller": "Vendedor",
+      "viewProfile": "Ver perfil"
+    },
+    "profile": {
+      "title": "Perfil",
+      "power": "Poder",
+      "rank": "Ranking"
+    },
+    "tutorial": {
+      "step": "Paso",
+      "next": "Siguiente →",
+      "finish": "¡Empezar!",
+      "skip": "Saltar tutorial",
+      "step1": { "title": "¡Bienvenido a Etheria!", "body": "Esta es tu aldea. Construye edificios, entrena tropas y domina el mundo." },
+      "step2": { "title": "Construye una Granja", "body": "Toca el edificio de Granja y mejóralo para producir más comida para tus tropas." },
+      "step3": { "title": "Entrena tropas", "body": "En el Cuartel puedes reclutar guerreros, arqueros y caballería para defenderte y atacar." },
+      "step4": { "title": "Explora el mapa", "body": "Abre el Mapa Mundial para ver otros reinos, atacar campos bárbaros y coordinar con aliados." }
     },
     "espionage": {
       "title": "Espionaje",

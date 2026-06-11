@@ -8,6 +8,7 @@ import { NotificationBell } from "@/components/game/NotificationBell";
 import { SidebarNavIcon } from "@/components/ui/SidebarNavIcon";
 import { ChecklistIcon, WonderIcon, LaurelsIcon, FeedIcon, GearIcon, SpeechIcon } from "./HudIcons";
 import { ScrollIcon } from "@/components/landing/MedievalIcons";
+import { DailyEventBanner } from "@/components/game/DailyEventBanner";
 import type { HudActions } from "./hudTypes";
 
 export function MobileHUD({
@@ -26,6 +27,7 @@ export function MobileHUD({
   onOpenActivityFeed,
   onOpenSettings,
   onOpenChat,
+  onOpenMarket,
 }: HudActions) {
   const { t } = useI18n();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
@@ -44,6 +46,7 @@ export function MobileHUD({
     { icon: <LaurelsIcon className="h-5 w-5" />, label: t("play.sidebar.achievements"), onClick: onOpenAchievements },
     { icon: <FeedIcon className="h-5 w-5" />, label: t("play.sidebar.feed"), onClick: onOpenActivityFeed },
     { icon: <GearIcon className="h-5 w-5" />, label: t("play.settings.title"), onClick: onOpenSettings },
+    ...(onOpenMarket ? [{ icon: <span style={{ fontSize: 18 }}>⚖️</span>, label: t("play.sidebar.market"), onClick: onOpenMarket }] : []),
   ];
 
   const dockItems = [
@@ -113,6 +116,7 @@ export function MobileHUD({
           </span>
         </button>
         <span className="pointer-events-auto"><SeasonHUD compact /></span>
+        <span className="pointer-events-auto"><DailyEventBanner compact /></span>
       </div>
 
       {/* Dock inferior: glassmorphism pill estilo CoC */}

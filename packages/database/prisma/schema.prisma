@@ -17,6 +17,7 @@ model User {
   botProfile   String?
   passwordHash String?
   passwordSalt String?
+  tutorialStep Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

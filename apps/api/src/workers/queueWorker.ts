@@ -7,7 +7,7 @@ import {
   mergeRecordBySelector,
 } from '../infrastructure/matecitoRecord.js';
 import { calculateCityStats } from '../domain/buildings.js';
-import { resolveBattle, calculateLoot, calculateTravelTimeWithMultiplier } from '../domain/battles.js';
+import { resolveBattle, calculateLoot, calculateTravelTimeWithMultiplier, calculateTravelTime } from '../domain/battles.js';
 import { getUnitStats } from '../domain/units.js';
 import { addResources } from '../domain/resources.js';
 import { calculateTechBonuses } from '../domain/techs.js';
@@ -81,6 +81,7 @@ export async function processQueueWorkerTick() {
     lastResourceTickAt = Date.now();
     await processResourceTicks();
   }
+  await processRallyLaunches();
   await processBattles();
   await processBattleReturns();
   await processBarbarianBattles();
@@ -1284,4 +1285,123 @@ async function resolveTradeCaravanReturn(caravan: any) {
     status: 'COMPLETED',
     completedAt: now,
   });
+}
+
+// ─── Rally Launches ───
+
+async function processRallyLaunches() {
+  const now = new Date();
+  const dueRallies = await prisma.rallyAttack.findMany({
+    where: { status: 'OPEN', launchAt: { lte: now } },
+    include: { participants: true },
+    take: 10,
+  });
+
+  for (const rally of dueRallies) {
+    try {
+      await launchRally(rally);
+    } catch (err) {
+      console.error(`Rally launch failed ${rally.id}:`, err);
+    }
+  }
+}
+
+async function launchRally(rally: any) {
+  if (!rally.participants || rally.participants.length === 0) {
+    await prisma.rallyAttack.update({ where: { id: rally.id }, data: { status: 'CANCELLED' } });
+    return;
+  }
+
+  // Aggregate units from all participants
+  const aggregatedUnits: Record<string, number> = {};
+  for (const p of rally.participants) {
+    const units = Array.isArray(p.units) ? p.units : [];
+    for (const u of units as { type: string; count: number }[]) {
+      aggregatedUnits[u.type] = (aggregatedUnits[u.type] ?? 0) + u.count;
+    }
+  }
+
+  const totalUnits = Object.values(aggregatedUnits).reduce((s, c) => s + c, 0);
+  if (totalUnits === 0) {
+    await prisma.rallyAttack.update({ where: { id: rally.id }, data: { status: 'CANCELLED' } });
+    return;
+  }
+
+  const attackerCityRes = await db.from(COLLECTIONS.CITIES).eq('id', rally.createdByCityId).getFirst() as any;
+  const attackerCity = attackerCityRes.data;
+  if (!attackerCity) {
+    await prisma.rallyAttack.update({ where: { id: rally.id }, data: { status: 'CANCELLED' } });
+    return;
+  }
+
+  const speeds = Object.entries(aggregatedUnits)
+    .filter(([, c]) => c > 0)
+    .map(([type]) => getUnitStats(type as any, 1, attackerCity.techBonuses).speed);
+  const minSpeed = speeds.length > 0 ? Math.min(...speeds) : 60;
+
+  if (rally.targetCityId) {
+    // PvP rally attack — create a Battle record and let processBattles pick it up
+    const defenderCityRes = await db.from(COLLECTIONS.CITIES).eq('id', rally.targetCityId).getFirst() as any;
+    const defenderCity = defenderCityRes.data;
+    if (!defenderCity) {
+      await prisma.rallyAttack.update({ where: { id: rally.id }, data: { status: 'CANCELLED' } });
+      return;
+    }
+    const worldConfig = await getWorldConfig(attackerCity.worldId);
+    const terrainSpeed = calculatePathSpeedMultiplier(attackerCity.posX, attackerCity.posY, defenderCity.posX, defenderCity.posY, worldConfig.map.width, worldConfig.map.height);
+    const travelSeconds = calculateTravelTimeWithMultiplier(attackerCity.posX, attackerCity.posY, defenderCity.posX, defenderCity.posY, minSpeed, terrainSpeed);
+    const arrivesAt = new Date(Date.now() + travelSeconds * 1000).toISOString();
+
+    const battleId = crypto.randomUUID();
+    await mergeRecordByLogicalId(COLLECTIONS.BATTLES, battleId, {
+      id: battleId,
+      attackerCityId: rally.createdByCityId,
+      defenderCityId: rally.targetCityId,
+      units: Object.entries(aggregatedUnits).filter(([, c]) => c > 0).map(([type, count]) => ({ type, count })),
+      status: 'MARCHING',
+      type: 'ATTACK',
+      startedAt: new Date().toISOString(),
+      arrivesAt,
+      rallyId: rally.id,
+    });
+    console.log(`🚩 Rally ${rally.id} launched → PvP battle ${battleId} arrives at ${arrivesAt}`);
+  } else if (rally.targetCampId) {
+    // Rally vs barbarian camp — create a BarbarianAttack record
+    const campRes = await db.from(COLLECTIONS.BARBARIAN_CAMPS).eq('id', rally.targetCampId).getFirst() as any;
+    const camp = campRes.data;
+    if (!camp) {
+      await prisma.rallyAttack.update({ where: { id: rally.id }, data: { status: 'CANCELLED' } });
+      return;
+    }
+    const travelSeconds = calculateTravelTime(attackerCity.posX, attackerCity.posY, camp.posX, camp.posY, minSpeed);
+    const arrivesAt = new Date(Date.now() + travelSeconds * 1000).toISOString();
+
+    const attackId = crypto.randomUUID();
+    await mergeRecordByLogicalId(COLLECTIONS.BARBARIAN_ATTACKS, attackId, {
+      id: attackId,
+      attackerCityId: rally.createdByCityId,
+      campId: rally.targetCampId,
+      units: Object.entries(aggregatedUnits).filter(([, c]) => c > 0).map(([type, count]) => ({ type, count })),
+      status: 'MARCHING',
+      startedAt: new Date().toISOString(),
+      arrivesAt,
+      rallyId: rally.id,
+    });
+    console.log(`🚩 Rally ${rally.id} launched → barb attack ${attackId} arrives at ${arrivesAt}`);
+  }
+
+  await prisma.rallyAttack.update({ where: { id: rally.id }, data: { status: 'LAUNCHED' } });
+
+  // Notify all participants
+  for (const p of rally.participants) {
+    await db.from(COLLECTIONS.NOTIFICATIONS).insert({
+      id: crypto.randomUUID(),
+      userId: p.userId,
+      type: 'RALLY_LAUNCHED',
+      message: `El rally ha sido lanzado. Las tropas están en marcha.`,
+      payload: { rallyId: rally.id },
+      createdAt: new Date().toISOString(),
+      read: false,
+    });
+  }
 }
