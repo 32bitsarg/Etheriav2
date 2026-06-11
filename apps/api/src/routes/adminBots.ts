@@ -6,6 +6,7 @@ import { processBotWorkerTick } from "../workers/botWorker.js";
 import { getBotSimulationConfig } from "../domain/botConfigData.js";
 import { generateBotUsername, generateCityName } from "../domain/nameGenerator.js";
 import { createStarterCityForUser } from "../domain/cityCreation.js";
+import { ensureBotPopulation } from "../domain/botService.js";
 import { db, COLLECTIONS } from "../infrastructure/matecito.js";
 import { prisma } from "@etheria/database";
 import { requireAdmin } from "../infrastructure/adminMiddleware.js";
@@ -17,16 +18,30 @@ export const adminBotsRouter = new Hono();
 adminBotsRouter.use("*", requireAdmin());
 
 adminBotsRouter.get("/", async (c) => {
-
-
   const worldId = c.req.query("worldId") ?? undefined;
   const bots = await listBots(worldId);
-  return c.json({ bots });
+
+  // Enrich with player name and city name from Prisma
+  const userIds = bots.map((b: any) => b.userId).filter(Boolean);
+  const cityIds = bots.map((b: any) => b.cityId).filter(Boolean);
+  const [users, cities] = await Promise.all([
+    prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true } }),
+    prisma.city.findMany({ where: { id: { in: cityIds } }, select: { id: true, name: true } }),
+  ]);
+  const userMap = Object.fromEntries(users.map((u) => [u.id, u.name]));
+  const cityMap = Object.fromEntries(cities.map((c) => [c.id, c.name]));
+  const enriched = bots.map((b: any) => ({
+    ...b,
+    userName: userMap[b.userId] ?? null,
+    cityName: cityMap[b.cityId] ?? null,
+  }));
+
+  return c.json({ bots: enriched });
 });
 
 const CreateBotSchema = z.object({
   worldId: z.string().optional().default("default"),
-  profile: z.enum(["ECONOMIST", "MILITARIST", "TECH_RUSHER", "BALANCED"]).optional().default("BALANCED"),
+  profile: z.enum(["ECONOMIST", "MILITARIST", "TECH_RUSHER", "BALANCED", "ALLIANCE"]).optional().default("BALANCED"),
 });
 
 adminBotsRouter.post("/", zValidator("json", CreateBotSchema), async (c) => {
@@ -103,8 +118,13 @@ adminBotsRouter.patch("/:id", zValidator("json", z.object({ status: z.enum(["ACT
 });
 
 adminBotsRouter.post("/tick", async (c) => {
-
-
   const result = await processBotWorkerTick();
   return c.json(result);
+});
+
+adminBotsRouter.post("/ensure-population", async (c) => {
+  const worldId = c.req.query("worldId") ?? "default";
+  await ensureBotPopulation(undefined, worldId);
+  const bots = await listBots(worldId);
+  return c.json({ ok: true, count: bots.length });
 });

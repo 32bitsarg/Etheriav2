@@ -196,6 +196,27 @@ function VillageLayoutEditorContent() {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   };
 
+  // Keyboard arrow-key nudge (Shift = 5× step)
+  const nudgeRef = useRef(nudgeSelected);
+  const scaleRef = useRef(handleScaleChange);
+  nudgeRef.current = nudgeSelected;
+  scaleRef.current = handleScaleChange;
+  useEffect(() => {
+    if (editorMode !== "village") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const step = e.shiftKey ? 0.025 : 0.005;
+      if (e.key === "ArrowUp") { e.preventDefault(); nudgeRef.current(0, -step); }
+      else if (e.key === "ArrowDown") { e.preventDefault(); nudgeRef.current(0, step); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); nudgeRef.current(-step, 0); }
+      else if (e.key === "ArrowRight") { e.preventDefault(); nudgeRef.current(step, 0); }
+      else if (e.key === "-") scaleRef.current(-0.05);
+      else if (e.key === "=") scaleRef.current(0.05);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [editorMode]);
+
   const handleSave = () => saveMutation.mutate(layout, { onSuccess: () => setDraft(null) });
   const handleSaveTerrain = () => saveTerrainMutation.mutate(terrainMask, { onSuccess: () => setTerrainDraft(null) });
   const handleResetTerrain = () => setTerrainDraft({ ...terrainMask, cells: terrainMask.cells.map(() => "PLAINS") });
@@ -390,11 +411,43 @@ function VillageLayoutEditorContent() {
                   <button onClick={() => handleScaleChange(0.05)} className="text-etheria-text">+</button>
                 </div>
                 <div className="flex items-center gap-1 rounded-lg border border-etheria-border px-2 py-1 text-xs">
-                  <button onClick={() => nudgeSelected(0, -0.005)} className="text-etheria-text">Y-</button>
-                  <button onClick={() => nudgeSelected(0, 0.005)} className="text-etheria-text">Y+</button>
-                  <button onClick={() => nudgeSelected(-0.005, 0)} className="text-etheria-text">X-</button>
-                  <button onClick={() => nudgeSelected(0.005, 0)} className="text-etheria-text">X+</button>
+                  <button onClick={() => nudgeSelected(-0.005, 0)} className="text-etheria-text px-1">◀</button>
+                  <button onClick={() => nudgeSelected(0, -0.005)} className="text-etheria-text px-1">▲</button>
+                  <button onClick={() => nudgeSelected(0, 0.005)} className="text-etheria-text px-1">▼</button>
+                  <button onClick={() => nudgeSelected(0.005, 0)} className="text-etheria-text px-1">▶</button>
                 </div>
+                {selectedAnchor && (
+                  <div className="flex items-center gap-1 rounded-lg border border-etheria-border px-2 py-1 text-xs">
+                    <span className="text-etheria-text-muted">X</span>
+                    <input
+                      type="number" step="0.001" min="0" max="1"
+                      value={selectedAnchor.x.toFixed(4)}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val) && selectedBuilding) {
+                          const key = getVillageTileKey(selectedBuilding.positionX, selectedBuilding.positionY);
+                          const dx = Math.min(1, Math.max(0, val)) - selectedAnchor.x;
+                          nudgeSelected(dx, 0);
+                        }
+                      }}
+                      className="w-[62px] bg-transparent font-mono text-etheria-gold-soft outline-none text-center"
+                    />
+                    <span className="text-etheria-text-muted">Y</span>
+                    <input
+                      type="number" step="0.001" min="0" max="1"
+                      value={selectedAnchor.y.toFixed(4)}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val) && selectedBuilding) {
+                          const dy = Math.min(1, Math.max(0, val)) - selectedAnchor.y;
+                          nudgeSelected(0, dy);
+                        }
+                      }}
+                      className="w-[62px] bg-transparent font-mono text-etheria-gold-soft outline-none text-center"
+                    />
+                  </div>
+                )}
+                <span className="text-[10px] text-etheria-text-muted hidden xl:block" title="Arrow keys to nudge, Shift+arrow for ×5, =/-  for scale">↑↓←→ / Shift×5</span>
                 <span className={`text-[11px] font-mono ${hasUnsavedChanges ? "text-amber-300" : "text-etheria-text-muted"}`}>{hasUnsavedChanges ? t("editor.unsaved") : t("editor.noChanges")}</span>
                 {saveMutation.isError && <span className="text-[11px] text-rose-300">{t("editor.saveError")}</span>}
               </>
