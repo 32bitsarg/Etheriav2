@@ -16,8 +16,9 @@ const EditorClient = dynamic(() => import("../editor/EditorClient"), {
 
 type AdminTab = "ops" | "editor";
 
-const EDITOR_ENABLED =
-  process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_ENABLE_EDITOR === "true";
+// El tab se muestra siempre: todas las acciones del editor/bots viajan con
+// X-Admin-Secret y se validan server-side, ocultar la UI no protegia nada.
+const EDITOR_ENABLED = true;
 
 // Panel único de administración: operaciones (servicios/logs/perf/deploy),
 // editor de aldea y terreno, y administración de bots — antes repartidos
