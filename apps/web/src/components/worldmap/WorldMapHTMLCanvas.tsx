@@ -162,6 +162,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
       if (season === "WINTER") weather.style.backgroundColor = `rgba(255,255,255,${0.22 * intensity})`;
       else if (season === "AUTUMN") weather.style.backgroundColor = `rgba(255,170,102,${0.12 * intensity})`;
       else if (season === "SUMMER") weather.style.backgroundColor = `rgba(255,240,170,${0.08 * intensity})`;
+      else if (season === "SPRING") weather.style.backgroundColor = `rgba(180,255,160,${0.06 * intensity})`;
       else weather.style.display = "none";
     }
   }, [seasonState]);
@@ -373,6 +374,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   }, []);
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (pinch.current) return; // pinch takes priority — don't pan while zooming
     const ps = pointerState.current;
     if (!ps || ps.pointerId !== e.pointerId) return;
     const dx = e.clientX - ps.startClientX;
@@ -566,9 +568,11 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
           {/* Movement markers */}
           {movements.map((m) => {
             const isTrade = m.type === "TRADE";
+            const isBarbRaid = m.type === "BARBARIAN_RAID";
+            const isBarbAttack = m.type === "BARBARIAN_ATTACK";
             const l = worldToLocal(m.from.x, m.from.y);
             const color = MOVEMENT_RELATION_COLORS[m.relation ?? "neutral"] ?? (isTrade ? "#ffe066" : "#ff8888");
-            const icon = isTrade ? "📦" : "⚔️";
+            const icon = isTrade ? "📦" : isBarbRaid ? "🏕️" : isBarbAttack ? "🗡️" : "⚔️";
             const isHovered = hoveredMovementId === m.id;
             return (
               <div

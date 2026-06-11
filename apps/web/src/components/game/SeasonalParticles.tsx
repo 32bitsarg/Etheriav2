@@ -57,14 +57,15 @@ const SEASON_PARTICLES: Record<Season, {
     }),
   },
   SPRING: {
-    count: 12,
+    count: 20,
     animation: "season-petal",
     render: (rnd) => ({
-      width: 4 + rnd() * 3,
-      height: 3 + rnd() * 3,
+      width: 6 + rnd() * 5,
+      height: 5 + rnd() * 4,
       borderRadius: "60% 60% 60% 10%",
-      background: `hsl(${330 + rnd() * 30}, 70%, ${78 + rnd() * 10}%)`,
-      opacity: 0.8,
+      background: `hsl(${320 + rnd() * 40}, 75%, ${72 + rnd() * 12}%)`,
+      opacity: 0.85 + rnd() * 0.1,
+      boxShadow: `0 0 4px rgba(255,180,210,0.3)`,
     }),
   },
 };
