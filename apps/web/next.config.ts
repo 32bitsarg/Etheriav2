@@ -32,12 +32,9 @@ const withPWA = withPWAInit({
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
-  // Don't precache audio/large assets — they're streamed on demand
-  exclude: [
-    /assets\/audio\//,
-    /assets\/buildings\/.*\.png$/,
-  ],
   workboxOptions: {
+    // Don't precache audio/large assets — they're streamed on demand
+    exclude: [/assets\/audio\//, /assets\/buildings\/.*\.png$/],
     // Cache game assets for 30 days
     runtimeCaching: [
       {
