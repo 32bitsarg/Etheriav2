@@ -37,8 +37,6 @@ export function BarbarianCampModal() {
   const [selectedUnits, setSelectedUnits] = useState<Record<UnitType, number>>({
     WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0,
   });
-  const [showResult, setShowResult] = useState(false);
-
   const { data, isLoading } = useBarbarianCampDetail(selectedCamp?.id ?? null);
   const attackCamp = useAttackBarbarianCamp();
   const scoutTarget = useScoutTarget();
@@ -62,15 +60,13 @@ export function BarbarianCampModal() {
       units: attackUnits,
     });
 
-    setShowResult(true);
-
-    // Reset after delay
-    setTimeout(() => {
-      setShowResult(false);
-      setShowCampModal(false);
-      setSelectedCamp(null);
-      setSelectedUnits({ WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 });
-    }, 5000);
+    // Battle is MARCHING — units travel to the camp, result resolves later via worker
+    const seconds = result.travelTime ?? 0;
+    const etaText = seconds < 90 ? `${seconds}s` : `${Math.round(seconds / 60)} min`;
+    addToast({ type: "success", title: "¡Fuerzas en marcha!", message: `Tu ejército llegará al campamento en ${etaText}.` });
+    setShowCampModal(false);
+    setSelectedCamp(null);
+    setSelectedUnits({ WARRIOR: 0, ARCHER: 0, CAVALRY: 0, SIEGE: 0, SPY: 0 });
   };
 
   const handleScout = () => {
@@ -95,66 +91,6 @@ export function BarbarianCampModal() {
   if (!showCampModal || !selectedCamp) return null;
 
   const archetypeLabel = ARCHETYPE_LABELS[selectedCamp.archetype] ?? selectedCamp.archetype;
-
-  // Result view
-  if (showResult && attackCamp.data) {
-    const result = attackCamp.data;
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <Panel variant={result.victory ? "wood" : "default"} animation="fade" className="w-full max-w-md p-0">
-          <div className="px-4 py-6 text-center">
-            <div className="text-4xl mb-3">{result.victory ? "⚔️" : "💀"}</div>
-            <h2 className={`text-xl font-bold mb-2 ${result.victory ? "text-etheria-gold" : "text-red-400"}`}>
-              {result.victory ? "Victory!" : "Defeat"}
-            </h2>
-            <p className="text-sm text-etheria-text-muted mb-4">
-              {result.victory
-                ? `You defeated the ${archetypeLabel} camp!`
-                : "Your forces were repelled. The camp remains."}
-            </p>
-
-            {result.victory && result.loot && (
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                <div className="rounded-md bg-etheria-border/10 px-3 py-2">
-                  <span className="text-xs text-etheria-text-muted">Gold</span>
-                  <p className="text-sm font-semibold text-yellow-400">+{result.loot.gold.toLocaleString()}</p>
-                </div>
-                <div className="rounded-md bg-etheria-border/10 px-3 py-2">
-                  <span className="text-xs text-etheria-text-muted">Wood</span>
-                  <p className="text-sm font-semibold text-green-400">+{result.loot.wood.toLocaleString()}</p>
-                </div>
-                <div className="rounded-md bg-etheria-border/10 px-3 py-2">
-                  <span className="text-xs text-etheria-text-muted">Stone</span>
-                  <p className="text-sm font-semibold text-stone-400">+{result.loot.stone.toLocaleString()}</p>
-                </div>
-                <div className="rounded-md bg-etheria-border/10 px-3 py-2">
-                  <span className="text-xs text-etheria-text-muted">Food</span>
-                  <p className="text-sm font-semibold text-orange-400">+{result.loot.food.toLocaleString()}</p>
-                </div>
-              </div>
-            )}
-
-            {result.losses && Object.entries(result.losses).some(([, v]) => v > 0) && (
-              <div className="mb-4">
-                <h3 className="text-sm font-medium text-etheria-text-muted mb-1">Your Losses</h3>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {Object.entries(result.losses).map(([type, count]) =>
-                    count > 0 ? (
-                      <span key={type} className="text-xs bg-red-900/30 text-red-300 px-2 py-1 rounded">
-                        {UNIT_LABELS[type as UnitType]}: -{count}
-                      </span>
-                    ) : null
-                  )}
-                </div>
-              </div>
-            )}
-
-            <p className="text-xs text-etheria-text-muted">Survivors returning home...</p>
-          </div>
-        </Panel>
-      </div>
-    );
-  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
