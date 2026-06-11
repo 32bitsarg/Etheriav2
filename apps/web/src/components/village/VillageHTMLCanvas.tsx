@@ -3,6 +3,7 @@
 import React, {
   useRef, useEffect, useState, useCallback, useMemo, memo,
 } from "react";
+import { hapticLight } from "@/lib/native";
 import type { BuildingType } from "@etheria/shared";
 import {
   getVillageBuildingFrame,
@@ -382,6 +383,7 @@ export const VillageHTMLCanvas = memo(function VillageHTMLCanvas({
       // Suppress click if the pointer had traveled beyond the pan threshold
       if (pointerState.current?.hasPanned) return;
       if (interactionsDisabled) return;
+      hapticLight();
       onSelectBuilding(id);
     },
     [interactionsDisabled, onSelectBuilding]

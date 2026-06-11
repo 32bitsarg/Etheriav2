@@ -30,6 +30,13 @@
   },
   "packageManager": "pnpm@10.12.1",
   "dependencies": {
-    "@capacitor/splash-screen": "^8.0.1"
+    "@capacitor-community/keep-awake": "^8.0.1",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/local-notifications": "^8.2.0",
+    "@capacitor/preferences": "^8.0.1",
+    "@capacitor/push-notifications": "^8.1.1",
+    "@capacitor/share": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capawesome/capacitor-badge": "^8.0.2"
   }
 }

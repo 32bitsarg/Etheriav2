@@ -14,6 +14,7 @@ import {
 import { useGameStore } from "@/stores/gameStore";
 import { useToastStore, type ToastIcon, type ToastType } from "@/stores/toastStore";
 import { useMatecitoAuth } from "@/hooks/useMatecitoAuth";
+import { keepAwake, allowSleep, setBadge, hapticWarning } from "@/lib/native";
 
 const reportIconByType: Record<GameReportType, ToastIcon> = {
   BATTLE: "battle",
@@ -185,6 +186,43 @@ export function GameNotificationWatcher() {
       });
     });
   }, [activeBattles.data, addToast, cityId, t]);
+
+  // KeepAwake while there are incoming attacks marching toward our city
+  useEffect(() => {
+    const incoming = activeBattles.data?.filter(
+      (b) => b.defenderCityId === cityId && b.status === "MARCHING"
+    ) ?? [];
+    const barbarianIncoming = barbarianAlerts.data?.filter(
+      (a) => !a.read && new Date(a.arrivesAt) > new Date()
+    ) ?? [];
+    const hasThreats = incoming.length > 0 || barbarianIncoming.length > 0;
+    if (hasThreats) {
+      keepAwake();
+    } else {
+      allowSleep();
+    }
+  }, [activeBattles.data, barbarianAlerts.data, cityId]);
+
+  // App badge = unread alerts + incoming battles
+  useEffect(() => {
+    const unreadBarbarian = barbarianAlerts.data?.filter((a) => !a.read).length ?? 0;
+    const incomingPvp = activeBattles.data?.filter(
+      (b) => b.defenderCityId === cityId && b.status === "MARCHING"
+    ).length ?? 0;
+    const total = unreadBarbarian + incomingPvp;
+    setBadge(total);
+  }, [barbarianAlerts.data, activeBattles.data, cityId]);
+
+  // Haptic warning on new incoming attack notification
+  useEffect(() => {
+    if (!activeBattles.data) return;
+    const incoming = activeBattles.data.filter(
+      (b) => b.defenderCityId === cityId && b.status === "MARCHING"
+    );
+    if (!battlesReady.current || incoming.length === 0) return;
+    const hasNew = incoming.some((b) => !seenIncomingBattles.current.has(b.id));
+    if (hasNew) hapticWarning();
+  }, [activeBattles.data, cityId]);
 
   useEffect(() => {
     if (!allianceData.data) return;

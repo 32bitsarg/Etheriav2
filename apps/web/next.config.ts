@@ -2,9 +2,8 @@ import type { NextConfig } from "next";
 import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { execSync } from "child_process";
+import withPWAInit from "@ducanh2912/next-pwa";
 
-// Latest released version from CHANGELOG.md, baked into the client bundle.
-// Compared at runtime against /version.json to detect new deploys.
 function latestChangelogVersion(): string {
   let dir = process.cwd();
   for (let i = 0; i < 5; i++) {
@@ -20,8 +19,6 @@ function latestChangelogVersion(): string {
   return "0.0.0";
 }
 
-// Same sha written into version.json at build: a client whose baked id differs
-// from the served one knows a new deploy happened, even without a version bump.
 function gitBuildId(): string {
   try {
     return execSync("git rev-parse --short HEAD").toString().trim();
@@ -29,6 +26,40 @@ function gitBuildId(): string {
     return "";
   }
 }
+
+const withPWA = withPWAInit({
+  dest: "public",
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: true,
+  reloadOnOnline: true,
+  // Don't precache audio/large assets — they're streamed on demand
+  exclude: [
+    /assets\/audio\//,
+    /assets\/buildings\/.*\.png$/,
+  ],
+  workboxOptions: {
+    // Cache game assets for 30 days
+    runtimeCaching: [
+      {
+        urlPattern: /\/assets\/(backgrounds|map|ui|races|buildings)\//,
+        handler: "CacheFirst",
+        options: {
+          cacheName: "game-assets",
+          expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 30 },
+        },
+      },
+      {
+        urlPattern: /\/api\/(city|world|auth)\//,
+        handler: "NetworkFirst",
+        options: {
+          cacheName: "api-runtime",
+          networkTimeoutSeconds: 10,
+          expiration: { maxEntries: 50, maxAgeSeconds: 60 * 5 },
+        },
+      },
+    ],
+  },
+});
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@etheria/shared"],
@@ -58,4 +89,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);

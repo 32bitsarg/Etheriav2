@@ -263,6 +263,16 @@ export function useUpgradeBuilding() {
             ...(data.resources ? { resources: data.resources, lastResourceUpdate: new Date().toISOString() } : {}),
           };
         });
+        // Schedule local notification for when the build completes
+        import("../lib/native").then(({ scheduleLocalNotification }) => {
+          const buildingName = data.queue.buildingType ?? "Building";
+          scheduleLocalNotification({
+            id: Math.abs(data.queue.buildingId?.split("").reduce((a: number, c: string) => a + c.charCodeAt(0), 0) ?? Math.random() * 10000) % 100000,
+            title: "Construcción completada",
+            body: `${buildingName} nivel ${data.queue.targetLevel} listo en tu ciudad.`,
+            scheduleAt: new Date(data.queue.completesAt),
+          });
+        });
       }
       invalidateCityRuntime(queryClient, variables.cityId);
     },

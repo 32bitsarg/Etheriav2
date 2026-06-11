@@ -1,0 +1,31 @@
+{
+  "name": "Conquest of Etheria",
+  "short_name": "Etheria",
+  "description": "Strategy war game — build your city, forge alliances, conquer the world.",
+  "start_url": "/play",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0b1111",
+  "theme_color": "#0b1111",
+  "icons": [
+    {
+      "src": "/favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["games", "strategy"],
+  "screenshots": []
+}

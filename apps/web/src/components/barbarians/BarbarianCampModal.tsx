@@ -5,6 +5,7 @@ import { Panel } from "@/components/ui/Panel";
 import { useGameStore } from "@/stores/gameStore";
 import { useBarbarianCampDetail, useAttackBarbarianCamp, useScoutTarget } from "@/hooks/useCity";
 import { useToastStore } from "@/stores/toastStore";
+import { hapticHeavy } from "@/lib/native";
 
 type UnitType = "WARRIOR" | "ARCHER" | "CAVALRY" | "SIEGE" | "SPY";
 
@@ -54,6 +55,7 @@ export function BarbarianCampModal() {
       .filter(([, count]) => count > 0)
       .map(([type, count]) => ({ type, count }));
 
+    hapticHeavy();
     const result = await attackCamp.mutateAsync({
       campId: selectedCamp.id,
       cityId,

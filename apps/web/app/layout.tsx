@@ -11,11 +11,18 @@ const cinzelDecorative = Cinzel_Decorative({ subsets: ["latin"], weight: ["400",
 const fredoka = Fredoka({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-fredoka" });
 
 export const metadata: Metadata = {
-  title: "Etheria - Strategy Game",
-  description: "Build your empire in Etheria",
+  title: "Conquest of Etheria",
+  description: "Build your empire, forge alliances, conquer the world.",
+  manifest: "/manifest.json",
   icons: {
     icon: "/favicon-32.png",
     shortcut: "/favicon-32.png",
+    apple: "/favicon-192.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Etheria",
   },
 };
 
@@ -28,6 +35,8 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover" />
+        <link rel="preconnect" href="https://conquestofetheria.com" />
+        <link rel="dns-prefetch" href="https://conquestofetheria.com" />
       </head>
       <body
         className={`${inter.variable} ${cinzel.variable} ${cinzelDecorative.variable} ${fredoka.variable} ${inter.className} antialiased`}
