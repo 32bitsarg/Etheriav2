@@ -4,7 +4,7 @@ import { z } from "zod";
 import { listBots, createBotRecord, updateBotRecord, deleteBotRecord } from "../domain/botRepository.js";
 import { processBotWorkerTick } from "../workers/botWorker.js";
 import { getBotSimulationConfig } from "../domain/botConfigData.js";
-import { generatePlayerName, generateCityName } from "../domain/nameGenerator.js";
+import { generateBotUsername, generateCityName } from "../domain/nameGenerator.js";
 import { createStarterCityForUser } from "../domain/cityCreation.js";
 import { db, COLLECTIONS } from "../infrastructure/matecito.js";
 import { prisma } from "@etheria/database";
@@ -35,7 +35,7 @@ adminBotsRouter.post("/", zValidator("json", CreateBotSchema), async (c) => {
   const { worldId, profile } = c.req.valid("json");
 
   const userId = crypto.randomUUID();
-  const name = generatePlayerName(userId);
+  const name = generateBotUsername(userId);
   const cityName = generateCityName(userId);
   const now = new Date().toISOString();
 

@@ -20,7 +20,7 @@ import { createMarketOffer, acceptMarketOffer } from "./marketOffers.js";
 import { contributeAllianceObjective, ensureAllianceObjective } from "./allianceObjectives.js";
 import { scoutTarget } from "./scouting.js";
 import { appendBotErrorReport } from "./botErrorReports.js";
-import { generateCityName, generatePlayerName } from "./nameGenerator.js";
+import { generateBotUsername, generateCityName, isLegacyGeneratedName } from "./nameGenerator.js";
 import { createAllianceForUser, joinAlliance } from "./alliances.js";
 import { createChatMessage } from "./chat.js";
 import { sendMailMessage } from "./mail.js";
@@ -111,8 +111,11 @@ export async function ensureBotPopulation(config = getBotSimulationConfig(), wor
     ]);
     const user = userRes.data;
     const city = cityRes.data;
-    if (user?.name?.startsWith("Bot ")) {
-      await mergeRecordByLogicalId(COLLECTIONS.USERS, bot.userId, { name: generatePlayerName(bot.userId), updatedAt: new Date().toISOString() });
+    if (user?.name && (user.name.startsWith("Bot ") || isLegacyGeneratedName(user.name))) {
+      const newName = generateBotUsername(bot.userId);
+      await mergeRecordByLogicalId(COLLECTIONS.USERS, bot.userId, { name: newName, updatedAt: new Date().toISOString() });
+      // El nombre del emisor queda desnormalizado en el historial de chat
+      await db.from(COLLECTIONS.CHAT_MESSAGES).eq("senderUserId", bot.userId).merge({ senderName: newName }).execute() as any;
     }
     if (city?.name?.startsWith("Bot ")) {
       await mergeRecordByLogicalId(COLLECTIONS.CITIES, bot.cityId, { name: generateCityName(bot.cityId) });
@@ -124,7 +127,7 @@ export async function ensureBotPopulation(config = getBotSimulationConfig(), wor
   for (let index = existing.length; index < config.targetCount; index++) {
     const profile = config.profiles[index % config.profiles.length];
     const userId = crypto.randomUUID();
-    const name = generatePlayerName(userId);
+    const name = generateBotUsername(userId);
     const now = new Date().toISOString();
     await db.from(COLLECTIONS.USERS).insert({
       id: userId,
@@ -291,11 +294,46 @@ function botAllianceIdentity(bot: { userId: string }) {
 }
 
 const CHAT_POOL: Record<string, string[]> = {
-  ECONOMIST_GLOBAL: ["Buscando rutas comerciales.", "El mercado esta estable.", "Ofrezco buenos precios.", "Invertir en economia es el camino.", "Recursos abundan en estas tierras."],
-  MILITARIST_GLOBAL: ["La fuerza decide el destino.", "Preparen sus defensas.", "Solo los fuertes sobreviven.", "El acero no perdona.", "Que tiemblen los debiles."],
-  TECH_RUSHER_GLOBAL: ["El conocimiento es poder.", "Nuevos descubrimientos cambian el mundo.", "La ciencia avanza sin pausa.", "He visto el futuro.", "Investigar es la clave."],
-  BALANCED_GLOBAL: ["Mantengamos la paz.", "Comercio y defensa en equilibrio.", "Buenos dias, vecinos.", "Que la fortuna nos sonria.", "Todos tienen un lugar en Etheria."],
-  ALLIANCE: ["Reporte de avance listo.", "Necesitamos mas recursos.", "Coordinemos la defensa.", "Buen trabajo, aliados.", "Propongo expandir nuestro territorio."],
+  ECONOMIST_GLOBAL: [
+    "alguien vende piedra? pago bien",
+    "cambio madera por comida, mandenme mp",
+    "ojo que el mercado esta lleno de ofertas malas jaja",
+    "subi una oferta al mercado por si alguien necesita oro",
+    "che alguien sabe si conviene subir el mercado a nv5?",
+    "compro comida, lo que tengan",
+  ],
+  MILITARIST_GLOBAL: [
+    "quien me ataco anoche?? te estoy buscando",
+    "los barbaros del norte estan regalados, vayan",
+    "alguien para farmear campamentos juntos?",
+    "no me ataquen que respondo eh jaja",
+    "acabo de perder media caballeria con los barbaros... f",
+    "se viene la venganza, aviso nomas",
+  ],
+  TECH_RUSHER_GLOBAL: [
+    "por fin termine la investigacion de produccion, tardo una banda",
+    "alguien sabe que tech conviene primero, economia o defensa?",
+    "la biblioteca a nv3 tarda muchisimo o soy yo?",
+    "tip: investiguen produccion de comida primero, despues me agradecen",
+    "casi maxeo la rama de economia ya",
+  ],
+  BALANCED_GLOBAL: [
+    "buenas! como va el mundo hoy",
+    "alguna alianza con lugar? juego todos los dias",
+    "alguien mas tuvo lag recien o fui yo?",
+    "que rapido se pasa el invierno aca jaja",
+    "recien empiezo, algun consejo?",
+    "buen server este, hay movimiento",
+    "me fui a dormir con 2k de oro y amaneci sin nada jajaja quien fue",
+  ],
+  ALLIANCE: [
+    "dejé recursos en el objetivo, fijense",
+    "necesitamos mas piedra para el objetivo, alguien tira?",
+    "si alguien necesita tropas para defender avise",
+    "buen laburo con el objetivo gente",
+    "estoy juntando para aportar mañana",
+    "ojo que hay un vecino atacando gente de la zona",
+  ],
 };
 
 function botChatMessage(decision: BotDecision, profile: string) {
@@ -312,13 +350,13 @@ function botChatMessage(decision: BotDecision, profile: string) {
 
 const MAIL_TEMPLATES: Record<string, Array<{ subject: string; body: string }>> = {
   BALANCED: [
-    { subject: "Propuesta diplomatica", body: "Propongo mantener rutas seguras y observar el equilibrio regional." },
-    { subject: "Saludos del reino", body: "Espero que nuestras ciudades prosperen juntas. Consideremos un pacto comercial." },
-    { subject: "Vecinos en paz", body: "La guerra no beneficia a nadie. Mantengamos relaciones cordiales." },
+    { subject: "hola vecino", body: "hola! vi que estamos cerca en el mapa. yo no ataco a vecinos, si te parece nos cuidamos entre los dos y listo" },
+    { subject: "buenas", body: "che, recien veo tu ciudad en el mapa. si algun dia queres comerciar o armar algo avisame" },
+    { subject: "paz?", body: "no tengo intencion de atacarte, prefiero farmear barbaros. si me dejas tranquilo yo te dejo tranquilo jaja" },
   ],
   ECONOMIST: [
-    { subject: "Oportunidad comercial", body: "Nuestro mercado crece rapidamente. Seria beneficioso establecer una ruta comercial." },
-    { subject: "Propuesta economica", body: "He notado que compartimos intereses comerciales. Propongo colaborar." },
+    { subject: "comercio?", body: "hola! ando con madera de sobra y me falta comida. si te sirve el cambio mandame una oferta por el mercado" },
+    { subject: "oferta en el mercado", body: "subi una oferta al mercado que te puede servir, fijate. si queres otra cosa decime y la armo" },
   ],
 };
 

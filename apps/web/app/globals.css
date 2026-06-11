@@ -1308,9 +1308,11 @@ h1, h2, h3, h4, .font-display, .font-serif {
   to { stroke-dashoffset: -16; }
 }
 
+/* Sin animación las partículas quedarían congeladas en top:0 como puntos —
+   mejor no mostrarlas. */
 @media (prefers-reduced-motion: reduce) {
   [style*="season-snow"], [style*="season-leaf"],
   [style*="season-firefly"], [style*="season-petal"] {
-    animation: none !important;
+    display: none !important;
   }
 }
