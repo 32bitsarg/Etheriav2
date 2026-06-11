@@ -42,6 +42,7 @@ const SIZE_CLASSES: Record<ModalSize, string> = {
   full: "max-w-[calc(100vw-32px)]",
 };
 
+// Desktop max-heights
 const MAX_HEIGHTS: Record<ModalSize, string> = {
   xs: "75dvh",
   sm: "82dvh",
@@ -51,6 +52,18 @@ const MAX_HEIGHTS: Record<ModalSize, string> = {
   "3xl": "90dvh",
   "5xl": "90dvh",
   full: "94dvh",
+};
+
+// Mobile bottom sheet max-heights — leave visible game area behind the sheet
+const MOBILE_MAX_HEIGHTS: Record<ModalSize, string> = {
+  xs: "60dvh",
+  sm: "60dvh",
+  md: "68dvh",
+  lg: "75dvh",
+  xl: "75dvh",
+  "3xl": "82dvh",
+  "5xl": "82dvh",
+  full: "90dvh",
 };
 
 export function ModalBase({
@@ -102,17 +115,17 @@ export function ModalBase({
         role="dialog"
         aria-modal="true"
       >
-        {/* Backdrop */}
+        {/* Backdrop — no backdrop-blur on mobile (GPU cost on low-end devices) */}
         <div
-          className="absolute inset-0 bg-black/65 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/60"
           onClick={closeOnBackdrop ? onClose : undefined}
         />
 
         {/* Sheet */}
         <div
           ref={ref}
-          className={`absolute inset-x-0 bottom-0 max-h-[88dvh] rounded-t-3xl border-t border-white/10 bg-[#0b1111] shadow-[0_-8px_60px_rgba(0,0,0,0.6)] flex flex-col animate-slide-in-up`}
-          style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+          className={`absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-white/10 bg-[#0b1111] shadow-[0_-8px_60px_rgba(0,0,0,0.6)] flex flex-col animate-slide-in-up`}
+          style={{ maxHeight: MOBILE_MAX_HEIGHTS[size], paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Handle pill */}

@@ -2,15 +2,34 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-export function useCountdown(targetDate: Date | string | null, onComplete?: () => void) {
-  const [now, setNow] = useState(() => new Date().getTime());
+// ── Singleton tick bus ─────────────────────────────────────────────────────────
+// One setInterval for all useCountdown instances — fires every second and
+// notifies all subscribers together so React 18 can batch the state updates.
+const _listeners = new Set<() => void>();
+let _tickId: ReturnType<typeof setInterval> | null = null;
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNow(new Date().getTime());
+function _subscribe(cb: () => void) {
+  _listeners.add(cb);
+  if (!_tickId) {
+    _tickId = setInterval(() => {
+      _listeners.forEach((fn) => fn());
     }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  }
+  return () => {
+    _listeners.delete(cb);
+    if (_listeners.size === 0 && _tickId !== null) {
+      clearInterval(_tickId);
+      _tickId = null;
+    }
+  };
+}
+
+// ── Hook ───────────────────────────────────────────────────────────────────────
+
+export function useCountdown(targetDate: Date | string | null, onComplete?: () => void) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => _subscribe(() => setNow(Date.now())), []);
 
   const remaining = useCallback(() => {
     if (!targetDate) return null;

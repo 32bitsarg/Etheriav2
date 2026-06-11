@@ -29,7 +29,7 @@ import { WonderPanel } from "@/components/game/WonderPanel";
 import { AchievementsPanel } from "@/components/game/AchievementsPanel";
 import { ActivityFeedPanel } from "@/components/game/ActivityFeedPanel";
 import { ChatPanel } from "@/components/game/ChatPanel";
-import { useState, useMemo, useCallback, useEffect, useRef, memo, type ReactNode } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, memo, startTransition, type ReactNode } from "react";
 import { useI18n } from "@/i18n";
 import { normalizeVillageLayout, resolveVillageRenderableBuildings } from "@/lib/villageLayout";
 import type { VillageLayoutData } from "@/lib/villageLayout";
@@ -163,15 +163,15 @@ export function VillageView() {
     cityName,
     onRename: () => setIsRenameOpen(true),
     unreadCount: unreadTotal,
-    onOpenMail: () => setIsMailOpen(true),
-    onOpenAlliance: () => setIsAllianceOpen(true),
-    onOpenQuests: () => setIsQuestsOpen(true),
-    onOpenDailyQuests: () => setIsDailyQuestsOpen(true),
-    onOpenRankings: () => setIsNewRankingsOpen(true),
-    onOpenWonder: () => setIsWonderOpen(true),
-    onOpenAchievements: () => setIsAchievementsOpen(true),
-    onOpenActivityFeed: () => setIsActivityFeedOpen(true),
-    onOpenSettings: () => setIsSettingsOpen(true),
+    onOpenMail: () => startTransition(() => setIsMailOpen(true)),
+    onOpenAlliance: () => startTransition(() => setIsAllianceOpen(true)),
+    onOpenQuests: () => startTransition(() => setIsQuestsOpen(true)),
+    onOpenDailyQuests: () => startTransition(() => setIsDailyQuestsOpen(true)),
+    onOpenRankings: () => startTransition(() => setIsNewRankingsOpen(true)),
+    onOpenWonder: () => startTransition(() => setIsWonderOpen(true)),
+    onOpenAchievements: () => startTransition(() => setIsAchievementsOpen(true)),
+    onOpenActivityFeed: () => startTransition(() => setIsActivityFeedOpen(true)),
+    onOpenSettings: () => startTransition(() => setIsSettingsOpen(true)),
     onOpenChat: () => setIsChatOpen((v) => !v),
   };
   const isPuebloView = activeView === "pueblo";
@@ -309,7 +309,7 @@ export function VillageView() {
           <PuebloView
             buildings={uniqueBuildings}
             selectedBuildingId={selectedBuildingId}
-            onSelectBuilding={setSelectedBuildingId}
+            onSelectBuilding={(id) => startTransition(() => setSelectedBuildingId(id))}
             interactionsDisabled={isModalOpen}
             t={t}
           />
