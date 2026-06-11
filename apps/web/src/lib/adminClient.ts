@@ -1,18 +1,23 @@
-// Manejo compartido del secreto de administración para /admin.
-// El secreto vive en sessionStorage (se borra al cerrar la pestaña) y viaja
-// como X-Admin-Secret; el API y los proxies de Next lo validan server-side.
+// Manejo compartido del secreto de administración para /editor.
+// Vive en localStorage (persiste entre cierres de pestaña) y viaja como
+// X-Admin-Secret; los routes de Next lo validan server-side contra ADMIN_SECRET.
 
 const STORAGE_KEY = "etheria_admin_secret";
 
 export function getAdminSecret(): string {
   if (typeof window === "undefined") return "";
-  return window.sessionStorage.getItem(STORAGE_KEY) ?? "";
+  return window.localStorage.getItem(STORAGE_KEY) ?? "";
 }
 
 export function setAdminSecret(value: string) {
   if (typeof window === "undefined") return;
-  if (value) window.sessionStorage.setItem(STORAGE_KEY, value);
-  else window.sessionStorage.removeItem(STORAGE_KEY);
+  if (value) window.localStorage.setItem(STORAGE_KEY, value);
+  else window.localStorage.removeItem(STORAGE_KEY);
+}
+
+export function clearAdminSecret() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(STORAGE_KEY);
 }
 
 export function adminHeaders(extra?: Record<string, string>): Record<string, string> {

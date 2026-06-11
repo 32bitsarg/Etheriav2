@@ -10,7 +10,7 @@ import { useGameStore } from "@/stores/gameStore";
 import { BUILDING_NAMES } from "@/lib/constants";
 import { useSaveVillageLayout, useSaveWorldTerrainMask, useVillageLayout, useWorldMap, useWorldTerrainMask } from "@/hooks/useCity";
 import { I18nProvider, useI18n } from "@/i18n";
-import { getAdminSecret, setAdminSecret } from "@/lib/adminClient";
+import { clearAdminSecret, getAdminSecret, setAdminSecret } from "@/lib/adminClient";
 import {
   getDefaultVillageAnchor,
   getVillageTileKey,
@@ -68,6 +68,14 @@ function VillageLayoutEditorContent() {
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [panelPos, setPanelPos] = useState({ x: 16, y: 16 });
   const [editorCenterVersion, setEditorCenterVersion] = useState(0);
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (msg: string, ok: boolean) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ msg, ok });
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
+  };
 
   const layout = draft ?? data ?? {
     version: 1,
@@ -219,8 +227,18 @@ function VillageLayoutEditorContent() {
     return () => window.removeEventListener("keydown", onKey);
   }, [editorMode]);
 
-  const handleSave = () => saveMutation.mutate(layout, { onSuccess: () => setDraft(null) });
-  const handleSaveTerrain = () => saveTerrainMutation.mutate(terrainMask, { onSuccess: () => setTerrainDraft(null) });
+  const handleSave = () => saveMutation.mutate(layout, {
+    onSuccess: () => { setDraft(null); showToast("Guardado ✓", true); },
+    onError: () => showToast("Error al guardar", false),
+  });
+  const handleSaveTerrain = () => saveTerrainMutation.mutate(terrainMask, {
+    onSuccess: () => { setTerrainDraft(null); showToast("Terreno guardado ✓", true); },
+    onError: () => showToast("Error al guardar terreno", false),
+  });
+  const handleLogout = () => {
+    clearAdminSecret();
+    setAdminSecretState("");
+  };
   const handleResetTerrain = () => setTerrainDraft({ ...terrainMask, cells: terrainMask.cells.map(() => "PLAINS") });
 
   const hasUnsavedChanges = draft !== null;
@@ -231,9 +249,47 @@ function VillageLayoutEditorContent() {
   const selectedMeta = selectedKey ? layout.editor?.buildings?.[selectedKey] ?? {} : {};
   const selectedRule = TERRAIN_RULES[selectedTerrain];
 
+  if (!adminSecret) {
+    return (
+      <main className="flex h-screen items-center justify-center bg-[#050707] text-etheria-text">
+        <div className="w-80 rounded-2xl border border-etheria-border bg-etheria-panel/95 p-8 text-center">
+          <h1 className="font-serif text-2xl text-etheria-gold-soft mb-1">/editor</h1>
+          <p className="text-xs text-etheria-text-muted mb-6">Ingresá el secreto de administrador para continuar.</p>
+          <input
+            type="password"
+            autoFocus
+            placeholder="Admin secret"
+            className="w-full rounded-lg border border-etheria-border-dim bg-black/30 px-3 py-2 text-sm text-etheria-text outline-none placeholder:text-etheria-text-muted mb-4"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                const val = (e.target as HTMLInputElement).value.trim();
+                if (val) { setAdminSecret(val); setAdminSecretState(val); }
+              }
+            }}
+          />
+          <button
+            className="gold-btn w-full py-2 text-sm"
+            onClick={(e) => {
+              const input = (e.currentTarget.previousSibling as HTMLInputElement);
+              const val = input?.value?.trim();
+              if (val) { setAdminSecret(val); setAdminSecretState(val); }
+            }}
+          >
+            Entrar
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="relative h-screen overflow-hidden bg-[#050707] text-etheria-text">
       <GameInitializer />
+      {toast && (
+        <div className={`fixed bottom-6 left-1/2 z-[500] -translate-x-1/2 rounded-xl px-5 py-3 text-sm font-medium shadow-lg transition-all ${toast.ok ? "bg-emerald-800/90 text-emerald-100" : "bg-rose-800/90 text-rose-100"}`}>
+          {toast.msg}
+        </div>
+      )}
       <section
         className={`absolute z-[250] ${panelCollapsed ? "w-[220px]" : "w-[340px]"} overflow-hidden rounded-2xl border border-etheria-border bg-etheria-panel/95 backdrop-blur-[6px]`}
         style={{ left: panelPos.x, top: panelPos.y, maxHeight: "calc(100vh - 32px)" }}
@@ -275,9 +331,8 @@ function VillageLayoutEditorContent() {
                 }}
                 className="flex-1 rounded-lg border border-etheria-border-dim bg-black/30 px-3 py-1.5 text-xs text-etheria-text outline-none placeholder:text-etheria-text-muted"
               />
-              <span className={`text-[10px] ${adminSecret ? "text-emerald-400" : "text-rose-400"}`}>
-                {adminSecret ? "✓" : "✗"}
-              </span>
+              <span className="text-[10px] text-emerald-400">✓</span>
+              <button onClick={handleLogout} title="Cerrar sesión" className="rounded-lg border border-etheria-border px-2 py-1 text-[10px] text-rose-300 hover:bg-rose-900/20">⏏</button>
             </div>
             <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl border border-etheria-border-dim bg-black/20 p-1">
               <button onClick={() => setEditorMode("village")} className={`rounded-lg px-3 py-2 text-xs ${editorMode === "village" ? "bg-etheria-gold text-black" : "text-etheria-text"}`}>{t("editor.tabs.village")}</button>

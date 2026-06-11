@@ -560,7 +560,7 @@ export function useVillageLayout() {
     queryKey: ["village", "layout"],
     placeholderData: normalizeVillageLayout(villageLayoutJson as VillageLayoutData),
     queryFn: async () => {
-      const res = await fetch("/api/editor/layout", { cache: "no-store" });
+      const res = await fetch("/api/editor/layout", { cache: "no-store", headers: adminHeaders() });
       if (!res.ok) throw new Error("Failed to fetch village layout");
       return await res.json() as VillageLayoutData;
     },
@@ -593,7 +593,7 @@ export function useWorldTerrainMask() {
   return useQuery({
     queryKey: ["editor", "world-terrain-mask"],
     queryFn: async () => {
-      const res = await fetch("/api/editor/world-terrain", { cache: "no-store" });
+      const res = await fetch("/api/editor/world-terrain", { cache: "no-store", headers: adminHeaders() });
       if (!res.ok) throw new Error("Failed to fetch world terrain mask");
       return await res.json() as WorldTerrainMaskData;
     },
