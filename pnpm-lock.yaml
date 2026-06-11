@@ -76,6 +76,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@capacitor/core':
+        specifier: ^8.4.0
+        version: 8.4.0
+      '@capacitor/splash-screen':
+        specifier: ^8.0.1
+        version: 8.0.1(@capacitor/core@8.4.0)
       '@etheria/shared':
         specifier: workspace:*
         version: link:../../packages/shared

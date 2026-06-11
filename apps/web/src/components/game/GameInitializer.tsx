@@ -8,7 +8,6 @@ import { getCityId, setCityId } from "@/lib/guestAuth";
 import { useRouter, usePathname } from "next/navigation";
 import { useMatecitoAuth } from "@/hooks/useMatecitoAuth";
 import { clearGuestSession } from "@/lib/guestAuth";
-import { Capacitor } from "@capacitor/core";
 
 // Ampliar timeouts para 4G lenta
 const AUTH_TIMEOUT_MS = 12_000;
@@ -408,11 +407,18 @@ export function GameInitializer() {
     );
   }
 
-  // Game is ready — hide native Capacitor splash screen
+  // Game is ready — hide native Capacitor splash screen (dynamic imports: not bundled on web)
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-    import("@capacitor/splash-screen").then(({ SplashScreen }) => {
-      SplashScreen.hide({ fadeOutDuration: 500 }).catch(() => {});
+    Promise.all([
+      import("@capacitor/core").catch(() => null),
+      import("@capacitor/splash-screen").catch(() => null),
+    ]).then(([capCore, capSplash]) => {
+      if (!capCore || !capSplash) return;
+      const { Capacitor } = capCore;
+      const { SplashScreen } = capSplash;
+      if (Capacitor.isNativePlatform()) {
+        SplashScreen.hide({ fadeOutDuration: 500 }).catch(() => {});
+      }
     });
   }, []);
 

@@ -10,6 +10,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@capacitor/core": "^8.4.0",
+    "@capacitor/splash-screen": "^8.0.1",
     "@etheria/shared": "workspace:*",
     "@tanstack/react-query": "^5.66.0",
     "matecitodb": "^4.0.2",
