@@ -1329,3 +1329,25 @@ h1, h2, h3, h4, .font-display, .font-serif {
   .dock-desktop { display: none !important; }
   .dock-mobile { display: flex !important; }
 }
+
+/* ─── Mobile GPU: quitar backdrop-filter y mega-sombras en dispositivos touch ─── */
+@media (pointer: coarse) {
+  .grepolis-sidebar,
+  .village-topbar,
+  .village-queue-rail,
+  .village-queue-dock {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  /* Compensar contraste con fondos más opacos */
+  .grepolis-sidebar { background: rgba(10, 14, 12, 0.94) !important; }
+  .village-topbar    { background: rgba(10, 14, 12, 0.92) !important; }
+  .village-queue-rail { box-shadow: 0 12px 28px rgba(0,0,0,0.45) !important; }
+
+  /* Quitar glints animados en touch */
+  .village-glint { display: none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .village-glint { animation: none !important; opacity: 0 !important; }
+}

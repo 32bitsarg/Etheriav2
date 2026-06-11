@@ -499,7 +499,7 @@ export const VillageHTMLCanvas = memo(function VillageHTMLCanvas({
         {AMBIENT_GLINTS.map((g, i) => (
           <div
             key={i}
-            className="pointer-events-none absolute rounded-full"
+            className="village-glint pointer-events-none absolute rounded-full"
             style={{
               left: `${g.x}%`,
               top: `${g.y}%`,
@@ -606,7 +606,7 @@ const BuildingButton = memo(function BuildingButton({
         opacity: isHidden ? 0.35 : isDragging ? 0.72 : 1,
         cursor: editorMode ? (isDragging ? "grabbing" : "grab") : "pointer",
         touchAction: "none",
-        willChange: "transform",
+        willChange: isDragging ? "transform" : "auto",
       }}
       title={`${label} Nv ${building.level}`}
     >
@@ -624,7 +624,7 @@ const BuildingButton = memo(function BuildingButton({
             : "drop-shadow(0 4px 8px rgba(0,0,0,0.55))",
           transform: isSelected ? "scale(1.08)" : "scale(1)",
           transition: "transform 0.15s ease, filter 0.15s ease",
-          willChange: isSelected ? "filter, transform" : "transform",
+          willChange: isSelected ? "filter, transform" : "auto",
         }}
       />
 

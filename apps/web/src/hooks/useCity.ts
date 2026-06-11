@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { etaInterval } from "./pollingIntervals";
 import type { AllianceMembership, ChatChannel, ChatMessage, City, Building, BuildQueue, MailMessage, ResearchQueue, SendChatMessageRequest, SendMailMessageRequest, TrainingQueue, Unit, Resources, WorldSeasonState, WorldStateResponse, BarbarianCampMapItem, BarbarianCampDetail, WorldMovement, GameReport, PlayerQuest, MarketOffer } from "@etheria/shared";
 import type { VillageLayoutData } from "@/lib/villageLayout";
 import type { WorldTerrainMaskData } from "@/lib/worldTerrainMask";
@@ -544,7 +545,13 @@ export function useWorldMovements(enabled = true) {
     },
     staleTime: 5000,
     enabled,
-    refetchInterval: enabled ? 10000 : false,
+    refetchInterval: enabled
+      ? etaInterval<WorldMovement[]>(
+          (ms) => ms.flatMap((m) => [m.arrivesAt, m.returnsAt]),
+          { idleMs: 30_000, nearMs: 3_000, midMs: 8_000, farMs: 20_000 }
+        )
+      : false,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -716,7 +723,11 @@ export function useActiveBattles(cityId: string | null, enabled = true) {
     },
     enabled: !!cityId && enabled,
     staleTime: 15_000,
-    refetchInterval: 15_000,
+    refetchInterval: etaInterval<ActiveBattle[]>(
+      (bs) => bs.flatMap((b) => [b.arrivesAt, b.returnsAt]),
+      { idleMs: 45_000, nearMs: 2_000, midMs: 5_000, farMs: 15_000 }
+    ),
+    refetchIntervalInBackground: false,
     retry: 1,
   });
 }
@@ -1173,7 +1184,7 @@ export function useMailMessages(enabled = true) {
     },
     enabled,
     staleTime: 10_000,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
     refetchIntervalInBackground: false,
     retry: shouldRetryAuthQuery,
   });
@@ -1390,7 +1401,8 @@ export function useBarbarianAttackAlerts(cityId: string | null, enabled = true) 
     },
     enabled: !!cityId && enabled,
     staleTime: 15_000,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -1445,7 +1457,8 @@ export function useWinterPressure(cityId: string | null, enabled = true) {
     },
     enabled: !!cityId && enabled,
     staleTime: 15_000,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -1534,6 +1547,7 @@ export function useConquestStatus(cityId: string | null) {
     },
     enabled: !!cityId,
     staleTime: 30_000,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
   });
 }

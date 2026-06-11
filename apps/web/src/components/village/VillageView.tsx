@@ -12,8 +12,6 @@ import { useAcceptMarketOffer, useActiveBattles, useAllCities, useAllianceMember
 import { WorldMapHTMLCanvas } from "@/components/worldmap/WorldMapHTMLCanvas";
 import { BarbarianAttackAlertBanner } from "@/components/barbarians/BarbarianAttackAlertBanner";
 import { WinterPressureBanner } from "@/components/barbarians/WinterPressureBanner";
-import { BarbarianCampModal } from "@/components/barbarians/BarbarianCampModal";
-import { SettingsModal } from "@/components/village/SettingsModal";
 import { ModalBase } from "@/components/ui/ModalBase";
 import { VillageImmersiveDock } from "@/components/village/VillageImmersiveDock";
 import { MobileHUD } from "@/components/hud/MobileHUD";
@@ -22,15 +20,18 @@ import type { HudActions } from "@/components/hud/hudTypes";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { OrientationLock } from "@/components/game/OrientationLock";
 import { SeasonalParticles } from "@/components/game/SeasonalParticles";
-import { DailyQuestsPanel } from "@/components/game/DailyQuestsPanel";
-import { RankingsPanel } from "@/components/game/RankingsPanel";
-import { RallyBanner } from "@/components/game/RallyBanner";
-import { WonderPanel } from "@/components/game/WonderPanel";
-import { AchievementsPanel } from "@/components/game/AchievementsPanel";
-import { ActivityFeedPanel } from "@/components/game/ActivityFeedPanel";
-import { ChatPanel } from "@/components/game/ChatPanel";
-import { PlayerProfileModal } from "@/components/game/PlayerProfileModal";
 import { TutorialOverlay } from "@/components/game/TutorialOverlay";
+import dynamic from "next/dynamic";
+const DailyQuestsPanel = dynamic(() => import("@/components/game/DailyQuestsPanel").then(m => m.DailyQuestsPanel), { ssr: false });
+const RankingsPanel = dynamic(() => import("@/components/game/RankingsPanel").then(m => m.RankingsPanel), { ssr: false });
+const RallyBanner = dynamic(() => import("@/components/game/RallyBanner").then(m => m.RallyBanner), { ssr: false });
+const WonderPanel = dynamic(() => import("@/components/game/WonderPanel").then(m => m.WonderPanel), { ssr: false });
+const AchievementsPanel = dynamic(() => import("@/components/game/AchievementsPanel").then(m => m.AchievementsPanel), { ssr: false });
+const ActivityFeedPanel = dynamic(() => import("@/components/game/ActivityFeedPanel").then(m => m.ActivityFeedPanel), { ssr: false });
+const ChatPanel = dynamic(() => import("@/components/game/ChatPanel").then(m => m.ChatPanel), { ssr: false });
+const PlayerProfileModal = dynamic(() => import("@/components/game/PlayerProfileModal").then(m => m.PlayerProfileModal), { ssr: false });
+const BarbarianCampModal = dynamic(() => import("@/components/barbarians/BarbarianCampModal").then(m => m.BarbarianCampModal), { ssr: false });
+const SettingsModal = dynamic(() => import("@/components/village/SettingsModal").then(m => m.SettingsModal), { ssr: false });
 import { useState, useMemo, useCallback, useEffect, useRef, memo, startTransition, type ReactNode } from "react";
 import { useI18n } from "@/i18n";
 import { normalizeVillageLayout, resolveVillageRenderableBuildings } from "@/lib/villageLayout";
@@ -162,12 +163,9 @@ export function VillageView() {
     setSelectedBuildingId(null);
   }, []);
   const handleEnterVillage = useCallback(() => setActiveView("pueblo"), []);
-  const hudProps: HudActions = {
-    activeView,
-    onViewChange: handleViewChange,
-    cityName,
+  // Stable callbacks — useState setters are referentially stable, so deps = []
+  const hudActions = useMemo(() => ({
     onRename: () => setIsRenameOpen(true),
-    unreadCount: unreadTotal,
     onOpenMail: () => startTransition(() => setIsMailOpen(true)),
     onOpenAlliance: () => startTransition(() => setIsAllianceOpen(true)),
     onOpenQuests: () => startTransition(() => setIsQuestsOpen(true)),
@@ -179,6 +177,14 @@ export function VillageView() {
     onOpenSettings: () => startTransition(() => setIsSettingsOpen(true)),
     onOpenChat: () => setIsChatOpen((v) => !v),
     onOpenMarket: () => startTransition(() => setIsMarketOpen(true)),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), []);
+  const hudProps: HudActions = {
+    ...hudActions,
+    activeView,
+    onViewChange: handleViewChange,
+    cityName,
+    unreadCount: unreadTotal,
   };
   const isPuebloView = activeView === "pueblo";
   const isMapView = activeView === "mapa";
@@ -1054,14 +1060,14 @@ function resolveNonOverlappingBuildings<T extends { id: string; type: BuildingTy
 function MailModal({ onClose, t }: { onClose: () => void; t: (key: string) => string }) {
   const cityId = useGameStore((s) => s.cityId);
   const { data: mailData, isLoading } = useMailMessages();
-  const { data: reportsData, isLoading: reportsLoading } = useGameReports();
-  const { data: battleReportsData } = useBattleReports(cityId);
+  const [tab, setTab] = useState<"inbox" | "sent" | "reports" | "compose">("inbox");
+  const { data: reportsData, isLoading: reportsLoading } = useGameReports(tab === "reports");
+  const { data: battleReportsData } = useBattleReports(cityId, tab === "reports");
   const markRead = useMarkReadMail();
   const markReportRead = useMarkGameReportRead();
   const markBattleReportRead = useMarkReportRead();
   const sendMail = useSendMailMessage();
   const addToast = useToastStore((s) => s.addToast);
-  const [tab, setTab] = useState<"inbox" | "sent" | "reports" | "compose">("inbox");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [recipientCityId, setRecipientCityId] = useState("");
   const [subject, setSubject] = useState("");

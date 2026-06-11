@@ -176,12 +176,13 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     if (!fc) return;
     const ctx = fc.getContext("2d");
     if (!ctx) return;
-    const { width, height } = fc;
-    ctx.clearRect(0, 0, width, height);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, size.w, size.h);
 
     const fogAlpha = myCityId ? 0.42 : cities.length > 0 ? 0.18 : 0.1;
     ctx.fillStyle = `rgba(2,4,8,${fogAlpha})`;
-    ctx.fillRect(0, 0, width, height);
+    ctx.fillRect(0, 0, size.w, size.h);
 
     if (myCityId) {
       const myCity = cities.find((c) => c.id === myCityId);
@@ -197,7 +198,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
         ctx.restore();
       }
     }
-  }, [cities, myCityId, worldToLocal, localToScreen]);
+  }, [cities, myCityId, worldToLocal, localToScreen, size]);
 
   // ─── Movement update ─────────────────────────────────────────────────────
 
@@ -236,8 +237,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
         if (!visible) continue;
       }
       const l = worldToLocal(wx, wy);
-      el.style.left = `${l.x}px`;
-      el.style.top = `${l.y}px`;
+      el.style.transform = `translate3d(${l.x}px, ${l.y}px, 0) translate(-50%, -50%)`;
     }
   }, [movements, worldToLocal, cities, myCityId]);
 
@@ -599,9 +599,9 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
                 }}
                 className="absolute flex flex-col items-center pointer-events-auto cursor-pointer"
                 style={{
-                  left: l.x, top: l.y,
-                  transform: "translate(-50%, -50%)",
-                  zIndex: isHovered ? 9 : 8, willChange: "left, top",
+                  left: 0, top: 0,
+                  transform: `translate3d(${l.x}px, ${l.y}px, 0) translate(-50%, -50%)`,
+                  zIndex: isHovered ? 9 : 8, willChange: "transform",
                 }}
                 onPointerEnter={() => setHoveredMovementId(m.id)}
                 onPointerLeave={() => setHoveredMovementId((id) => (id === m.id ? null : id))}
@@ -635,12 +635,12 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
           })}
         </div>
 
-        {/* Fog of War overlay */}
+        {/* Fog of War overlay — backing store scaled by DPR (capped at 2) for crisp edges */}
         <canvas
           ref={fogCanvasRef}
           className="absolute inset-0 pointer-events-none"
-          width={size.w}
-          height={size.h}
+          width={Math.round(size.w * Math.min(window.devicePixelRatio || 1, 2))}
+          height={Math.round(size.h * Math.min(window.devicePixelRatio || 1, 2))}
           style={{ width: size.w, height: size.h }}
         />
 

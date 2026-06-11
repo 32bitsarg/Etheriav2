@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import { useI18n } from "@/i18n";
 import { MobileResourcePills } from "./MobileResourcePills";
 import { SeasonHUD } from "@/components/game/SeasonHUD";
@@ -11,7 +11,7 @@ import { ScrollIcon } from "@/components/landing/MedievalIcons";
 import { DailyEventBanner } from "@/components/game/DailyEventBanner";
 import type { HudActions } from "./hudTypes";
 
-export function MobileHUD({
+export const MobileHUD = memo(function MobileHUD({
   activeView,
   onViewChange,
   cityName,
@@ -179,4 +179,4 @@ export function MobileHUD({
       )}
     </>
   );
-}
+});

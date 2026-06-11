@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, memo } from "react";
 import { useI18n } from "@/i18n";
 import { ResourceBar } from "@/components/ui/ResourceBar";
 import { SeasonHUD } from "@/components/game/SeasonHUD";
@@ -13,7 +13,7 @@ import type { HudActions } from "./hudTypes";
 
 // HUD v3 (desktop): no full-width topbar — the game takes the whole viewport
 // and the HUD floats in three corner clusters plus a grouped sidebar.
-export function DesktopHUD({
+export const DesktopHUD = memo(function DesktopHUD({
   activeView,
   onViewChange,
   cityName,
@@ -150,4 +150,4 @@ export function DesktopHUD({
       </aside>
     </>
   );
-}
+});
