@@ -1345,9 +1345,8 @@ export function useAttackBarbarianCamp() {
       }
       return res.json() as Promise<{
         battleId: string;
-        victory: boolean;
-        losses: Record<string, number>;
-        loot?: { gold: number; wood: number; stone: number; food: number };
+        travelTime: number;
+        arrivesAt: string;
       }>;
     },
     onSuccess: (_data, variables) => {
