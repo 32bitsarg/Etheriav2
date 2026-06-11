@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useI18n } from "@/i18n";
-import { ResourceBar } from "@/components/ui/ResourceBar";
+import { MobileResourcePills } from "./MobileResourcePills";
 import { SeasonHUD } from "@/components/game/SeasonHUD";
 import { NotificationBell } from "@/components/game/NotificationBell";
 import { SidebarNavIcon } from "@/components/ui/SidebarNavIcon";
@@ -87,22 +87,25 @@ export function MobileHUD({
 
   return (
     <>
-      {/* Topbar: recursos a ancho completo + campana (el nombre vive en su placa) */}
-      <header
-        className="pointer-events-auto col-span-3 row-start-1 z-50 flex h-12 items-center gap-1.5 border-b border-white/10 bg-black/70 px-1.5 backdrop-blur-xl"
-        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
-      >
-        <ResourceBar compact dark />
-        <NotificationBell />
-      </header>
+      {/* Resource pills — top-left floating overlay (CoC style) */}
+      <MobileResourcePills />
 
-      {/* Placa de ciudad: nombre grande y legible + estación, flotando bajo la topbar */}
+      {/* Notification bell — top-right */}
       <div
-        className="pointer-events-none absolute left-1.5 z-40 flex items-center gap-1.5"
-        style={{ top: "calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + 6px)" }}
+        className="pointer-events-auto absolute right-2 z-[45]"
+        style={{ top: "calc(env(safe-area-inset-top, 0px) + 8px)" }}
+      >
+        <NotificationBell />
+      </div>
+
+      {/* Placa de ciudad: nombre + estación, flotando bajo los recursos */}
+      <div
+        className="pointer-events-none absolute left-2 z-[44] flex items-center gap-1.5"
+        style={{ top: "calc(env(safe-area-inset-top, 0px) + 86px)" }}
       >
         <button
-          className="pointer-events-auto flex max-w-[52vw] items-center gap-1.5 rounded-xl border border-white/10 bg-black/65 px-2.5 py-1.5 backdrop-blur-md"
+          className="pointer-events-auto flex max-w-[52vw] items-center gap-1.5 rounded-xl border border-white/10 bg-black/60 px-2.5 py-1.5 backdrop-blur-md"
+          style={{ boxShadow: "0 1px 8px rgba(0,0,0,0.5)" }}
           onClick={onRename}
         >
           <span className="truncate text-[12px] font-bold text-amber-200">
@@ -112,25 +115,28 @@ export function MobileHUD({
         <span className="pointer-events-auto"><SeasonHUD compact /></span>
       </div>
 
-      {/* Dock inferior: 44px, sin scroll, highlight tipo pill */}
+      {/* Dock inferior: glassmorphism pill estilo CoC */}
       <nav
-        className="fixed bottom-0 inset-x-0 z-[60] flex items-stretch overflow-hidden border-t border-white/10 bg-gradient-to-t from-black/95 to-black/75 backdrop-blur-xl"
-        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+        className="pointer-events-auto fixed inset-x-3 z-[60] flex items-center rounded-2xl border border-white/12 bg-black/72 shadow-[0_8px_32px_rgba(0,0,0,0.55)] backdrop-blur-2xl"
+        style={{
+          bottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)",
+        }}
       >
         {dockItems.map((item) => (
           <button
             key={item.id}
             onClick={item.onClick}
-            className={`relative flex h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 transition-colors duration-150 ${
+            className={`relative flex h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 transition-colors duration-150 ${
               item.active ? "text-amber-300" : "text-white/55 active:text-white/90"
             }`}
             style={{ WebkitTapHighlightColor: "transparent" }}
           >
             {item.active && (
-              <span className="absolute inset-x-2 inset-y-1 rounded-xl bg-amber-400/12" />
+              <span className="absolute inset-x-1.5 inset-y-1 rounded-xl bg-amber-400/15" />
             )}
             {item.badge !== undefined && item.badge > 0 && (
-              <span className="absolute top-0.5 right-[22%] z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[8px] font-bold text-white">
+              <span className="absolute top-1 right-[18%] z-10 flex h-[14px] min-w-[14px] items-center justify-center rounded-full bg-rose-500 px-1 text-[8px] font-bold text-white leading-none">
                 {item.badge > 99 ? "99+" : item.badge}
               </span>
             )}
@@ -148,7 +154,7 @@ export function MobileHUD({
           <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
           <div
             className="absolute inset-x-0 rounded-t-2xl border-t border-white/10 bg-[#0b0f0f]/95 backdrop-blur-xl px-4 pt-2 pb-3 shadow-[0_-18px_50px_rgba(0,0,0,0.6)]"
-            style={{ bottom: "calc(44px + env(safe-area-inset-bottom, 0px))" }}
+            style={{ bottom: "calc(12px + 48px + env(safe-area-inset-bottom, 0px))" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" />

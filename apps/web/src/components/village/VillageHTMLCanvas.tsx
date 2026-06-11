@@ -351,10 +351,13 @@ export const VillageHTMLCanvas = memo(function VillageHTMLCanvas({
       const [a, b] = [e.touches[0], e.touches[1]];
       const newDist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
       const factor = newDist / pinch.current.dist;
-      const rect = outerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const midX = (a.clientX + b.clientX) / 2 - rect.left;
-      const midY = (a.clientY + b.clientY) / 2 - rect.top;
+      // Use cached size/offset instead of getBoundingClientRect() to avoid forced layout
+      const el = outerRef.current;
+      if (!el) return;
+      const offsetLeft = el.offsetLeft;
+      const offsetTop = el.offsetTop;
+      const midX = (a.clientX + b.clientX) / 2 - offsetLeft;
+      const midY = (a.clientY + b.clientY) / 2 - offsetTop;
       const oldZoom = cam.current.zoom;
       const newZoom = Math.min(zMax, Math.max(zMin, oldZoom * factor));
       const s = newZoom / oldZoom;
@@ -416,7 +419,7 @@ export const VillageHTMLCanvas = memo(function VillageHTMLCanvas({
     <div
       ref={outerRef}
       className="relative h-full w-full overflow-hidden select-none"
-      style={{ background: "#0a110e", touchAction: "none", cursor: isDraggingBuilding ? "grabbing" : undefined }}
+      style={{ background: "#0a110e", touchAction: "none", cursor: isDraggingBuilding ? "grabbing" : undefined, contain: "layout style" }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

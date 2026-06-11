@@ -170,7 +170,7 @@ export function VillageImmersiveDock() {
       {/* Mobile: compact vertical stack bottom-left — readable rows, no crushing */}
       <div
         className="dock-mobile pointer-events-auto absolute left-2 z-40 flex w-[min(64vw,270px)] flex-col gap-1 md:hidden"
-        style={{ bottom: "calc(50px + env(safe-area-inset-bottom, 0px))" }}
+        style={{ bottom: "calc(68px + env(safe-area-inset-bottom, 0px))" }}
       >
         {allItems.slice(0, 4).map((item) => (
           <QueueSlot
