@@ -4,7 +4,7 @@ import { type BuildingType } from "@etheria/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BuildingSprite } from "@/components/village/BuildingIcon";
 import { VillageHTMLCanvas } from "@/components/village/VillageHTMLCanvas";
-import { WorldMapCanvas } from "@/components/worldmap/WorldMapCanvas";
+import { WorldMapHTMLCanvas } from "@/components/worldmap/WorldMapHTMLCanvas";
 import { GameInitializer } from "@/components/game/GameInitializer";
 import { useGameStore } from "@/stores/gameStore";
 import { BUILDING_NAMES } from "@/lib/constants";
@@ -376,7 +376,7 @@ function VillageLayoutEditorContent() {
             </div>
           ) : (
             <div className="relative h-full w-full touch-none overflow-hidden">
-              <WorldMapCanvas
+              <WorldMapHTMLCanvas
                 cities={[]}
                 mapConfig={worldMap?.map ?? {
                   width: 2400,
@@ -385,10 +385,6 @@ function VillageLayoutEditorContent() {
                   cameraMaxZoom: 1.8,
                   cameraInitialZoom: 0.72,
                   backgroundAssetPath: terrainMask.mapAssetPath,
-                  terrainSeed: 0,
-                  decorDensity: 0,
-                  decorSafeRadius: 0,
-                  terrainOverlayEnabled: false,
                 }}
                 terrainMask={terrainMask}
                 editorMode

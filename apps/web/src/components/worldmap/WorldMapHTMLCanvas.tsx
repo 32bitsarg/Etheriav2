@@ -5,6 +5,7 @@ import React, {
 } from "react";
 import type { WorldMovement } from "@etheria/shared";
 import { useI18n } from "@/i18n";
+import { TERRAIN_COLOR_HEX, type TerrainKind, type WorldTerrainMaskData } from "@/lib/worldTerrainMask";
 
 type WorldCity = {
   id: string;
@@ -67,6 +68,12 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   onSelectCamp,
   movements = [],
   seasonState,
+  editorMode = false,
+  terrainMask,
+  selectedTerrain,
+  brushSize = 2,
+  showTerrainOverlay = true,
+  onTerrainChange,
 }: {
   cities: WorldCity[];
   mapConfig: MapConfig | null;
@@ -78,6 +85,12 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   onSelectCamp?: (camp: BarbarianCamp, position: { x: number; y: number }) => void;
   movements?: (WorldMovement & { relation?: "ally" | "peace" | "hostile" | "neutral" | "own" })[];
   seasonState?: any;
+  editorMode?: boolean;
+  terrainMask?: WorldTerrainMaskData | null;
+  selectedTerrain?: TerrainKind;
+  brushSize?: number;
+  showTerrainOverlay?: boolean;
+  onTerrainChange?: (mask: WorldTerrainMaskData) => void;
 }) {
   const { t } = useI18n();
   const [hoveredMovementId, setHoveredMovementId] = useState<string | null>(null);
@@ -97,7 +110,12 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   } | null>(null);
   const pinch = useRef<{ dist: number; midX: number; midY: number } | null>(null);
   const fogCanvasRef = useRef<HTMLCanvasElement>(null);
+  const terrainCanvasRef = useRef<HTMLCanvasElement>(null);
   const weatherRef = useRef<HTMLDivElement>(null);
+  // Tracks active paint stroke so dragging paints continuously
+  const isPaintingRef = useRef(false);
+  const terrainMaskRef = useRef(terrainMask);
+  terrainMaskRef.current = terrainMask;
   const movementEls = useRef(new Map<string, HTMLDivElement>());
 
   const worldW = mapConfig?.width ?? 3600;
@@ -199,6 +217,64 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
       }
     }
   }, [cities, myCityId, worldToLocal, localToScreen, size]);
+
+  // ─── Terrain overlay (editor) ────────────────────────────────────────────
+
+  const drawTerrainOverlay = useCallback(() => {
+    const tc = terrainCanvasRef.current;
+    if (!tc) return;
+    const ctx = tc.getContext("2d");
+    if (!ctx) return;
+    const mask = terrainMaskRef.current;
+    ctx.clearRect(0, 0, tc.width, tc.height);
+    if (!showTerrainOverlay || !mask) return;
+    const cw = tc.width / mask.columns;
+    const ch = tc.height / mask.rows;
+    for (let row = 0; row < mask.rows; row++) {
+      for (let col = 0; col < mask.columns; col++) {
+        const kind = mask.cells[row * mask.columns + col] as TerrainKind;
+        if (!kind || kind === "PLAINS") continue;
+        const hex = TERRAIN_COLOR_HEX[kind];
+        if (!hex) continue;
+        ctx.fillStyle = hex + "70"; // ~44% alpha
+        ctx.fillRect(col * cw, row * ch, cw, ch);
+      }
+    }
+  }, [showTerrainOverlay]);
+
+  useEffect(() => { drawTerrainOverlay(); }, [terrainMask, showTerrainOverlay, drawTerrainOverlay]);
+
+  const paintCell = useCallback((screenX: number, screenY: number) => {
+    const mask = terrainMaskRef.current;
+    if (!mask || !selectedTerrain || !onTerrainChange || !mapConfig) return;
+    const rect = outerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const sx = screenX - rect.left;
+    const sy = screenY - rect.top;
+    const { x: wx, y: wy } = screenToWorld(sx, sy);
+    const nx = (wx + halfW) / worldW;
+    const ny = (wy + halfH) / worldH;
+    const centerCol = Math.floor(nx * mask.columns);
+    const centerRow = Math.floor(ny * mask.rows);
+    if (centerCol < 0 || centerRow < 0 || centerCol >= mask.columns || centerRow >= mask.rows) return;
+    const radius = Math.max(0, brushSize - 1);
+    const newCells = [...mask.cells];
+    let changed = false;
+    for (let dr = -radius; dr <= radius; dr++) {
+      for (let dc = -radius; dc <= radius; dc++) {
+        const col = centerCol + dc;
+        const row = centerRow + dr;
+        if (col < 0 || row < 0 || col >= mask.columns || row >= mask.rows) continue;
+        const idx = row * mask.columns + col;
+        if (newCells[idx] !== selectedTerrain) { newCells[idx] = selectedTerrain; changed = true; }
+      }
+    }
+    if (!changed) return;
+    const newMask = { ...mask, cells: newCells };
+    terrainMaskRef.current = newMask;
+    onTerrainChange(newMask);
+    drawTerrainOverlay();
+  }, [selectedTerrain, brushSize, onTerrainChange, mapConfig, screenToWorld, halfW, halfH, worldW, worldH, drawTerrainOverlay]);
 
   // ─── Movement update ─────────────────────────────────────────────────────
 
@@ -379,16 +455,26 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
 
   // ── Input: pointer pan ───────────────────────────────────────────────────
 
+  const paintCellRef = useRef(paintCell);
+  paintCellRef.current = paintCell;
+
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // In editor mode: left-click = paint terrain, right-click = pan
+    if (editorMode && e.button === 0 && e.pointerType !== "touch") {
+      isPaintingRef.current = true;
+      paintCellRef.current(e.clientX, e.clientY);
+      return;
+    }
     if (e.button !== 0 && e.pointerType !== "touch") return;
     pointerState.current = {
       startClientX: e.clientX, startClientY: e.clientY,
       startCamX: cam.current.x, startCamY: cam.current.y,
       pointerId: e.pointerId, hasPanned: false,
     };
-  }, []);
+  }, [editorMode]);
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (isPaintingRef.current) { paintCellRef.current(e.clientX, e.clientY); return; }
     if (pinch.current) return; // pinch takes priority — don't pan while zooming
     const ps = pointerState.current;
     if (!ps || ps.pointerId !== e.pointerId) return;
@@ -401,7 +487,10 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     camDirty.current = true;
   }, [clampCamera]);
 
-  const onPointerUp = useCallback(() => { pointerState.current = null; }, []);
+  const onPointerUp = useCallback(() => {
+    isPaintingRef.current = false;
+    pointerState.current = null;
+  }, []);
 
   // ── Input: touch pinch ───────────────────────────────────────────────────
 
@@ -475,7 +564,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
       <div
         ref={outerRef}
         className="relative h-full w-full overflow-hidden select-none md:rounded-lg md:border md:border-etheria-border/30"
-        style={{ background: "#070a0a", touchAction: "none" }}
+        style={{ background: "#070a0a", touchAction: "none", cursor: editorMode ? "crosshair" : "default" }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -581,6 +670,17 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
             );
           })()}
 
+          {/* Terrain overlay canvas (editor mode) */}
+          {editorMode && (
+            <canvas
+              ref={terrainCanvasRef}
+              className="absolute inset-0 pointer-events-none"
+              width={worldW}
+              height={worldH}
+              style={{ width: worldW, height: worldH, zIndex: 10 }}
+            />
+          )}
+
           {/* Movement markers */}
           {movements.map((m) => {
             const isTrade = m.type === "TRADE";
@@ -635,14 +735,16 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
           })}
         </div>
 
-        {/* Fog of War overlay — backing store scaled by DPR (capped at 2) for crisp edges */}
-        <canvas
-          ref={fogCanvasRef}
-          className="absolute inset-0 pointer-events-none"
-          width={Math.round(size.w * Math.min(window.devicePixelRatio || 1, 2))}
-          height={Math.round(size.h * Math.min(window.devicePixelRatio || 1, 2))}
-          style={{ width: size.w, height: size.h }}
-        />
+        {/* Fog of War overlay — suppressed in editor mode */}
+        {!editorMode && (
+          <canvas
+            ref={fogCanvasRef}
+            className="absolute inset-0 pointer-events-none"
+            width={Math.round(size.w * Math.min(window.devicePixelRatio || 1, 2))}
+            height={Math.round(size.h * Math.min(window.devicePixelRatio || 1, 2))}
+            style={{ width: size.w, height: size.h }}
+          />
+        )}
 
         {/* Weather overlay */}
         <div ref={weatherRef} className="absolute inset-0 pointer-events-none" style={{ transition: "background-color 0.6s" }} />
@@ -656,26 +758,30 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
         <button type="button" onClick={() => zoomBy(1 - ZOOM_STEP * 4)}
           className="w-8 h-8 rounded-lg border border-etheria-border bg-black/55 text-etheria-gold-soft backdrop-blur-[2px] hover:bg-black/75 text-base font-bold flex items-center justify-center"
           aria-label="Zoom out">−</button>
-        <button type="button" onClick={() => { centerOnMyCity(); onCenterMyCity?.(); }}
-          className="rounded-lg border border-etheria-border bg-black/55 px-3 h-8 text-xs text-etheria-gold-soft backdrop-blur-[2px] hover:bg-black/75">
-          {t("play.map.centerMyVillage")}
-        </button>
+        {!editorMode && (
+          <button type="button" onClick={() => { centerOnMyCity(); onCenterMyCity?.(); }}
+            className="rounded-lg border border-etheria-border bg-black/55 px-3 h-8 text-xs text-etheria-gold-soft backdrop-blur-[2px] hover:bg-black/75">
+            {t("play.map.centerMyVillage")}
+          </button>
+        )}
       </div>
 
-      {/* Bottom-left legend */}
-      <div className="absolute left-3 bottom-3 z-10 flex flex-col gap-1 rounded-lg bg-black/50 px-2 py-1.5 backdrop-blur-sm pointer-events-none">
-        {([
-          ["#e8c468", t("play.map.legend.own")],
-          ["#49f0c5", t("play.map.legend.ally")],
-          ["#6fc8ff", t("play.map.legend.peace")],
-          ["#d75f43", t("play.map.legend.hostile")],
-        ] as [string, string][]).map(([color, label]) => (
-          <div key={label} className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
-            <span className="text-[9px] text-white/55 leading-none">{label}</span>
-          </div>
-        ))}
-      </div>
+      {/* Bottom-left legend (game mode only) */}
+      {!editorMode && (
+        <div className="absolute left-3 bottom-3 z-10 flex flex-col gap-1 rounded-lg bg-black/50 px-2 py-1.5 backdrop-blur-sm pointer-events-none">
+          {([
+            ["#e8c468", t("play.map.legend.own")],
+            ["#49f0c5", t("play.map.legend.ally")],
+            ["#6fc8ff", t("play.map.legend.peace")],
+            ["#d75f43", t("play.map.legend.hostile")],
+          ] as [string, string][]).map(([color, label]) => (
+            <div key={label} className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+              <span className="text-[9px] text-white/55 leading-none">{label}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 });
