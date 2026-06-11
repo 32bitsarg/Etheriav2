@@ -8,10 +8,12 @@ import { getCityId, setCityId } from "@/lib/guestAuth";
 import { useRouter, usePathname } from "next/navigation";
 import { useMatecitoAuth } from "@/hooks/useMatecitoAuth";
 import { clearGuestSession } from "@/lib/guestAuth";
+import { Capacitor } from "@capacitor/core";
 
-const AUTH_TIMEOUT_MS = 8_000;
-const BOOTSTRAP_TIMEOUT_MS = 12_000;
-const PLAY_INITIAL_TIMEOUT_MS = 15_000;
+// Ampliar timeouts para 4G lenta
+const AUTH_TIMEOUT_MS = 12_000;
+const BOOTSTRAP_TIMEOUT_MS = 20_000;
+const PLAY_INITIAL_TIMEOUT_MS = 25_000;
 
 type InitPhase = "auth" | "bootstrap" | "snapshot" | "ready" | "error";
 type InitError = {
@@ -88,7 +90,8 @@ export function GameInitializer() {
   const [mounted, setMounted] = useState(false);
   const [hasCreatedCity, setHasCreatedCity] = useState(false);
   const [bootstrapPending, setBootstrapPending] = useState(false);
-  const [bootstrapResolved, setBootstrapResolved] = useState(false);
+  // Returning users (cityId in localStorage): start play-initial in parallel with bootstrap
+  const [bootstrapResolved, setBootstrapResolved] = useState(() => Boolean(getCityId()));
   const [phaseStartedAt, setPhaseStartedAt] = useState(() => Date.now());
   const [initError, setInitError] = useState<InitError | null>(null);
   const [localCityId, setLocalCityId] = useState<string | null>(() => getCityId());
@@ -365,15 +368,24 @@ export function GameInitializer() {
 
   if (!auth.ready || isLoading || createCity.isPending || bootstrapPending || (auth.isLoggedIn && !bootstrapResolved)) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-etheria-bg z-50">
-        <div className="text-center">
-          <div className="mb-4 text-5xl animate-bounce">🏰</div>
-          <h2 className="text-2xl font-display font-bold text-etheria-gold">Building Etheria...</h2>
-          <p className="text-sm text-etheria-text-muted mt-2">{phaseText}</p>
-          <p className="mt-1 font-mono text-[11px] text-etheria-text-muted/60">{currentPhase} - {stuckSeconds}s</p>
-          <div className="mt-4 w-48 h-1.5 bg-etheria-panel rounded-full overflow-hidden mx-auto">
+      <div className="absolute inset-0 z-50 overflow-hidden">
+        {/* Village background as skeleton — feels much faster than black screen */}
+        <img
+          src="/assets/backgrounds/village-fullscreen.webp"
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{ filter: "brightness(0.35)" }}
+        />
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+          <div className="text-5xl animate-bounce">🏰</div>
+          <h2 className="font-display text-2xl font-bold text-amber-300 drop-shadow-lg">Conquest of Etheria</h2>
+          <p className="text-sm text-white/60 drop-shadow">{phaseText}</p>
+          <div className="mt-2 w-48 h-1.5 rounded-full overflow-hidden bg-white/10">
             <div className="h-full bg-gradient-to-r from-amber-600 to-amber-400 rounded-full animate-shimmer" />
           </div>
+          {stuckSeconds > 8 && (
+            <p className="mt-1 font-mono text-[10px] text-white/30">{currentPhase} · {stuckSeconds}s</p>
+          )}
         </div>
       </div>
     );
@@ -395,6 +407,14 @@ export function GameInitializer() {
       </div>
     );
   }
+
+  // Game is ready — hide native Capacitor splash screen
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    import("@capacitor/splash-screen").then(({ SplashScreen }) => {
+      SplashScreen.hide({ fadeOutDuration: 500 }).catch(() => {});
+    });
+  }, []);
 
   return null;
 }

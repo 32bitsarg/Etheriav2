@@ -17,11 +17,11 @@ const config = {
   },
   plugins: {
     SplashScreen: {
-      // El frontend no llama a SplashScreen.hide(), así que el splash debe
-      // ocultarse solo; con launchAutoHide:false quedaba colgado para siempre.
-      launchAutoHide: true,
-      launchShowDuration: 2500,
-      launchFadeOutDuration: 400,
+      // GameInitializer llama SplashScreen.hide() cuando el juego está listo.
+      // Esto evita que el splash desaparezca a los 2.5s dejando una pantalla de
+      // carga WebView visible — el usuario ve el splash nativo durante toda la espera.
+      launchAutoHide: false,
+      launchFadeOutDuration: 500,
       backgroundColor: '#0b1111',
     },
     StatusBar: {
