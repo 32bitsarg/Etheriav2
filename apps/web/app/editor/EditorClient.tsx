@@ -10,6 +10,7 @@ import { useGameStore } from "@/stores/gameStore";
 import { BUILDING_NAMES } from "@/lib/constants";
 import { useSaveVillageLayout, useSaveWorldTerrainMask, useVillageLayout, useWorldMap, useWorldTerrainMask } from "@/hooks/useCity";
 import { I18nProvider, useI18n } from "@/i18n";
+import { getAdminSecret, setAdminSecret } from "@/lib/adminClient";
 import {
   getDefaultVillageAnchor,
   getVillageTileKey,
@@ -57,6 +58,7 @@ function VillageLayoutEditorContent() {
 
   const [editorMode, setEditorMode] = useState<"village" | "world-terrain" | "bots">("village");
   const [apiTarget, setApiTarget] = useState<"local" | "prod">("local");
+  const [adminSecret, setAdminSecretState] = useState(() => getAdminSecret());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<VillageLayoutData | null>(null);
   const [terrainDraft, setTerrainDraft] = useState<WorldTerrainMaskData | null>(null);
@@ -261,6 +263,21 @@ function VillageLayoutEditorContent() {
                 <option value="local">🖥️ Local</option>
                 <option value="prod">🌐 Producción</option>
               </select>
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                type="password"
+                placeholder="Admin secret"
+                value={adminSecret}
+                onChange={(e) => {
+                  setAdminSecretState(e.target.value);
+                  setAdminSecret(e.target.value);
+                }}
+                className="flex-1 rounded-lg border border-etheria-border-dim bg-black/30 px-3 py-1.5 text-xs text-etheria-text outline-none placeholder:text-etheria-text-muted"
+              />
+              <span className={`text-[10px] ${adminSecret ? "text-emerald-400" : "text-rose-400"}`}>
+                {adminSecret ? "✓" : "✗"}
+              </span>
             </div>
             <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl border border-etheria-border-dim bg-black/20 p-1">
               <button onClick={() => setEditorMode("village")} className={`rounded-lg px-3 py-2 text-xs ${editorMode === "village" ? "bg-etheria-gold text-black" : "text-etheria-text"}`}>{t("editor.tabs.village")}</button>
