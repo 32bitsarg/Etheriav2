@@ -15,6 +15,22 @@ Each release is named after a legendary era in the world of Etheria.
 
 ---
 
+## [0.5.5] - Las Ventanas del Reino - 2026-06-10
+
+> *"Cada puerta del reino se abre igual: liviana en el celular, majestuosa en el escritorio."*
+
+### Changed
+- Todas las ventanas del juego (edificios, correo, misiones, alianza, ataque, renombrar) usan un sistema unificado: en el celular se abren como panel inferior deslizable
+- Los habitantes del mundo ahora hablan como jugadores reales, con apodos y mensajes creíbles en el chat y el correo
+
+### Fixed
+- En el celular las ventanas ya no ocupan toda la pantalla con el título y el botón de cerrar cortados
+- Franja blanca en el borde superior del panel inferior en el celular
+- Imágenes de unidades que aparecían como un cuadrado blanco roto en el cuartel
+- Efectos de estación con "reducir movimiento" activado: ya no quedan como puntos fijos arriba de la pantalla
+
+---
+
 ## [0.5.4] - El Pulso de las Estaciones - 2026-06-10
 
 > *"La nieve por fin cae sobre la aldea, los íconos brillan sin marcos, y el tablero del reino se siente vivo."*

@@ -17,6 +17,29 @@ export interface ChangelogRelease {
 
 export const changelogReleases: ChangelogRelease[] = [
   {
+    version: "0.5.5",
+    nameKey: "changelog.releases.v0_5_5",
+    date: "2026-06-10",
+    sections: [
+      {
+        heading: "Changed",
+        itemKeys: [
+          "changelog.items.v0_5_5.changed.0",
+          "changelog.items.v0_5_5.changed.1"
+        ],
+      },
+      {
+        heading: "Fixed",
+        itemKeys: [
+          "changelog.items.v0_5_5.fixed.0",
+          "changelog.items.v0_5_5.fixed.1",
+          "changelog.items.v0_5_5.fixed.2",
+          "changelog.items.v0_5_5.fixed.3"
+        ],
+      }
+    ],
+  },
+  {
     version: "0.5.4",
     nameKey: "changelog.releases.v0_5_4",
     date: "2026-06-10",

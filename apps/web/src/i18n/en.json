@@ -287,6 +287,7 @@
       "v0_5_0": "The Traveler's Era",
       "v0_5_1": "The Awakening of the Lands",
       "v0_5_3": "The Face of the Realms",
+      "v0_5_5": "The Windows of the Realm",
       "v0_5_4": "The Pulse of the Seasons"
     },
     "items": {
@@ -552,6 +553,18 @@
           "Missing translations on the mobile login screen.",
           "The public changelog no longer shows internal entries on the landing page.",
           "Automatic recovery when the game is left on a stale version after a deploy."
+        ]
+      },
+      "v0_5_5": {
+        "changed": [
+          "Every game window (buildings, mail, quests, alliance, attack, rename) now uses a unified system: on mobile they open as a slide-up bottom sheet.",
+          "The world's inhabitants now talk like real players, with believable nicknames and messages in chat and mail."
+        ],
+        "fixed": [
+          "On mobile, windows no longer fill the whole screen with the title and close button cut off.",
+          "White strip along the top edge of the bottom sheet on mobile.",
+          "Unit images that showed up as a broken white square in the barracks.",
+          "Season effects with \"reduce motion\" enabled: they no longer linger as fixed dots at the top of the screen."
         ]
       },
       "v0_5_4": {
