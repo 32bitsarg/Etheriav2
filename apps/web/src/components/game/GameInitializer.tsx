@@ -132,6 +132,23 @@ export function GameInitializer() {
     setPhaseStartedAt(Date.now());
   }, [currentPhase]);
 
+  // Hide native Capacitor splash when game is ready — must be unconditional (Rules of Hooks)
+  const isReady = currentPhase === "ready";
+  useEffect(() => {
+    if (!isReady) return;
+    Promise.all([
+      import("@capacitor/core").catch(() => null),
+      import("@capacitor/splash-screen").catch(() => null),
+    ]).then(([capCore, capSplash]) => {
+      if (!capCore || !capSplash) return;
+      const { Capacitor } = capCore;
+      const { SplashScreen } = capSplash;
+      if (Capacitor.isNativePlatform()) {
+        SplashScreen.hide({ fadeOutDuration: 500 }).catch(() => {});
+      }
+    });
+  }, [isReady]);
+
   useEffect(() => {
     if (currentPhase === "ready" || currentPhase === "error") return;
     const timeoutMs = currentPhase === "auth" ? AUTH_TIMEOUT_MS : currentPhase === "bootstrap" ? BOOTSTRAP_TIMEOUT_MS : PLAY_INITIAL_TIMEOUT_MS;
@@ -406,21 +423,6 @@ export function GameInitializer() {
       </div>
     );
   }
-
-  // Game is ready — hide native Capacitor splash screen (dynamic imports: not bundled on web)
-  useEffect(() => {
-    Promise.all([
-      import("@capacitor/core").catch(() => null),
-      import("@capacitor/splash-screen").catch(() => null),
-    ]).then(([capCore, capSplash]) => {
-      if (!capCore || !capSplash) return;
-      const { Capacitor } = capCore;
-      const { SplashScreen } = capSplash;
-      if (Capacitor.isNativePlatform()) {
-        SplashScreen.hide({ fadeOutDuration: 500 }).catch(() => {});
-      }
-    });
-  }, []);
 
   return null;
 }
