@@ -15,6 +15,43 @@ Each release is named after a legendary era in the world of Etheria.
 
 ---
 
+## [0.5.7] - El Mundo Vivo - 2026-06-11
+
+> *"Los espías regresan, las maravillas se ganan en batalla, y el mundo tiene memoria."*
+
+### Added
+- Feed de actividad global enriquecido: batallas mayores, campamentos bárbaros destruidos, nuevas alianzas y nuevos jugadores ahora aparecen en el feed con íconos por tipo
+- La Maravilla Mundial ahora se conquista en batalla real: unidades atacan y defienden, se pierden tropas, y el control solo cambia si el atacante gana
+- La Maravilla acumula días de control reales (tick diario): al llegar a 7 días, la alianza ganadora recibe una entrada de victoria en el feed global
+- Barra de progreso de asedio en el mapa: al seleccionar una ciudad enemiga bajo asedio activo, se muestra `N/3 victorias` con barra roja en desktop y mobile
+- Nuevas claves i18n: `play.feed.*`, `play.conquest.siege`
+
+### Fixed
+- Bug crítico: misiones de espionaje se quedaban viajando para siempre — el worker ahora las resuelve al llegar (`resolveEspionageMission`)
+- La Maravilla Mundial ya no cambia de dueño instantáneamente sin combate
+
+### Changed
+- APK: versionCode 3, versionName "0.5.7"
+
+---
+
+## [0.5.6] - La Era del Comercio - 2026-06-10
+
+> *"El mercado abre sus puertas, los aliados marchan juntos, y cada héroe conoce su historia."*
+
+### Added
+- Mercado entre jugadores: crear y aceptar ofertas de recursos con comisión del 5%, accesible desde HUD desktop y mobile
+- Rally de alianza: convocar tropas de aliados para atacar ciudades enemigas o campamentos bárbaros juntos; el worker lanza el rally automáticamente
+- Tutorial de onboarding: banner inferior no bloqueante de 4 pasos (bienvenida, granja, cuartel, mapa); guarda progreso por usuario
+- Perfil de jugador: modal con raza, alianza, poder y rango; accesible desde el ranking
+- Eventos diarios en el HUD mobile: `DailyEventBanner` compacto con ícono + cuenta regresiva
+
+### Changed
+- `GET /city/bootstrap` ahora devuelve `tutorialStep`
+- Nuevas claves i18n: mercado, perfil, tutorial (pasos 1–4), eventos diarios
+
+---
+
 ## [0.5.5] - Las Ventanas del Reino - 2026-06-10
 
 > *"Cada puerta del reino se abre igual: liviana en el celular, majestuosa en el escritorio."*

@@ -8,7 +8,7 @@ import { BUILDING_INFO, BUILDING_NAMES, BUILDING_SIZES, MAX_BUILDING_LEVEL, getU
 import { BuildingSprite } from "@/components/village/BuildingIcon";
 import { VillageHTMLCanvas } from "@/components/village/VillageHTMLCanvas";
 import { ResourceIconSVG } from "@/components/village/ResourceIconSVG";
-import { useAcceptMarketOffer, useActiveBattles, useAllCities, useAllianceMembership, useAttackCity, useBarbarianAttackAlerts, useBattleReports, useBreakTreaty, useCancelBuildQueue, useCancelResearchQueue, useCancelTrainingQueue, useCityRanking, useClaimQuest, useContributeAllianceObjective, useCreateAlliance, useCreateMarketOffer, useDisbandAlliance, useGameReports, useJoinAlliance, useKickAllianceMember, useLeaveAlliance, useMailMessages, useMarkGameReportRead, useMarkMailRead, useMarkMapOpened, useMarkReportRead, useMarketOffers, usePlayerQuests, useProposePeace, useRenameCity, useResearchTech, useScoutTarget, useSendMailMessage, useTechs, useTrainUnits, useTransferAllianceLeadership, useUpdateAlliance, useUpdateAllianceMemberRole, useUpgradeBuilding, useVillageLayout, useWorldMap, useWorldMovements, useWorldSeason, useTutorialStep } from "@/hooks/useCity";
+import { useAcceptMarketOffer, useActiveBattles, useAllCities, useAllianceMembership, useAttackCity, useBarbarianAttackAlerts, useBattleReports, useBreakTreaty, useCancelBuildQueue, useCancelResearchQueue, useCancelTrainingQueue, useCityRanking, useClaimQuest, useContributeAllianceObjective, useCreateAlliance, useCreateMarketOffer, useDisbandAlliance, useGameReports, useJoinAlliance, useKickAllianceMember, useLeaveAlliance, useMailMessages, useMarkGameReportRead, useMarkMailRead, useMarkMapOpened, useMarkReportRead, useMarketOffers, usePlayerQuests, useProposePeace, useRenameCity, useResearchTech, useScoutTarget, useSendMailMessage, useTechs, useTrainUnits, useTransferAllianceLeadership, useUpdateAlliance, useUpdateAllianceMemberRole, useUpgradeBuilding, useVillageLayout, useWorldMap, useWorldMovements, useWorldSeason, useTutorialStep, useConquestStatus } from "@/hooks/useCity";
 import { WorldMapHTMLCanvas } from "@/components/worldmap/WorldMapHTMLCanvas";
 import { BarbarianAttackAlertBanner } from "@/components/barbarians/BarbarianAttackAlertBanner";
 import { WinterPressureBanner } from "@/components/barbarians/WinterPressureBanner";
@@ -760,6 +760,10 @@ const MapaView = memo(function MapaView({ cityName, allianceData, movements, wor
   }, [setSelectedCamp, setShowCampModal]);
   const selectedCity = cities.find((city: any) => city.id === selectedCityId) ?? null;
   const isOwnCity = selectedCityId != null && selectedCityId === myCityId;
+  const { data: conquestStatus } = useConquestStatus(myCityId ?? null);
+  const conquestWinsOnSelected = !isOwnCity && selectedCityId
+    ? conquestStatus?.outgoing?.find((c) => c.defenderCityId === selectedCityId)
+    : undefined;
 
   const enterVillage = () => {
     setIsEntering(true);
@@ -798,6 +802,8 @@ const MapaView = memo(function MapaView({ cityName, allianceData, movements, wor
           t={t}
           onClose={() => setSelectedCityId(null)}
           onEnter={enterVillage}
+          conquestWins={conquestWinsOnSelected?.wins}
+          conquestRequired={conquestWinsOnSelected?.winsRequired ?? 3}
           onAttack={() => { if (selectedCityId && selectedCity) setAttackTarget({ id: selectedCityId, name: selectedCity.name }); }}
           onSpy={() => {
             if (!myCityId || !selectedCityId) return;
@@ -911,7 +917,7 @@ function AttackCityModal({ targetCityId, targetCityName, units, cityId, attackCi
   );
 }
 
-function MapCityRadial({ cityName, isOwnCity, position, t, onClose, onEnter, onAttack, onSpy }: {
+function MapCityRadial({ cityName, isOwnCity, position, t, onClose, onEnter, onAttack, onSpy, conquestWins, conquestRequired }: {
   cityName: string;
   isOwnCity: boolean;
   position: { x: number; y: number };
@@ -920,6 +926,8 @@ function MapCityRadial({ cityName, isOwnCity, position, t, onClose, onEnter, onA
   onEnter: () => void;
   onAttack: () => void;
   onSpy: () => void;
+  conquestWins?: number;
+  conquestRequired?: number;
 }) {
   const isMobile = useIsMobile();
 
@@ -936,7 +944,15 @@ function MapCityRadial({ cityName, isOwnCity, position, t, onClose, onEnter, onA
           </div>
           <div className="px-5 pb-6 pt-3">
             <p className="text-[10px] uppercase tracking-widest text-etheria-gold-soft/60 mb-0.5">{t("play.map.villageLabel")}</p>
-            <h3 className="font-serif text-lg text-etheria-gold mb-4 truncate">{cityName}</h3>
+            <h3 className="font-serif text-lg text-etheria-gold mb-2 truncate">{cityName}</h3>
+            {conquestWins != null && (
+              <div className="mb-3">
+                <p className="text-[10px] text-red-400 mb-1">{t("play.conquest.siege")} {conquestWins}/{conquestRequired ?? 3}</p>
+                <div className="h-1.5 w-full rounded-full bg-white/10">
+                  <div className="h-full rounded-full bg-red-500 transition-all" style={{ width: `${((conquestWins / (conquestRequired ?? 3)) * 100).toFixed(0)}%` }} />
+                </div>
+              </div>
+            )}
             {isOwnCity ? (
               <button onClick={onEnter}
                 className="w-full min-h-[52px] rounded-2xl bg-etheria-gold text-black font-bold text-sm">
@@ -970,7 +986,15 @@ function MapCityRadial({ cityName, isOwnCity, position, t, onClose, onEnter, onA
           <div className="relative bg-black/85 backdrop-blur-xl border-2 border-etheria-gold/40 rounded-full w-48 h-48 flex items-center justify-center shadow-[0_0_50px_rgba(215,168,76,0.3)]">
             <div className="text-center px-4">
               <div className="text-[10px] uppercase tracking-widest text-etheria-gold-soft/70 mb-1">{t("play.map.villageLabel")}</div>
-              <div className="font-serif text-sm text-white truncate max-w-[140px] mb-2">{cityName}</div>
+              <div className="font-serif text-sm text-white truncate max-w-[140px] mb-1">{cityName}</div>
+              {conquestWins != null && (
+                <div className="mb-2 w-full max-w-[130px] mx-auto">
+                  <div className="text-[9px] text-red-400 mb-0.5">{conquestWins}/{conquestRequired ?? 3} {t("play.conquest.siege")}</div>
+                  <div className="h-1 w-full rounded-full bg-white/10">
+                    <div className="h-full rounded-full bg-red-500" style={{ width: `${((conquestWins / (conquestRequired ?? 3)) * 100).toFixed(0)}%` }} />
+                  </div>
+                </div>
+              )}
               <div className="flex flex-wrap justify-center gap-2">
                 {isOwnCity ? (
                   <button onClick={onEnter} className="bg-etheria-gold text-black text-[10px] font-bold px-3 py-1.5 rounded-full hover:bg-white transition-colors">{t("play.map.enter")}</button>

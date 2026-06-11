@@ -668,12 +668,20 @@ cityRouter.post("/bootstrap", requireMatecitoAuth(), async (c) => {
     const existingCityId = existingCityRes.data?.id ?? null;
 
     let cityId = existingCityId as string | null;
+    let isNewPlayer = false;
     if (!cityId) {
       const race = typeof body.race === "string" && body.race.length > 0 ? body.race : undefined;
       const worldId = typeof body.worldId === "string" && body.worldId.length > 0 ? body.worldId : undefined;
       const created = await createStarterCityForUser({ userId, cityName: desiredCityName, race, worldId });
       if ("error" in created) return c.json({ error: created.error, code: "CITY_CREATE_FAILED" }, 503);
       cityId = created.cityId;
+      isNewPlayer = true;
+    }
+    if (isNewPlayer) {
+      try {
+        const { createActivityFeedEntry } = await import('./activityFeed.js');
+        await createActivityFeedEntry('PLAYER_JOINED', desiredCityName, cityId!, { userId });
+      } catch (_) { /* non-critical */ }
     }
 
     const userRow = await prisma.user.findUnique({ where: { id: userId }, select: { tutorialStep: true } });

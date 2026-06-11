@@ -1327,6 +1327,18 @@
       "hoursAgo": "{h}h ago",
       "daysAgo": "{d}d ago"
     },
+    "feed": {
+      "WONDER_CAPTURED": "captured the World Wonder",
+      "WONDER_SIEGE_STARTED": "attacked the World Wonder",
+      "WONDER_VICTORY": "won the World Wonder (7 days of control)",
+      "BATTLE_MAJOR_VICTORY": "crushed",
+      "BARBARIAN_CAMP_CLEARED": "cleared a barbarian camp",
+      "ALLIANCE_FORMED": "founded a new alliance",
+      "PLAYER_JOINED": "joined the world"
+    },
+    "conquest": {
+      "siege": "Siege"
+    },
     "achievements": {
       "title": "Achievements",
       "unlocked": "unlocked",

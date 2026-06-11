@@ -1523,3 +1523,17 @@ export function useTutorialStep() {
     staleTime: Infinity,
   });
 }
+
+export function useConquestStatus(cityId: string | null) {
+  return useQuery({
+    queryKey: ["conquest-status", cityId],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/conquest/status/${cityId}`);
+      if (!res.ok) return { incoming: [], outgoing: [] };
+      return res.json() as Promise<{ incoming: Array<{ attackerCityId: string; attackerCityName: string; wins: number; winsRequired: number }>; outgoing: Array<{ defenderCityId: string; defenderCityName: string; wins: number; winsRequired: number }> }>;
+    },
+    enabled: !!cityId,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+  });
+}

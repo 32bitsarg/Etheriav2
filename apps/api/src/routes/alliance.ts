@@ -75,6 +75,10 @@ allianceRouter.post('/', requireMatecitoAuth(), zValidator('json', CreateAllianc
   const data = c.req.valid('json');
   const result = await createAllianceForUser({ userId, name: data.name, tag: data.tag });
   if ('error' in result) return c.json({ error: result.error }, 400);
+  try {
+    const { createActivityFeedEntry } = await import('./activityFeed.js');
+    await createActivityFeedEntry('ALLIANCE_FORMED', data.name, (result as any).id ?? userId, { tag: data.tag });
+  } catch (_) { /* non-critical */ }
   return c.json(result);
 });
 

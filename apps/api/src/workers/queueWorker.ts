@@ -30,10 +30,13 @@ import {
 import type { UnitType, Season } from '@etheria/shared';
 import { finishWorkerMetric, startWorkerMetric } from '../infrastructure/perfMetrics.js';
 import { getActiveEventEffect } from '../routes/events.js';
+import { resolveEspionageMission } from '../routes/espionage.js';
 
 let workerRunning = false;
 let workerTickRunning = false;
 let lastResourceTickAt = 0;
+let lastWonderDayAt = 0;
+const WONDER_DAY_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const QUEUE_WORKER_INTERVAL_MS = Number(process.env.QUEUE_WORKER_INTERVAL_MS ?? 5000);
 const RESOURCE_TICK_INTERVAL_MS = Number(process.env.RESOURCE_TICK_INTERVAL_MS ?? 60000);
 const RESOURCE_TICK_MIN_ELAPSED_MS = Number(process.env.RESOURCE_TICK_MIN_ELAPSED_MS ?? 60000);
@@ -82,6 +85,7 @@ export async function processQueueWorkerTick() {
     await processResourceTicks();
   }
   await processRallyLaunches();
+  await processEspionageMissions();
   await processBattles();
   await processBattleReturns();
   await processBarbarianBattles();
@@ -90,6 +94,35 @@ export async function processQueueWorkerTick() {
   await resolveBarbarianAttackArrivals();
   await processBarbarianAttackReturns();
   await processTradeCaravans();
+  await processWonderDayTick();
+}
+
+async function processWonderDayTick() {
+  if (Date.now() - lastWonderDayAt < WONDER_DAY_INTERVAL_MS) return;
+  lastWonderDayAt = Date.now();
+  const res = await db.from(COLLECTIONS.WONDER).eq('id', 'world_wonder').getFirst() as any;
+  const wonder = res.data;
+  if (!wonder?.holderAllianceId) return;
+  const days = (wonder.daysControlled ?? 0) + 1;
+  await db.from(COLLECTIONS.WONDER).eq('id', 'world_wonder').merge({ daysControlled: days, updatedAt: new Date().toISOString() }).execute();
+  if (days >= 7) {
+    const { createActivityFeedEntry } = await import('../routes/activityFeed.js');
+    const allianceRes = await db.from(COLLECTIONS.ALLIANCES).eq('id', wonder.holderAllianceId).getFirst() as any;
+    await createActivityFeedEntry('WONDER_VICTORY', allianceRes.data?.name ?? 'Alianza', wonder.holderAllianceId, { cityId: wonder.holderCityId, daysControlled: days });
+    await db.from(COLLECTIONS.WONDER).eq('id', 'world_wonder').merge({ daysControlled: 0, holderAllianceId: null, holderCityId: null, controlStartedAt: null, updatedAt: new Date().toISOString() }).execute();
+  }
+}
+
+async function processEspionageMissions() {
+  const now = new Date();
+  const due = await prisma.espionageMission.findMany({
+    where: { status: 'TRAVELING', arrivesAt: { lte: now } },
+    take: 20,
+  });
+  for (const m of due) {
+    try { await resolveEspionageMission(m.id); }
+    catch (err) { console.error(`Espionage mission ${m.id} failed:`, err); }
+  }
 }
 
 // ─── Build Queues ───
@@ -620,6 +653,14 @@ async function resolveAndProcessBattle(battle: any) {
     `Loot: ${JSON.stringify(loot)} | Returns at: ${returnsAt}`
   );
 
+  // Activity feed: major victory when loot > 500 of any resource
+  if (result.victory && loot && (loot.gold > 500 || loot.wood > 500 || loot.stone > 500 || loot.food > 500)) {
+    try {
+      const { createActivityFeedEntry } = await import('../routes/activityFeed.js');
+      await createActivityFeedEntry('BATTLE_MAJOR_VICTORY', attackerName, battle.attackerCityId, { defenderName, loot });
+    } catch (_) { /* non-critical */ }
+  }
+
   // Mark incoming attack reports as read for the defender
   const incomingReports = await db.from(COLLECTIONS.GAME_REPORTS)
     .eq("type", "INCOMING_ATTACK")
@@ -832,6 +873,14 @@ async function resolveAndProcessBarbarianBattle(battle: any) {
     `⚔️ Barbarian battle resolved: ${result.victory ? 'VICTORY' : 'DEFEAT'} | ` +
     `Losses: ${JSON.stringify(result.attackerLosses)} | Loot: ${JSON.stringify(loot)}`
   );
+
+  if (result.victory) {
+    try {
+      const { createActivityFeedEntry } = await import('../routes/activityFeed.js');
+      const cityRes = await db.from(COLLECTIONS.CITIES).eq('id', battle.attackerCityId).getFirst() as any;
+      await createActivityFeedEntry('BARBARIAN_CAMP_CLEARED', cityRes.data?.name ?? 'Ciudad', battle.attackerCityId, { loot });
+    } catch (_) { /* non-critical */ }
+  }
 }
 
 // ─── Barbarian Battle Returns ───

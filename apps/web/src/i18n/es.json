@@ -1327,6 +1327,18 @@
       "hoursAgo": "hace {h}h",
       "daysAgo": "hace {d}d"
     },
+    "feed": {
+      "WONDER_CAPTURED": "capturó La Maravilla Mundial",
+      "WONDER_SIEGE_STARTED": "atacó La Maravilla Mundial",
+      "WONDER_VICTORY": "ganó la Maravilla Mundial (7 días de control)",
+      "BATTLE_MAJOR_VICTORY": "aplastó a",
+      "BARBARIAN_CAMP_CLEARED": "arrasó un campamento bárbaro",
+      "ALLIANCE_FORMED": "fundó una nueva alianza",
+      "PLAYER_JOINED": "se unió al mundo"
+    },
+    "conquest": {
+      "siege": "Asedio"
+    },
     "achievements": {
       "title": "Logros",
       "unlocked": "desbloqueados",

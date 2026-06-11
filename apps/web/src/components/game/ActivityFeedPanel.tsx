@@ -15,6 +15,12 @@ interface FeedEntry {
 const TYPE_ICONS: Record<string, string> = {
   CITY_CONQUERED: "⚔️",
   WONDER_CAPTURED: "🏛️",
+  WONDER_SIEGE_STARTED: "🏛️",
+  WONDER_VICTORY: "👑",
+  BATTLE_MAJOR_VICTORY: "⚔️",
+  BARBARIAN_CAMP_CLEARED: "🏕️",
+  ALLIANCE_FORMED: "🤝",
+  PLAYER_JOINED: "👋",
   FIRST_VICTORY: "🏆",
   RALLY_LAUNCHED: "🚩",
   ACHIEVEMENT_UNLOCKED: "🥇",
@@ -25,8 +31,14 @@ export function ActivityFeedPanel({ onClose }: { onClose: () => void }) {
 
   function formatEntry(entry: FeedEntry): string {
     switch (entry.type) {
-      case "CITY_CONQUERED": return `${t("play.activityFeed.conquered")} ${entry.payload.defenderName}`;
-      case "WONDER_CAPTURED": return t("play.activityFeed.wonder");
+      case "CITY_CONQUERED": return `${t("play.activityFeed.conquered")} ${entry.payload.defenderName ?? ""}`;
+      case "WONDER_CAPTURED": return t("play.feed.WONDER_CAPTURED");
+      case "WONDER_SIEGE_STARTED": return t("play.feed.WONDER_SIEGE_STARTED");
+      case "WONDER_VICTORY": return t("play.feed.WONDER_VICTORY");
+      case "BATTLE_MAJOR_VICTORY": return `${t("play.feed.BATTLE_MAJOR_VICTORY")} ${entry.payload.defenderName ?? ""}`;
+      case "BARBARIAN_CAMP_CLEARED": return t("play.feed.BARBARIAN_CAMP_CLEARED");
+      case "ALLIANCE_FORMED": return t("play.feed.ALLIANCE_FORMED");
+      case "PLAYER_JOINED": return t("play.feed.PLAYER_JOINED");
       case "RALLY_LAUNCHED": return t("play.activityFeed.rally");
       default: return t("play.activityFeed.action");
     }
