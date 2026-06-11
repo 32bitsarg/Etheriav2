@@ -41,7 +41,7 @@ export const LOCAL_WORLD_CONFIG: WorldConfigDoc = {
     cameraMinZoom: 0.72,
     cameraMaxZoom: 1.8,
     cameraInitialZoom: 1.02,
-    backgroundAssetPath: "/assets/backgrounds/world-map-terrain-v2.png",
+    backgroundAssetPath: "/assets/backgrounds/world-map-terrain-v2.webp",
     terrainSeed: 1337,
     decorDensity: 0.7,
     decorSafeRadius: 170,

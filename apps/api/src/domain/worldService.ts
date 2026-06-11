@@ -90,7 +90,12 @@ export async function getWorldConfig(worldId?: string): Promise<WorldConfigDoc> 
 
   const stored = raw ? (typeof raw.config === "string" ? JSON.parse(raw.config) : raw.config) : null;
   if (!stored || !stored.map) return { ...LOCAL_WORLD_CONFIG };
-  return { ...LOCAL_WORLD_CONFIG, ...stored, map: { ...LOCAL_WORLD_CONFIG.map, ...stored.map }, spawn: { ...LOCAL_WORLD_CONFIG.spawn, ...stored.spawn } };
+  const mergedMap = { ...LOCAL_WORLD_CONFIG.map, ...stored.map };
+  // Normalize legacy .png extension — the actual asset is .webp
+  if (mergedMap.backgroundAssetPath?.endsWith(".png")) {
+    mergedMap.backgroundAssetPath = mergedMap.backgroundAssetPath.replace(/\.png$/, ".webp");
+  }
+  return { ...LOCAL_WORLD_CONFIG, ...stored, map: mergedMap, spawn: { ...LOCAL_WORLD_CONFIG.spawn, ...stored.spawn } };
 }
 
 export async function ensureDefaultWorld(): Promise<void> {
