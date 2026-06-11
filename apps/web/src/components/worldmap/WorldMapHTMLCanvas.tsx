@@ -352,9 +352,10 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
       const rect = el.getBoundingClientRect();
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
-      // Zoom centered on cursor: adjust cx,cy so the point under cursor stays fixed
-      const cx = mx - (mx - cam.current.x) * s;
-      const cy = my - (my - cam.current.y) * s;
+      // Zoom centered on cursor: localToScreen gives screen_x = -halfW + cx + lx*zoom,
+      // so to keep the world point under cursor fixed: cx_new = (mx+halfW) - (mx+halfW - cx)*s
+      const cx = (mx + halfW) - (mx + halfW - cam.current.x) * s;
+      const cy = (my + halfH) - (my + halfH - cam.current.y) * s;
       cam.current = clampCamera(cx, cy, newZoom);
       camDirty.current = true;
     };
@@ -411,7 +412,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     const oldZoom = cam.current.zoom;
     const newZoom = Math.min(zMax, Math.max(zMin, oldZoom * factor));
     const s = newZoom / oldZoom;
-    cam.current = clampCamera(midX - (midX - cam.current.x) * s, midY - (midY - cam.current.y) * s, newZoom);
+    cam.current = clampCamera((midX + halfW) - (midX + halfW - cam.current.x) * s, (midY + halfH) - (midY + halfH - cam.current.y) * s, newZoom);
     camDirty.current = true;
     pinch.current.dist = newDist;
   }, [clampCamera, zMin, zMax]);
