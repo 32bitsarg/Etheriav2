@@ -102,6 +102,7 @@ export const VillageHTMLCanvas = memo(function VillageHTMLCanvas({
     hasPanned: boolean;
     // building drag
     tileKey?: string;
+    buildingId?: string;
     startAnchorX?: number;
     startAnchorY?: number;
   } | null>(null);
@@ -277,6 +278,7 @@ export const VillageHTMLCanvas = memo(function VillageHTMLCanvas({
           pointerId: e.pointerId,
           hasPanned: false,
           tileKey,
+          buildingId: dragging.building.id,
           startAnchorX: anchor?.x ?? 0,
           startAnchorY: anchor?.y ?? 0,
         };
@@ -330,9 +332,14 @@ export const VillageHTMLCanvas = memo(function VillageHTMLCanvas({
 
   const onPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
-    if (pointerState.current?.type === "building") setIsDraggingBuilding(false);
+    const ps = pointerState.current;
+    if (ps?.type === "building") {
+      setIsDraggingBuilding(false);
+      // pointer capture prevents the button's onClick from firing — select here
+      if (!ps.hasPanned && ps.buildingId) onSelectBuilding(ps.buildingId);
+    }
     pointerState.current = null;
-  }, []);
+  }, [onSelectBuilding]);
 
   // ── Touch pinch-to-zoom ─────────────────────────────────────────────────────
 
