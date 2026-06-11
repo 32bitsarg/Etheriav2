@@ -59,9 +59,15 @@ async function devAutoLogin(applyUser: (u: AuthUser | null) => void) {
   }
 }
 
+export interface BanInfo {
+  reason: string | null;
+  bannedUntil: string | null;
+}
+
 export function useMatecitoAuth() {
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [banInfo, setBanInfo] = useState<BanInfo | null>(null);
 
   const applyUser = useCallback((u: AuthUser | null) => {
     setUser(u);
@@ -70,7 +76,14 @@ export function useMatecitoAuth() {
 
   useEffect(() => {
     apiFetch(`/auth/me?_t=${Date.now()}`)
-      .then((r) => (r.ok ? r.json() : null))
+      .then(async (r) => {
+        if (r.status === 403) {
+          const data = await r.json().catch(() => ({}));
+          if (data?.error === "banned") setBanInfo({ reason: data.reason ?? null, bannedUntil: data.bannedUntil ?? null });
+          return null;
+        }
+        return r.ok ? r.json() : null;
+      })
       .then(async (data) => {
         if (data?.user) {
           applyUser(data.user);
@@ -86,6 +99,7 @@ export function useMatecitoAuth() {
     () => ({
       ready,
       user,
+      banInfo,
       token: user ? user.id : null,
       isLoggedIn: !!user,
       signUp: async (email: string, password: string, extra?: { name?: string; username?: string }) => {
@@ -104,16 +118,22 @@ export function useMatecitoAuth() {
           body: JSON.stringify({ email, password, remember: true }),
         });
         const data = await res.json().catch(() => ({}));
+        if (res.status === 403 && data?.error === "banned") {
+          setBanInfo({ reason: data.reason ?? null, bannedUntil: data.bannedUntil ?? null });
+          return { data: null, error: { message: "banned", banInfo: { reason: data.reason, bannedUntil: data.bannedUntil } } };
+        }
         if (!res.ok) return { data: null, error: { message: extractErrorMessage(data, "Login failed") } };
+        setBanInfo(null);
         applyUser(data.user);
         return { data, error: null };
       },
       signOut: async () => {
         await apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
         applyUser(null);
+        setBanInfo(null);
         return { error: null };
       },
     }),
-    [ready, user, applyUser]
+    [ready, user, banInfo, applyUser]
   );
 }

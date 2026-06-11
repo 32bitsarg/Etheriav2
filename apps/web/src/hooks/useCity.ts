@@ -558,14 +558,14 @@ export function useWorldMovements(enabled = true) {
 export function useVillageLayout() {
   return useQuery({
     queryKey: ["village", "layout"],
-    placeholderData: normalizeVillageLayout(villageLayoutJson as VillageLayoutData),
     queryFn: async () => {
-      const res = await fetch("/api/editor/layout", { cache: "no-store", headers: adminHeaders() });
+      const res = await fetch("/api/editor/layout", { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to fetch village layout");
-      return await res.json() as VillageLayoutData;
+      return normalizeVillageLayout(await res.json() as VillageLayoutData);
     },
     staleTime: 0,
     refetchOnMount: "always",
+    retry: 2,
   });
 }
 
@@ -1549,5 +1549,49 @@ export function useConquestStatus(cityId: string | null) {
     staleTime: 30_000,
     refetchInterval: 60_000,
     refetchIntervalInBackground: false,
+  });
+}
+
+// ── Blocks ─────────────────────────────────────────────────────────────────────
+
+export function useBlocks() {
+  return useQuery({
+    queryKey: ["blocks"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/blocks`);
+      if (!res.ok) throw new Error("Failed to fetch blocks");
+      return (await res.json()) as { blocks: { blockedUserId: string; blockedName: string | null; createdAt: string }[] };
+    },
+    staleTime: 30_000,
+  });
+}
+
+export function useBlockUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await fetch(`${API_BASE}/blocks`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId }) });
+      if (!res.ok) throw new Error("Failed to block user");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["blocks"] });
+      queryClient.invalidateQueries({ queryKey: ["chat"] });
+      queryClient.invalidateQueries({ queryKey: ["mail", "messages"] });
+    },
+  });
+}
+
+export function useUnblockUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await fetch(`${API_BASE}/blocks/${userId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to unblock user");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["blocks"] });
+      queryClient.invalidateQueries({ queryKey: ["chat"] });
+      queryClient.invalidateQueries({ queryKey: ["mail", "messages"] });
+    },
   });
 }

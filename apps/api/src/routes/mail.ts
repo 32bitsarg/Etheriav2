@@ -5,14 +5,16 @@ import { SendMailMessageRequestSchema } from '@etheria/shared';
 import { prisma } from '@etheria/database';
 import { requireMatecitoAuth } from '../infrastructure/authMiddleware.js';
 import { sendMailMessage } from '../domain/mail.js';
+import { getBlockedUserIds, isBlockedBy } from '../domain/moderationService.js';
 
 export const mailRouter = new Hono();
 
 mailRouter.get('/messages', requireMatecitoAuth(), async (c) => {
   const userId = c.get('userId');
+  const blockedIds = await getBlockedUserIds(userId);
   const [inbox, sent, unreadCount] = await Promise.all([
     prisma.mailMessage.findMany({
-      where: { recipientUserId: userId },
+      where: { recipientUserId: userId, ...(blockedIds.size > 0 ? { senderUserId: { notIn: [...blockedIds] } } : {}) },
       orderBy: { createdAt: 'desc' },
       take: 40,
     }),
@@ -21,7 +23,7 @@ mailRouter.get('/messages', requireMatecitoAuth(), async (c) => {
       orderBy: { createdAt: 'desc' },
       take: 20,
     }),
-    prisma.mailMessage.count({ where: { recipientUserId: userId, readAt: null } }),
+    prisma.mailMessage.count({ where: { recipientUserId: userId, readAt: null, ...(blockedIds.size > 0 ? { senderUserId: { notIn: [...blockedIds] } } : {}) } }),
   ]);
 
   return c.json({ inbox, sent, unreadCount });

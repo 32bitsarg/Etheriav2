@@ -4,6 +4,7 @@ import { ChatChannelSchema, SendChatMessageRequestSchema } from '@etheria/shared
 import { requireMatecitoAuth } from '../infrastructure/authMiddleware.js';
 import { createChatMessage, listChatMessages } from '../domain/chat.js';
 import { getSocialConfig } from '../domain/socialConfig.js';
+import { getModerationState } from '../domain/moderationService.js';
 
 const chatRouter = new Hono();
 
@@ -23,6 +24,8 @@ chatRouter.get('/messages', requireMatecitoAuth(), async (c) => {
 
 chatRouter.post('/messages', requireMatecitoAuth(), zValidator('json', SendChatMessageRequestSchema), async (c) => {
   const userId = c.get('userId');
+  const modState = await getModerationState(userId);
+  if (modState.muted) return c.json({ error: "muted", reason: modState.muteReason, mutedUntil: modState.mutedUntil }, 403);
   const data = c.req.valid('json');
   const config = getSocialConfig();
   if (data.message.trim().length > config.chatMessageMaxLength) {

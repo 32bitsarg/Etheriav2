@@ -22,6 +22,10 @@ import { achievementsRouter } from './routes/achievements.js';
 import { activityFeedRouter } from './routes/activityFeed.js';
 import { tutorialRouter } from './routes/tutorial.js';
 import { adminBotsRouter } from './routes/adminBots.js';
+import { adminUsersRouter } from './routes/adminUsers.js';
+import { adminChatRouter } from './routes/adminChat.js';
+import { adminStatsRouter } from './routes/adminStats.js';
+import { blocksRouter } from './routes/blocks.js';
 import { loadBuildingConfigs } from './domain/buildings.js';
 import { loadUnitConfigs } from './domain/units.js';
 import { loadTechConfigs } from './domain/techs.js';
@@ -97,6 +101,10 @@ export function createApiApp() {
   app.route('/achievements', achievementsRouter);
   app.route('/activity', activityFeedRouter);
   app.route('/admin/bots', adminBotsRouter);
+  app.route('/admin/users', adminUsersRouter);
+  app.route('/admin/chat', adminChatRouter);
+  app.route('/admin/stats', adminStatsRouter);
+  app.route('/blocks', blocksRouter);
   app.route('/tutorial', tutorialRouter);
 
   return app;

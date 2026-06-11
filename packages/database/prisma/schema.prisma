@@ -21,11 +21,21 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  cities       City[]
-  sessions     Session[]
-  sentMail     MailMessage[] @relation("MailSender")
-  receivedMail MailMessage[] @relation("MailRecipient")
-  botPlayer    BotPlayer?
+  bannedAt    DateTime?
+  bannedUntil DateTime?
+  banReason   String?
+  mutedAt     DateTime?
+  mutedUntil  DateTime?
+  muteReason  String?
+
+  cities            City[]
+  sessions          Session[]
+  sentMail          MailMessage[] @relation("MailSender")
+  receivedMail      MailMessage[] @relation("MailRecipient")
+  botPlayer         BotPlayer?
+  moderationActions ModerationAction[]
+  blocksInitiated   UserBlock[] @relation("Blocker")
+  blocksReceived    UserBlock[] @relation("Blocked")
 
   @@map("users")
 }
@@ -1009,4 +1019,44 @@ model AllianceObjectiveContribution {
 
   @@index([objectiveId, userId])
   @@map("alliance_objective_contributions")
+}
+
+enum ModerationActionType {
+  BAN
+  UNBAN
+  MUTE
+  UNMUTE
+  KICK_SESSIONS
+  DELETE_CHAT_MESSAGE
+}
+
+model ModerationAction {
+  id        String               @id @default(uuid())
+  userId    String?
+  action    ModerationActionType
+  reason    String?
+  expiresAt DateTime?
+  metadata  Json?
+  createdAt DateTime             @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@index([createdAt])
+  @@map("moderation_actions")
+}
+
+model UserBlock {
+  id            String   @id @default(uuid())
+  blockerUserId String
+  blockedUserId String
+  createdAt     DateTime @default(now())
+
+  blocker User @relation("Blocker", fields: [blockerUserId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerUserId, blockedUserId])
+  @@index([blockedUserId])
+  @@map("user_blocks")
 }

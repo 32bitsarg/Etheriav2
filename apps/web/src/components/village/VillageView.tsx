@@ -36,6 +36,7 @@ import { useState, useMemo, useCallback, useEffect, useRef, memo, startTransitio
 import { useI18n } from "@/i18n";
 import { normalizeVillageLayout, resolveVillageRenderableBuildings } from "@/lib/villageLayout";
 import type { VillageLayoutData } from "@/lib/villageLayout";
+import villageLayoutJson from "@/data/village-layout.json";
 
 type ViewId = "pueblo" | "mapa";
 
@@ -685,14 +686,15 @@ const PuebloView = memo(function PuebloView({ buildings, selectedBuildingId, onS
   interactionsDisabled: boolean;
   t: (key: string) => string;
 }) {
-  const { data: layout } = useVillageLayout();
+  const { data: layout, isError: layoutError } = useVillageLayout();
   const placedBuildings = useMemo(() => resolveVillageRenderableBuildings(buildings).map((building) => ({
     ...building,
     displayName: t(BUILDING_NAMES[building.type as BuildingType] ?? building.type),
   })), [buildings, t]);
-  const activeLayout: VillageLayoutData = useMemo(() => normalizeVillageLayout(layout), [layout]);
+  const fallbackLayout: VillageLayoutData = useMemo(() => normalizeVillageLayout(villageLayoutJson as VillageLayoutData), []);
+  const activeLayout: VillageLayoutData = useMemo(() => layout ?? (layoutError ? fallbackLayout : null) ?? fallbackLayout, [layout, layoutError, fallbackLayout]);
 
-  if (placedBuildings.length === 0) {
+  if (placedBuildings.length === 0 || (!layout && !layoutError)) {
     return (
       <div className="flex h-full items-center justify-center bg-etheria-bg">
         <div className="text-center">

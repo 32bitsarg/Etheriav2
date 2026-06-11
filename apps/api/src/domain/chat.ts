@@ -1,6 +1,7 @@
 import type { ChatChannel } from '@etheria/shared';
 import { db, COLLECTIONS } from '../infrastructure/matecito.js';
 import { getAllianceMembershipForUser, getUserProfile } from './alliances.js';
+import { getBlockedUserIds, isBlockedBy } from './moderationService.js';
 
 // Chat is world-scoped: GLOBAL is per-world, PRIVATE only between players of
 // the same world, ALLIANCE implicitly (an alliance lives in one world).
@@ -42,8 +43,11 @@ export async function listChatMessages(input: {
       db.from(COLLECTIONS.CHAT_MESSAGES).eq('channel', 'PRIVATE').eq('senderUserId', input.userId).limit(input.limit).get() as any,
       db.from(COLLECTIONS.CHAT_MESSAGES).eq('channel', 'PRIVATE').eq('recipientUserId', input.userId).limit(input.limit).get() as any,
     ]);
+    const blockedIds = await getBlockedUserIds(input.userId);
     const merged = new Map<string, Record<string, unknown>>();
-    for (const row of [...(sentRes.data ?? []), ...(receivedRes.data ?? [])]) merged.set(String(row.id), row);
+    for (const row of [...(sentRes.data ?? []), ...(receivedRes.data ?? [])]) {
+      if (!blockedIds.has(String(row.senderUserId ?? ""))) merged.set(String(row.id), row);
+    }
     const messages = [...merged.values()].sort(
       (a, b) => new Date(String(a.createdAt ?? 0)).getTime() - new Date(String(b.createdAt ?? 0)).getTime()
     ).slice(-input.limit);
@@ -51,9 +55,10 @@ export async function listChatMessages(input: {
   }
 
   const res = await query.get() as any;
-  const messages = ((res.data ?? []) as Array<Record<string, unknown>>).sort(
-    (a, b) => new Date(String(a.createdAt ?? 0)).getTime() - new Date(String(b.createdAt ?? 0)).getTime()
-  );
+  const blockedIds = await getBlockedUserIds(input.userId);
+  const messages = ((res.data ?? []) as Array<Record<string, unknown>>)
+    .filter((m) => !blockedIds.has(String(m.senderUserId ?? "")))
+    .sort((a, b) => new Date(String(a.createdAt ?? 0)).getTime() - new Date(String(b.createdAt ?? 0)).getTime());
 
   return { error: null, membership: access.membership, worldId: access.worldId, messages };
 }
@@ -97,6 +102,9 @@ export async function createChatMessage(input: {
     const recipientWorldId = await getUserWorldId(input.recipientUserId);
     if (!recipientWorldId || recipientWorldId !== check.worldId) {
       return { error: 'Recipient must be a player of your world' as const, membership: check.membership };
+    }
+    if (await isBlockedBy(input.recipientUserId, input.userId)) {
+      return { error: 'Recipient unavailable' as const, membership: check.membership };
     }
     const recipientProfile = await getUserProfile(input.recipientUserId);
     recipientUserId = input.recipientUserId;

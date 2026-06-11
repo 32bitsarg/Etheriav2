@@ -9,11 +9,16 @@ import { ToastContainer } from "@/components/ui/ToastContainer";
 import { VillageView } from "@/components/village/VillageView";
 import { useMatecitoAuth } from "@/hooks/useMatecitoAuth";
 import { useGameStore } from "@/stores/gameStore";
+import { BannedScreen } from "@/components/game/BannedScreen";
 
 function PlayContent() {
   const auth = useMatecitoAuth();
   const cityId = useGameStore((s) => s.cityId);
   const canMountGame = auth.ready && auth.isLoggedIn && !!cityId;
+
+  if (auth.banInfo) {
+    return <BannedScreen banInfo={auth.banInfo} onSignOut={auth.signOut} />;
+  }
 
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-etheria-bg">

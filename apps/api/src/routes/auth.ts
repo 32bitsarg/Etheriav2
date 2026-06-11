@@ -60,7 +60,10 @@ const LoginSchema = z.object({
 authRouter.post("/login", rateLimit({ name: "auth-login", windowMs: 60_000 * 5, max: 10 }), zValidator("json", LoginSchema), async (c) => {
   const data = c.req.valid("json");
   const result = await loginUser({ email: data.email, password: data.password, remember: data.remember });
-  if ("error" in result) return c.json({ error: result.error }, 401);
+  if ("error" in result) {
+    if (result.error === "banned") return c.json({ error: "banned", reason: result.banReason, bannedUntil: result.bannedUntil }, 403);
+    return c.json({ error: result.error }, 401);
+  }
 
   const session = result.session;
   setCookie(c, SESSION_COOKIE, session.token, {

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { readFile, writeFile, copyFile } from "node:fs/promises";
 import path from "node:path";
 import { normalizeVillageLayout, type VillageLayoutData } from "@/lib/villageLayout";
-import { requireAdmin, requireAdminGet } from "@/lib/adminAuth";
+import { requireAdmin } from "@/lib/adminAuth";
 
 export const runtime = "nodejs";
 
@@ -14,9 +14,7 @@ async function readLayout(): Promise<VillageLayoutData> {
   return normalizeVillageLayout(JSON.parse(raw) as VillageLayoutData);
 }
 
-export async function GET(req: Request) {
-  const denied = requireAdminGet(req);
-  if (denied) return denied;
+export async function GET(_req: Request) {
   const layout = await readLayout();
   return NextResponse.json(layout, { headers: { "Cache-Control": "no-store, max-age=0" } });
 }

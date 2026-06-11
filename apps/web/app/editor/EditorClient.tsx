@@ -49,7 +49,7 @@ export default function EditorClient() {
 function VillageLayoutEditorContent() {
   const { t } = useI18n();
   const buildings = useGameStore((s) => s.buildings);
-  const { data } = useVillageLayout();
+  const { data, isPending: layoutPending, isError: layoutError, refetch: refetchLayout } = useVillageLayout();
   const { data: worldMap } = useWorldMap();
   const { data: terrainData } = useWorldTerrainMask();
   const saveMutation = useSaveVillageLayout();
@@ -78,13 +78,7 @@ function VillageLayoutEditorContent() {
     toastTimerRef.current = setTimeout(() => setToast(null), 3000);
   };
 
-  const layout = draft ?? data ?? {
-    version: 1,
-    backgroundAssetPath: "/assets/backgrounds/village-fullscreen.webp",
-    referenceWidth: 1672,
-    referenceHeight: 941,
-    anchors: {},
-  };
+  const layout = draft ?? data ?? null;
 
   const terrainMask = terrainDraft ?? normalizeWorldTerrainMask(terrainData);
   const uniqueBuildings = useMemo(() => resolveVillageRenderableBuildings(buildings as EditorBuilding[]).map((building) => ({
@@ -94,13 +88,14 @@ function VillageLayoutEditorContent() {
   const selectedBuilding = uniqueBuildings.find((building) => building.id === selectedId) ?? uniqueBuildings[0] ?? null;
 
   useEffect(() => {
-    if (selectedId || !layout.editor?.lastSelected) return;
-    if (uniqueBuildings.some((building) => building.id === layout.editor?.lastSelected)) setSelectedId(layout.editor.lastSelected);
-  }, [layout.editor?.lastSelected, selectedId, uniqueBuildings]);
+    if (selectedId || !layout?.editor?.lastSelected) return;
+    if (uniqueBuildings.some((building) => building.id === layout?.editor?.lastSelected)) setSelectedId(layout!.editor!.lastSelected!);
+  }, [layout?.editor?.lastSelected, selectedId, uniqueBuildings]);
 
   const ensureDraft = () => {
     if (draft) return draft;
-    const next = structuredClone(layout);
+    if (!data) return null;
+    const next = structuredClone(layout ?? data);
     setDraft(next);
     return next;
   };
@@ -112,20 +107,23 @@ function VillageLayoutEditorContent() {
   const handleResetSelected = () => {
     if (!selectedBuilding) return;
     const next = ensureDraft();
+    if (!next) return;
     delete next.anchors[getVillageTileKey(selectedBuilding.positionX, selectedBuilding.positionY)];
     setDraft({ ...next, anchors: { ...next.anchors } });
   };
 
   const handleResetAll = () => {
     const next = ensureDraft();
+    if (!next) return;
     setDraft({ ...next, anchors: {} });
   };
 
   const nudgeSelected = (dx: number, dy: number) => {
     if (!selectedBuilding) return;
     const next = ensureDraft();
+    if (!next) return;
     const key = getVillageTileKey(selectedBuilding.positionX, selectedBuilding.positionY);
-    const current = next.anchors[key] ?? getDefaultVillageAnchor(layout, selectedBuilding.positionX, selectedBuilding.positionY, selectedBuilding.type);
+    const current = next.anchors[key] ?? getDefaultVillageAnchor(next, selectedBuilding.positionX, selectedBuilding.positionY, selectedBuilding.type);
     next.anchors[key] = {
       ...current,
       x: Number(Math.min(1, Math.max(0, current.x + dx)).toFixed(4)),
@@ -137,14 +135,16 @@ function VillageLayoutEditorContent() {
   const handleScaleChange = (delta: number) => {
     if (!selectedBuilding) return;
     const next = ensureDraft();
+    if (!next) return;
     const key = getVillageTileKey(selectedBuilding.positionX, selectedBuilding.positionY);
-    const current = next.anchors[key] ?? getDefaultVillageAnchor(layout, selectedBuilding.positionX, selectedBuilding.positionY, selectedBuilding.type);
+    const current = next.anchors[key] ?? getDefaultVillageAnchor(next, selectedBuilding.positionX, selectedBuilding.positionY, selectedBuilding.type);
     next.anchors[key] = { ...current, scale: Number(Math.min(3, Math.max(0.35, (current.scale ?? 1) + delta)).toFixed(2)) };
     setDraft({ ...next, anchors: { ...next.anchors } });
   };
 
   const updateEditorMeta = (updater: (editor: NonNullable<VillageLayoutData["editor"]>) => NonNullable<VillageLayoutData["editor"]>) => {
     const next = ensureDraft();
+    if (!next) return;
     const editor = updater(next.editor ?? {});
     setDraft({ ...next, editor });
   };
@@ -169,14 +169,16 @@ function VillageLayoutEditorContent() {
   const selectBuilding = useCallback((id: string) => {
     setSelectedId(id);
     setDraft((current) => {
-      const base = current ?? layout;
+      const base = current ?? data;
+      if (!base) return current;
       return { ...base, editor: { ...(base.editor ?? {}), lastSelected: id } };
     });
-  }, [layout]);
+  }, [data]);
 
   const handleAnchorChange = useCallback((payload: { tileKey: string; anchor: { x: number; y: number; scale?: number } }) => {
     setDraft((current) => {
-      const base = current ?? layout;
+      const base = current ?? data;
+      if (!base) return current;
       const existing = base.anchors[payload.tileKey] ?? {};
       return {
         ...base,
@@ -186,7 +188,7 @@ function VillageLayoutEditorContent() {
         },
       };
     });
-  }, [layout]);
+  }, [data]);
 
 
   const handlePanelPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -228,7 +230,7 @@ function VillageLayoutEditorContent() {
     return () => window.removeEventListener("keydown", onKey);
   }, [editorMode]);
 
-  const handleSave = () => saveMutation.mutate(layout, {
+  const handleSave = () => layout && saveMutation.mutate(layout, {
     onSuccess: () => { setDraft(null); showToast("Guardado ✓", true); },
     onError: () => showToast("Error al guardar", false),
   });
@@ -244,10 +246,10 @@ function VillageLayoutEditorContent() {
 
   const hasUnsavedChanges = draft !== null;
   const selectedKey = selectedBuilding ? getVillageTileKey(selectedBuilding.positionX, selectedBuilding.positionY) : null;
-  const selectedAnchor = selectedBuilding && selectedKey
+  const selectedAnchor = selectedBuilding && selectedKey && layout
     ? (layout.anchors[selectedKey] ?? getDefaultVillageAnchor(layout, selectedBuilding.positionX, selectedBuilding.positionY, selectedBuilding.type))
     : null;
-  const selectedMeta = selectedKey ? layout.editor?.buildings?.[selectedKey] ?? {} : {};
+  const selectedMeta = selectedKey && layout ? layout.editor?.buildings?.[selectedKey] ?? {} : {};
   const selectedRule = TERRAIN_RULES[selectedTerrain];
 
   if (!adminSecret) {
@@ -353,16 +355,16 @@ function VillageLayoutEditorContent() {
                   <button onClick={() => setEditorCenterVersion((value) => value + 1)} className="rounded-lg border border-etheria-border px-4 py-2 text-sm">{t("editor.village.centerView")}</button>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                  <button onClick={() => updateEditorMeta((editor) => ({ ...editor, showGrid: !editor.showGrid }))} className={`rounded-lg border px-3 py-2 ${layout.editor?.showGrid ? "border-etheria-gold bg-etheria-gold/10" : "border-etheria-border-dim bg-black/10"}`}>{t("editor.village.grid")}</button>
-                  <button onClick={() => updateEditorMeta((editor) => ({ ...editor, showSafeAreas: !editor.showSafeAreas }))} className={`rounded-lg border px-3 py-2 ${layout.editor?.showSafeAreas ? "border-etheria-gold bg-etheria-gold/10" : "border-etheria-border-dim bg-black/10"}`}>{t("editor.village.safeAreas")}</button>
-                  <button onClick={() => updateEditorMeta((editor) => ({ ...editor, snapToGrid: !editor.snapToGrid }))} className={`rounded-lg border px-3 py-2 ${layout.editor?.snapToGrid ? "border-etheria-gold bg-etheria-gold/10" : "border-etheria-border-dim bg-black/10"}`}>{t("editor.village.snap")}</button>
+                  <button onClick={() => updateEditorMeta((editor) => ({ ...editor, showGrid: !editor.showGrid }))} className={`rounded-lg border px-3 py-2 ${layout?.editor?.showGrid ? "border-etheria-gold bg-etheria-gold/10" : "border-etheria-border-dim bg-black/10"}`}>{t("editor.village.grid")}</button>
+                  <button onClick={() => updateEditorMeta((editor) => ({ ...editor, showSafeAreas: !editor.showSafeAreas }))} className={`rounded-lg border px-3 py-2 ${layout?.editor?.showSafeAreas ? "border-etheria-gold bg-etheria-gold/10" : "border-etheria-border-dim bg-black/10"}`}>{t("editor.village.safeAreas")}</button>
+                  <button onClick={() => updateEditorMeta((editor) => ({ ...editor, snapToGrid: !editor.snapToGrid }))} className={`rounded-lg border px-3 py-2 ${layout?.editor?.snapToGrid ? "border-etheria-gold bg-etheria-gold/10" : "border-etheria-border-dim bg-black/10"}`}>{t("editor.village.snap")}</button>
                   <button onClick={() => updateSelectedMeta({ locked: !selectedMeta.locked })} className={`rounded-lg border px-3 py-2 ${selectedMeta.locked ? "border-rose-300 bg-rose-400/10" : "border-etheria-border-dim bg-black/10"}`}>{selectedMeta.locked ? t("editor.village.unlock") : t("editor.village.lock")}</button>
                   <button onClick={() => updateSelectedMeta({ hidden: !selectedMeta.hidden })} className={`rounded-lg border px-3 py-2 ${selectedMeta.hidden ? "border-cyan-200 bg-cyan-400/10" : "border-etheria-border-dim bg-black/10"}`}>{selectedMeta.hidden ? t("editor.village.show") : t("editor.village.hideBuilding")}</button>
                 </div>
                 <div className="mt-4 rounded-xl border border-etheria-border-dim bg-black/20 p-3 text-xs text-etheria-text-muted">
                   <div>{t("editor.file")}: <span className="font-mono text-etheria-text">apps/web/src/data/village-layout.json</span></div>
-                  <div>{t("editor.reference")}: <span className="font-mono text-etheria-text">{layout.referenceWidth} x {layout.referenceHeight}</span></div>
-                  <div>{t("editor.village.savedAnchors")}: <span className="font-mono text-etheria-text">{Object.keys(layout.anchors).length}</span></div>
+                  <div>{t("editor.reference")}: <span className="font-mono text-etheria-text">{layout?.referenceWidth} x {layout?.referenceHeight}</span></div>
+                  <div>{t("editor.village.savedAnchors")}: <span className="font-mono text-etheria-text">{Object.keys(layout?.anchors ?? {}).length}</span></div>
                   {selectedAnchor && <div>{t("editor.selected")}: <span className="font-mono text-etheria-text">{selectedAnchor.x.toFixed(4)}, {selectedAnchor.y.toFixed(4)}</span></div>}
                   {saveMutation.isError && <div className="mt-2 text-rose-300">{t("editor.saveError")}</div>}
                 </div>
@@ -389,7 +391,7 @@ function VillageLayoutEditorContent() {
                             <div className="font-mono text-[11px] text-etheria-text-muted">{key}</div>
                           </div>
                           <div className="text-[11px] text-etheria-text-muted">
-                            {layout.editor?.buildings?.[key]?.hidden ? t("editor.village.hidden") : layout.editor?.buildings?.[key]?.locked ? t("editor.village.locked") : building.ghost ? t("editor.village.ghost") : layout.anchors[key] ? t("editor.village.custom") : t("editor.village.default")}
+                            {layout?.editor?.buildings?.[key]?.hidden ? t("editor.village.hidden") : layout?.editor?.buildings?.[key]?.locked ? t("editor.village.locked") : building.ghost ? t("editor.village.ghost") : layout?.anchors[key] ? t("editor.village.custom") : t("editor.village.default")}
                           </div>
                         </button>
                       );
@@ -470,15 +472,28 @@ function VillageLayoutEditorContent() {
         <div className="h-full w-full">
           {editorMode === "village" ? (
             <div className="relative h-full w-full touch-none overflow-hidden">
-              <VillageHTMLCanvas
-                layout={layout}
-                buildings={uniqueBuildings}
-                selectedBuildingId={selectedId}
-                onSelectBuilding={selectBuilding}
-                queues={[]}
-                editorMode
-                onAnchorChange={handleAnchorChange}
-              />
+              {!layout ? (
+                <div className="flex h-full w-full items-center justify-center flex-col gap-4">
+                  {layoutError ? (
+                    <>
+                      <p className="text-rose-400 text-sm">Error al cargar el layout</p>
+                      <button onClick={() => refetchLayout()} className="gold-btn px-4 text-xs">Reintentar</button>
+                    </>
+                  ) : (
+                    <p className="text-etheria-text-muted text-sm animate-pulse">Cargando layout…</p>
+                  )}
+                </div>
+              ) : (
+                <VillageHTMLCanvas
+                  layout={layout}
+                  buildings={uniqueBuildings}
+                  selectedBuildingId={selectedId}
+                  onSelectBuilding={selectBuilding}
+                  queues={[]}
+                  editorMode
+                  onAnchorChange={handleAnchorChange}
+                />
+              )}
             </div>
           ) : (
             <div className="relative h-full w-full touch-none overflow-hidden">

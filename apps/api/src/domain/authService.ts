@@ -1,6 +1,7 @@
 import { createHash, randomBytes, scryptSync } from "node:crypto";
 import { db, COLLECTIONS } from "../infrastructure/matecito.js";
 import { prisma } from "@etheria/database";
+import { isBanActive } from "./moderationService.js";
 
 const genId = () => crypto.randomUUID();
 
@@ -131,6 +132,11 @@ export async function loginUser(input: { email: string; password: string; rememb
 
   const candidate = scryptHash(input.password, String(user.passwordSalt));
   if (candidate !== String(user.passwordHash)) return { error: "Credenciales inválidas" as const };
+
+  const banCheck = await prisma.user.findUnique({ where: { id: user.id }, select: { bannedAt: true, bannedUntil: true, banReason: true } });
+  if (banCheck && isBanActive(banCheck.bannedAt, banCheck.bannedUntil)) {
+    return { error: "banned" as const, banReason: banCheck.banReason ?? null, bannedUntil: banCheck.bannedUntil ?? null };
+  }
 
   const session = await createSession(user.id, input.remember);
   const city = await prisma.city.findFirst({ where: { userId: user.id }, select: { id: true, worldId: true } });

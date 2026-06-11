@@ -1,6 +1,7 @@
 import { SendMailMessageRequestSchema } from "@etheria/shared";
 import { db, COLLECTIONS } from "../infrastructure/matecito.js";
 import { getUserProfile } from "./alliances.js";
+import { isBlockedBy } from "./moderationService.js";
 
 const genId = () => crypto.randomUUID();
 
@@ -24,6 +25,7 @@ export async function sendMailMessage(input: {
   const recipientCity = recipientCityRes.data;
   if (!recipientCity) return { error: "Recipient city not found" as const };
   if (recipientCity.userId === input.senderUserId) return { error: "Cannot send mail to yourself" as const };
+  if (await isBlockedBy(recipientCity.userId, input.senderUserId)) return { error: "Recipient unavailable" as const };
 
   const recipient = await getUserProfile(recipientCity.userId);
   const nowIso = new Date().toISOString();

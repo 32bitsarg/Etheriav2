@@ -9,6 +9,7 @@ import {
   getVillageBuildingFrame,
   normalizeVillageLayout,
   resolveVillageRenderableBuildings,
+  resolveVillageAnchor,
   getVillageTileKey,
   type VillageLayoutData,
   type VillageLayoutAnchor,
@@ -289,7 +290,7 @@ export const VillageHTMLCanvas = memo(function VillageHTMLCanvas({
 
       if (dragging && editorMode) {
         const tileKey = getVillageTileKey(dragging.building.positionX, dragging.building.positionY);
-        const anchor = normalizedLayout.anchors[tileKey];
+        const anchor = resolveVillageAnchor(normalizedLayout, dragging.building.positionX, dragging.building.positionY, dragging.building.type);
         pointerState.current = {
           type: "building",
           startClientX: e.clientX,
@@ -300,8 +301,8 @@ export const VillageHTMLCanvas = memo(function VillageHTMLCanvas({
           hasPanned: false,
           tileKey,
           buildingId: dragging.building.id,
-          startAnchorX: anchor?.x ?? 0,
-          startAnchorY: anchor?.y ?? 0,
+          startAnchorX: anchor.x,
+          startAnchorY: anchor.y,
         };
         setIsDraggingBuilding(true);
         return;
