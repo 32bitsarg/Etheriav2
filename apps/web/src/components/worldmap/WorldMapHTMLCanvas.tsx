@@ -811,26 +811,38 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
                   key={camp.id}
                   onClick={(e) => handleCampClick(camp, e)}
                   className="absolute flex flex-col items-center cursor-pointer"
-                  style={{ left: l.x, top: l.y, transform: "translate(-50%, -70%)", zIndex: 2 }}
+                  style={{ left: l.x, top: l.y, transform: "translate(-50%, -85%)", zIndex: 2 }}
                 >
-                  <div
+                  <img
+                    src="/assets/map/barbarian-camp.png"
+                    alt=""
                     className="pointer-events-none"
+                    draggable={false}
                     style={{
-                      width: 0, height: 0,
-                      borderLeft: "9px solid transparent",
-                      borderRight: "9px solid transparent",
-                      borderBottom: `15px solid ${color}`,
-                      filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.6))",
+                      width: 120, height: 120,
+                      filter: `drop-shadow(0 3px 6px rgba(0,0,0,0.6)) sepia(0.3) hue-rotate(-10deg)`,
+                    }}
+                    onError={(e) => {
+                      // Fallback: colored triangle if sprite missing
+                      (e.currentTarget as HTMLImageElement).style.display = "none";
+                      const sibling = e.currentTarget.nextSibling as HTMLElement | null;
+                      if (sibling) sibling.style.display = "block";
                     }}
                   />
+                  <div className="pointer-events-none" style={{
+                    display: "none", width: 0, height: 0,
+                    borderLeft: "18px solid transparent", borderRight: "18px solid transparent",
+                    borderBottom: `28px solid ${color}`,
+                    filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.7))",
+                  }} />
                   <span
-                    className="text-[9px] font-bold whitespace-nowrap px-1 py-0.5 rounded pointer-events-none"
-                    style={{ color: "#ff6b6b", backgroundColor: "rgba(5,7,7,0.7)", marginTop: 1 }}
+                    className="text-xs font-bold whitespace-nowrap px-2 py-0.5 rounded pointer-events-none"
+                    style={{ color: "#ff6b6b", backgroundColor: "rgba(5,7,7,0.80)", marginTop: 2 }}
                   >
                     Lv.{camp.level}
                   </span>
-                  <span className="text-[9px] font-semibold whitespace-nowrap px-1 py-0.5 rounded pointer-events-none"
-                    style={{ color, backgroundColor: "rgba(5,7,7,0.7)" }}>
+                  <span className="text-xs font-semibold whitespace-nowrap px-2 py-0.5 rounded pointer-events-none"
+                    style={{ color, backgroundColor: "rgba(5,7,7,0.80)" }}>
                     {camp.name}
                   </span>
                 </button>
@@ -1039,23 +1051,23 @@ const CityMarker = memo(function CityMarker({ city, x, y, isMe, onClick, onDoubl
         className="pointer-events-none"
         draggable={false}
         style={{
-          width: 30, height: 30,
-          filter: `drop-shadow(0 2px 3px rgba(0,0,0,0.5))`,
+          width: 120, height: 120,
+          filter: `drop-shadow(0 3px 6px rgba(0,0,0,0.6))`,
         }}
       />
       {isMe && (
         <div
           className="absolute rounded-full pointer-events-none animate-pulse"
           style={{
-            width: 40, height: 40, top: -5,
+            width: 132, height: 132, top: -6,
             border: `2px solid ${color}`,
             boxShadow: `0 0 10px ${color}44`,
           }}
         />
       )}
       <span
-        className="text-[9px] font-semibold whitespace-nowrap px-1.5 py-0.5 rounded pointer-events-none"
-        style={{ color, backgroundColor: "rgba(5,7,7,0.75)", marginTop: 1 }}
+        className="text-xs font-semibold whitespace-nowrap px-2 py-0.5 rounded pointer-events-none"
+        style={{ color, backgroundColor: "rgba(5,7,7,0.80)", marginTop: 2 }}
       >
         {city.name}
       </span>
