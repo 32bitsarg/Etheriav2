@@ -135,58 +135,40 @@ function addPit(g: HeightGrid, rng: RNG, count: number, depth: [number, number],
   }
 }
 
-// Walk a line from (fromC, fromR) to (toC, toR) applying fn(cellIndex) at each step.
-// KEY: each step moves EXACTLY one cell, H or V — never both simultaneously.
-// To avoid 45° bands the caller MUST pass a target where one axis dominates
-// (|ΔC| >> |ΔR|  OR  |ΔR| >> |ΔC|), which is enforced by chooseBiasedTarget.
-function walkLine(
+// Directionally-biased random walk — no target point.
+// Picks H or V as dominant direction, then walks that way with organic drift.
+// Each step moves EXACTLY ONE cell. Never diagonal.
+// This avoids the 45° artifact that appears when walking toward a random target
+// where |ΔC| ≈ |ΔR| (equal remaining distance → 50/50 → diagonal).
+function biasedWalk(
   cols: number, rows: number, rng: RNG,
-  fromC: number, fromR: number, toC: number, toR: number,
-  fn: (idx: number) => boolean          // return false to stop early
+  startC: number, startR: number, maxSteps: number,
+  fn: (idx: number) => boolean
 ) {
-  let curC = fromC, curR = fromR;
-  const maxSteps = (cols + rows) * 4;
+  // Choose dominant direction: H or V
+  const isH = rng() < 0.5;
+  // Starting movement direction along dominant axis
+  let mainDir = rng() < 0.5 ? 1 : -1;
+  let curC = startC, curR = startR;
+
   for (let step = 0; step < maxSteps; step++) {
     const ci = Math.max(0, Math.min(cols - 1, curC));
     const ri = Math.max(0, Math.min(rows - 1, curR));
     if (!fn(ri * cols + ci)) break;
 
-    const remC = Math.abs(toC - curC);
-    const remR = Math.abs(toR - curR);
-    const sc = Math.sign(toC - curC) || (rng() < 0.5 ? 1 : -1);
-    const sr = Math.sign(toR - curR) || (rng() < 0.5 ? 1 : -1);
-
-    // 20% random single-axis walk for organic waviness
+    // 20% small perpendicular drift (single step, then back to main axis)
     if (rng() < 0.20) {
-      if (rng() < 0.5) curC += rng() < 0.5 ? 1 : -1;
-      else             curR += rng() < 0.5 ? 1 : -1;
+      if (isH) curR += rng() < 0.5 ? 1 : -1;
+      else     curC += rng() < 0.5 ? 1 : -1;
       continue;
     }
 
-    // Deterministic Bresenham on the dominant axis → NEVER draws 45°
-    if (remC >= remR) curC += sc;
-    else              curR += sr;
-  }
-}
+    // 5% reverse main direction (creates bends)
+    if (rng() < 0.05) mainDir = -mainDir;
 
-// Choose a target where ONE axis strongly dominates — avoids diagonal paths.
-// isHorizontal: target spans full width with small row variation.
-// isVertical:   target spans full height with small col variation.
-function chooseBiasedTarget(
-  cols: number, rows: number, rng: RNG,
-  fromC: number, fromR: number
-): [number, number] {
-  // Alternate between H/V features using the rng to keep variety
-  if (rng() < 0.5) {
-    // Horizontal ridge/valley: cross to opposite side of the map horizontally
-    const toC = fromC < cols / 2 ? Math.floor((0.7 + rng() * 0.3) * cols) : Math.floor(rng() * 0.3 * cols);
-    const toR = Math.floor(fromR + (rng() - 0.5) * rows * 0.15); // small vertical drift
-    return [toC, toR];
-  } else {
-    // Vertical ridge/valley: cross to opposite side vertically
-    const toR = fromR < rows / 2 ? Math.floor((0.7 + rng() * 0.3) * rows) : Math.floor(rng() * 0.3 * rows);
-    const toC = Math.floor(fromC + (rng() - 0.5) * cols * 0.15); // small horizontal drift
-    return [toC, toR];
+    // Advance along dominant axis
+    if (isH) curC += mainDir;
+    else      curR += mainDir;
   }
 }
 
@@ -198,13 +180,12 @@ function addRange(g: HeightGrid, rng: RNG, count: number, height: number, rangeX
   for (let n = 0; n < count; n++) {
     const fromC = Math.floor((rangeX[0] / 100 + rng() * (rangeX[1] - rangeX[0]) / 100) * cols);
     const fromR = Math.floor((rangeY[0] / 100 + rng() * (rangeY[1] - rangeY[0]) / 100) * rows);
-    const [toC, toR] = chooseBiasedTarget(cols, rows, rng, fromC, fromR);
 
     const spine: Array<[number, number]> = [];
     const spineVisited = new Set<number>();
     let curH = height;
 
-    walkLine(cols, rows, rng, fromC, fromR, toC, toR, (idx) => {
+    biasedWalk(cols, rows, rng, fromC, fromR, (cols + rows) * 3, (idx) => {
       if (curH <= 0.5) return false;
       if (!spineVisited.has(idx)) {
         spineVisited.add(idx);
@@ -215,7 +196,7 @@ function addRange(g: HeightGrid, rng: RNG, count: number, height: number, rangeX
       return true;
     });
 
-    // Lateral BFS expansion (4-directional to avoid diagonal spread)
+    // Lateral BFS expansion (4-directional — no diagonal spread)
     const expandPower = linePower * 0.80;
     const expanded = new Set<number>(spineVisited);
     const bfsQ: [number, number][] = spine.map(([i, contrib]) => [i, contrib * expandPower]);
@@ -257,9 +238,8 @@ function addTrough(g: HeightGrid, rng: RNG, count: number, depth: number, rangeX
   for (let n = 0; n < count; n++) {
     const fromC = Math.floor((rangeX[0] / 100 + rng() * (rangeX[1] - rangeX[0]) / 100) * cols);
     const fromR = Math.floor((rangeY[0] / 100 + rng() * (rangeY[1] - rangeY[0]) / 100) * rows);
-    const [toC, toR] = chooseBiasedTarget(cols, rows, rng, fromC, fromR);
     let curD = depth;
-    walkLine(cols, rows, rng, fromC, fromR, toC, toR, (idx) => {
+    biasedWalk(cols, rows, rng, fromC, fromR, (cols + rows) * 3, (idx) => {
       if (curD <= 0.5) return false;
       h[idx] = Math.max(0, h[idx] - curD);
       curD *= linePower;
