@@ -1,6 +1,6 @@
 // Port of Azgaar Fantasy Map Generator heightmap operations
 // Original: https://github.com/Azgaar/Fantasy-Map-Generator — MIT License
-// Adapted for 200×200 rectangular grid with mulberry32 PRNG (no D3, no browser deps)
+// Adapted for rectangular grid with mulberry32 PRNG (no D3, no browser deps)
 
 export type HeightGrid = {
   h: Float32Array; // heights 0–100; sea level = 20
@@ -35,16 +35,58 @@ function neighbors8(i: number, cols: number, rows: number): number[] {
   return ns;
 }
 
-// ── Operations (Azgaar port) ──────────────────────────────────────────────────
+// Azgaar scales power parameters by cell count so features are proportional to grid size.
+// blobPower: 1000 cells → ~0.930, 100000 cells → ~0.9973, 250000 cells → ~0.9985
+// linePower: 1000 cells → ~0.750, 100000 cells → ~0.930, 250000 cells → ~0.952
+function calcBlobPower(N: number): number {
+  const t = Math.log(N / 1000) / Math.log(100); // 0 at 1k, 1 at 100k, ~1.2 at 250k
+  return 0.930 + (0.9973 - 0.930) * Math.min(1.4, t);
+}
+function calcLinePower(N: number): number {
+  const t = Math.log(N / 1000) / Math.log(100);
+  return 0.750 + (0.930 - 0.750) * Math.min(1.4, t);
+}
+
+// ── Value noise (for addNoise operation) ────────────────────────────────────
+
+function hashV(x: number, y: number, seed: number): number {
+  const n = Math.imul(x * 1619 + y * 31337 + seed * 1013, 1) | 0;
+  const m = (n ^ (n << 13)) ^ n;
+  return (((m * (m * m * 15731 + 789221) + 1376312589) & 0x7fffffff) / 2147483648);
+}
+
+function valueNoise2(x: number, y: number, seed: number): number {
+  const ix = Math.floor(x), iy = Math.floor(y);
+  const fx = x - ix, fy = y - iy;
+  const ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
+  return (
+    hashV(ix, iy, seed) * (1 - ux) * (1 - uy) +
+    hashV(ix + 1, iy, seed) * ux * (1 - uy) +
+    hashV(ix, iy + 1, seed) * (1 - ux) * uy +
+    hashV(ix + 1, iy + 1, seed) * ux * uy
+  );
+}
+
+function fbmNoise(x: number, y: number, seed: number, octaves: number): number {
+  let v = 0, amp = 0.5, freq = 1.0, max = 0;
+  for (let i = 0; i < octaves; i++) {
+    v += valueNoise2(x * freq, y * freq, seed + i * 997) * amp;
+    max += amp; amp *= 0.5; freq *= 2.0;
+  }
+  return v / max;
+}
+
+// ── Operations ───────────────────────────────────────────────────────────────
 
 function addHill(g: HeightGrid, rng: RNG, count: number, height: [number, number], rangeX: [number, number], rangeY: [number, number]) {
   const { h, cols, rows } = g;
-  const blobPower = 0.993;
+  const N = cols * rows;
+  const blobPower = calcBlobPower(N);
   for (let n = 0; n < count; n++) {
     const px = (rangeX[0] + rng() * (rangeX[1] - rangeX[0])) / 100;
     const py = (rangeY[0] + rng() * (rangeY[1] - rangeY[0])) / 100;
     const peak = height[0] + rng() * (height[1] - height[0]);
-    const startI = Math.min(cols * rows - 1, Math.floor(py * rows) * cols + Math.floor(px * cols));
+    const startI = Math.min(N - 1, Math.floor(py * rows) * cols + Math.floor(px * cols));
     const queue: [number, number][] = [[startI, peak]];
     const visited = new Set<number>();
     while (queue.length) {
@@ -64,12 +106,13 @@ function addHill(g: HeightGrid, rng: RNG, count: number, height: [number, number
 
 function addPit(g: HeightGrid, rng: RNG, count: number, depth: [number, number], rangeX: [number, number], rangeY: [number, number]) {
   const { h, cols, rows } = g;
-  const blobPower = 0.993;
+  const N = cols * rows;
+  const blobPower = calcBlobPower(N);
   for (let n = 0; n < count; n++) {
     const px = (rangeX[0] + rng() * (rangeX[1] - rangeX[0])) / 100;
     const py = (rangeY[0] + rng() * (rangeY[1] - rangeY[0])) / 100;
     const d = depth[0] + rng() * (depth[1] - depth[0]);
-    const startI = Math.min(cols * rows - 1, Math.floor(py * rows) * cols + Math.floor(px * cols));
+    const startI = Math.min(N - 1, Math.floor(py * rows) * cols + Math.floor(px * cols));
     const queue: [number, number][] = [[startI, d]];
     const visited = new Set<number>();
     while (queue.length) {
@@ -87,19 +130,29 @@ function addPit(g: HeightGrid, rng: RNG, count: number, depth: [number, number],
   }
 }
 
+// Range: draws a ridge spine then expands laterally (Azgaar-style mountain ranges).
 function addRange(g: HeightGrid, rng: RNG, count: number, height: number, rangeX: [number, number], rangeY: [number, number]) {
   const { h, cols, rows } = g;
-  const linePower = 0.84;
+  const N = cols * rows;
+  const linePower = calcLinePower(N);
+
   for (let n = 0; n < count; n++) {
     const fromC = Math.floor((rangeX[0] / 100 + rng() * (rangeX[1] - rangeX[0]) / 100) * cols);
     const fromR = Math.floor((rangeY[0] / 100 + rng() * (rangeY[1] - rangeY[0]) / 100) * rows);
     const toC = Math.floor(rng() * cols);
     const toR = Math.floor(rng() * rows);
+
+    // Step 1: draw ridge spine
+    const spine: number[] = [];
     let curC = fromC, curR = fromR, curH = height;
-    const visited = new Set<number>();
+    const spineVisited = new Set<number>();
     for (let step = 0; step < (cols + rows) * 3 && curH > 0.5; step++) {
       const i = Math.max(0, Math.min(rows - 1, curR)) * cols + Math.max(0, Math.min(cols - 1, curC));
-      if (!visited.has(i)) { visited.add(i); h[i] = Math.min(100, h[i] + curH); }
+      if (!spineVisited.has(i)) {
+        spineVisited.add(i);
+        h[i] = Math.min(100, h[i] + curH);
+        spine.push(i);
+      }
       curH *= linePower;
       if (rng() < 0.15) {
         curC += rng() < 0.5 ? 1 : -1;
@@ -109,12 +162,37 @@ function addRange(g: HeightGrid, rng: RNG, count: number, height: number, rangeX
         curR += Math.sign(toR - curR) || (rng() < 0.5 ? 1 : -1);
       }
     }
+
+    // Step 2: BFS lateral expansion from spine — gives mountain ranges real width
+    const expanded = new Set<number>(spineVisited);
+    const bfsQ: [number, number][] = spine.map(i => [i, h[i]]);
+    while (bfsQ.length) {
+      const [i, hVal] = bfsQ.shift()!;
+      const lateral = hVal * linePower;
+      if (lateral < 0.5) continue;
+      for (const nb of neighbors8(i, cols, rows)) {
+        if (!expanded.has(nb)) {
+          expanded.add(nb);
+          h[nb] = Math.min(100, h[nb] + lateral);
+          bfsQ.push([nb, lateral]);
+        }
+      }
+    }
+
+    // Step 3: Prominence — every ~6 spine cells, push local dip toward ridge height
+    for (let si = 0; si < spine.length; si += 6) {
+      const ridgeH = h[spine[si]];
+      for (const nb of neighbors8(spine[si], cols, rows)) {
+        if (h[nb] < ridgeH) h[nb] = (ridgeH * 2 + h[nb]) / 3;
+      }
+    }
   }
 }
 
 function addTrough(g: HeightGrid, rng: RNG, count: number, depth: number, rangeX: [number, number], rangeY: [number, number]) {
   const { h, cols, rows } = g;
-  const linePower = 0.84;
+  const N = cols * rows;
+  const linePower = calcLinePower(N);
   for (let n = 0; n < count; n++) {
     const fromC = Math.floor((rangeX[0] / 100 + rng() * (rangeX[1] - rangeX[0]) / 100) * cols);
     const fromR = Math.floor((rangeY[0] / 100 + rng() * (rangeY[1] - rangeY[0]) / 100) * rows);
@@ -146,15 +224,17 @@ function modifyGrid(g: HeightGrid, range: "all" | "land" | "sea", add: number, m
   }
 }
 
-function smooth(g: HeightGrid, iterations: number) {
+function smooth(g: HeightGrid, iterations: number, fr = 2) {
   const { h, cols, rows } = g;
   for (let it = 0; it < iterations; it++) {
     const tmp = h.slice();
     for (let i = 0; i < h.length; i++) {
       const ns = neighbors8(i, cols, rows);
-      let sum = tmp[i];
+      let sum = 0;
       for (const nb of ns) sum += tmp[nb];
-      h[i] = sum / (ns.length + 1);
+      const mean = sum / ns.length;
+      // fr=1: full average; fr=2: half-smooth (matches Azgaar default)
+      h[i] = fr === 1 ? mean : (tmp[i] * (fr - 1) + mean) / fr;
     }
   }
 }
@@ -171,6 +251,20 @@ function maskEdge(g: HeightGrid, power: number) {
   }
 }
 
+// Adds FBM noise perturbation directly to the heightmap — creates organic terrain variation.
+// scale: noise wavelength relative to grid (2=coarse, 8=fine)
+// amplitude: max height change (typically 5–20)
+function addNoise(g: HeightGrid, rng: RNG, scale: number, amplitude: number, octaves: number) {
+  const { h, cols, rows } = g;
+  const seed = Math.floor(rng() * 99999);
+  for (let i = 0; i < h.length; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const n = fbmNoise((col / cols) * scale, (row / rows) * scale, seed, octaves);
+    h[i] = Math.min(100, Math.max(0, h[i] + (n * 2 - 1) * amplitude));
+  }
+}
+
 // ── Template runner ───────────────────────────────────────────────────────────
 
 function parseRange(s: string): [number, number] {
@@ -183,24 +277,25 @@ export function runTemplate(g: HeightGrid, rng: RNG, template: string) {
     const parts = line.trim().split(/\s+/);
     const op = parts[0]?.toLowerCase();
     if (!op) continue;
-    if (op === "hill")     addHill(g, rng, +parts[1], parseRange(parts[2]), parseRange(parts[3]), parseRange(parts[4]));
-    else if (op === "pit") addPit(g, rng, +parts[1], parseRange(parts[2]), parseRange(parts[3]), parseRange(parts[4]));
+    if (op === "hill")       addHill(g, rng, +parts[1], parseRange(parts[2]), parseRange(parts[3]), parseRange(parts[4]));
+    else if (op === "pit")   addPit(g, rng, +parts[1], parseRange(parts[2]), parseRange(parts[3]), parseRange(parts[4]));
     else if (op === "range") addRange(g, rng, +parts[1], +parts[2], parseRange(parts[3]), parseRange(parts[4]));
     else if (op === "trough") addTrough(g, rng, +parts[1], +parts[2], parseRange(parts[3]), parseRange(parts[4]));
-    else if (op === "add") modifyGrid(g, (parts[2] as "all" | "land" | "sea") ?? "all", +parts[1], 1);
+    else if (op === "add")   modifyGrid(g, (parts[2] as "all" | "land" | "sea") ?? "all", +parts[1], 1);
     else if (op === "multiply") modifyGrid(g, (parts[2] as "all" | "land" | "sea") ?? "all", 0, +parts[1]);
-    else if (op === "smooth") smooth(g, +parts[1] || 1);
-    else if (op === "mask") maskEdge(g, +parts[1] || 1.2);
+    else if (op === "smooth") smooth(g, +parts[1] || 1, parts[2] ? +parts[2] : 2);
+    else if (op === "mask")  maskEdge(g, +parts[1] || 1.2);
+    else if (op === "noise") addNoise(g, rng, +parts[1] || 4, +parts[2] || 10, +parts[3] || 4);
   }
 }
 
-// ── Templates (adapted from Azgaar FMG, MIT) ─────────────────────────────────
-// Continental variants: land fills the entire map, lakes are inland depressions.
-// Base Add +30 lifts all cells above sea level (20); Pit ops carve lake basins.
-// Mask values ≥ 8 are nearly imperceptible (power formula: higher = weaker falloff).
+// ── Templates ─────────────────────────────────────────────────────────────────
+// Continental style: land fills the map (Add 30–34 lifts all above sea level 20).
+// Pit ops carve inland lake basins. No Mask = no ocean border.
+// Noise ops add organic micro-variation. Range uses lateral expansion.
 
 export const TEMPLATES: Record<string, string> = {
-  // Llanuras amplias con lago grande central y cordillera norte
+  // Llanuras amplias — lago grande central, cordillera norte, suave al sur
   highIsland: `
 Add 30 all
 Hill 3 55-75 30-70 30-70
@@ -208,9 +303,10 @@ Hill 6 35-55 10-90 10-90
 Range 2 45 20-80 10-40
 Pit 1 55-70 40-60 40-60
 Pit 2 28-42 15-85 15-85
-Smooth 3
+Noise 3 8 4
+Smooth 3 2
 `,
-  // Dos placas continentales separadas por cadena montañosa central
+  // Dos masas continentales separadas por dorsal montañosa central
   continents: `
 Add 32 all
 Hill 3 65-80 10-35 15-85
@@ -220,9 +316,10 @@ Range 3 50 40-60 20-80
 Pit 1 50-65 20-35 30-70
 Pit 1 50-65 65-80 30-70
 Pit 1 28-40 45-55 10-25
-Smooth 2
+Noise 4 10 4
+Smooth 2 2
 `,
-  // Gran masa única con relieve interior variado
+  // Pangea: gran masa única con relieve interior variado y varios lagos
   pangea: `
 Add 34 all
 Hill 2 75-90 35-65 35-65
@@ -231,7 +328,8 @@ Hill 6 38-58 10-90 10-90
 Range 2 55 20-80 20-80
 Pit 2 45-60 25-45 25-75
 Pit 2 28-42 55-75 25-75
-Smooth 2
+Noise 5 12 5
+Smooth 2 2
 `,
   // Mundo clásico: norte montañoso, sur de llanuras, rift de lagos al centro
   oldWorld: `
@@ -243,9 +341,10 @@ Range 4 42 20-80 20-80
 Trough 2 22 38-62 20-80
 Pit 2 40-58 35-65 35-65
 Pit 1 28-40 15-30 15-30
-Smooth 3
+Noise 4 9 4
+Smooth 3 2
 `,
-  // Tierra quebrada con muchos lagos chicos y colinas dispersas
+  // Tierra quebrada: muchos lagos chicos y colinas dispersas, terreno fracturado
   shattered: `
 Add 28 all
 Hill 10 42-65 10-90 10-90
@@ -253,9 +352,10 @@ Hill 6 28-48 10-90 10-90
 Range 2 38 20-80 20-80
 Pit 4 30-50 10-90 10-90
 Pit 3 20-35 10-90 10-90
-Smooth 2
+Noise 6 15 5
+Smooth 2 2
 `,
-  // Altiplano central, valles profundos con lagos alargados, montañas en los flancos
+  // Mediterráneo: altiplano central, valles profundos con lagos, montañas laterales
   mediterranean: `
 Add 32 all
 Hill 2 68-82 15-40 15-85
@@ -265,7 +365,8 @@ Trough 2 28 35-65 15-85
 Pit 1 48-62 25-45 30-70
 Pit 1 48-62 55-75 30-70
 Pit 1 30-42 45-55 45-55
-Smooth 2
+Noise 4 8 4
+Smooth 2 2
 `,
 };
 
