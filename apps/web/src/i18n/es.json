@@ -291,9 +291,29 @@
       "v0_5_4": "El Pulso de las Estaciones",
       "v0_5_6": "La Era del Comercio",
       "v0_5_7": "El Mundo Vivo",
-      "v0_5_8": "Velocidad del Viento"
+      "v0_5_8": "Velocidad del Viento",
+      "v0_6_0": "El Mundo Que Respira"
     },
     "items": {
+      "v0_6_0": {
+        "added": [
+          "Mapa procedural generado con algoritmos del Azgaar Fantasy Map Generator (MIT): colinas, cordilleras, valles, costas orgánicas y 6 tipos de geografía distintos según la seed del mundo.",
+          "Elevación real en el terreno: cada tile tiene altura 0–100. El renderizado usa hillshading con luz desde el noroeste para dar relieve 3D a montañas y costas.",
+          "Ríos generados por descenso de gradiente desde las cumbres más altas hasta el mar.",
+          "Profundidad de agua visual: agua profunda oscura, orillas más claras. Picos de montaña con nieve.",
+          "Mapa ampliado a 4800×4800 px con pan/scroll completo — ya no es una pantalla estática.",
+          "Sprites de aldeas (120 px) y campamentos bárbaros (120 px con nombre y nivel) visibles en el mapa mundial."
+        ],
+        "changed": [
+          "Los spawns de ciudades y campamentos bárbaros ahora usan el terreno procedural real — ninguna entidad puede aparecer en agua o montaña.",
+          "Zona de borde del mapa (500 px) reservada como océano, garantizando una franja costera en todos los mundos.",
+          "Render del mapa: canvas interno 2400×2400 estirado por CSS, con interpolación bilineal de alturas para transiciones suaves entre biomas."
+        ],
+        "fixed": [
+          "Corrección crítica: resolveTerrainAt() usaba rectángulos hardcodeados de un mapa viejo en lugar del terreno procedural generado — todos los spawns, pathing A* y reparaciones de terreno ahora usan el mapa real.",
+          "Niebla de guerra desactivada: todos los movimientos de ejércitos y caravanas son visibles en el mapa global."
+        ]
+      },
       "v0_2_0": {
         "added": [
           "Mapa del Mundo Dinámico: Visualización en tiempo real de ejércitos y caravanas comerciales con movimiento físico.",

@@ -33,7 +33,10 @@ export function ChangelogSection() {
 
         <div className="mx-auto max-w-3xl rounded-[2rem] border border-stone-200 bg-white p-6 sm:p-10 shadow-[0_18px_40px_-16px_rgba(60,40,20,.28)]">
           <div className="flex flex-wrap items-center gap-3 mb-6">
-            <span className="rounded-xl bg-amber-500 px-4 py-1.5 text-sm font-bold text-white shadow-sm">
+            <span className="rounded-xl bg-teal-600 px-4 py-1.5 text-sm font-bold text-white shadow-sm">
+              Early Access
+            </span>
+            <span className="rounded-xl bg-amber-500/15 border border-amber-400/40 px-3 py-1 text-xs font-semibold text-amber-700">
               v{latest.version}
             </span>
             <h3 className="text-2xl font-bold text-[#2c2118]" style={{ fontFamily: DISPLAY_FONT }}>
