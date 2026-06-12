@@ -689,6 +689,7 @@ enum BotProfile {
   MILITARIST
   TECH_RUSHER
   BALANCED
+  CHAOTIC
 }
 
 enum BotStatus {
