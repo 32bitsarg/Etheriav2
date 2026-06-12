@@ -261,11 +261,11 @@ adminOpsRouter.post("/reset-world", async (c) => {
       try {
         const docs = await db.from(col).getAll();
         for (const doc of docs) {
-          if (doc?.id) await db.from(col).delete(doc.id);
+          if (doc?.id) await db.from(col).eq("id", doc.id).delete().execute();
         }
-        log.push(`Wiped MatecitoDB: ${col}`);
-      } catch {
-        log.push(`Skipped MatecitoDB: ${col}`);
+        log.push(`Wiped MatecitoDB: ${col} (${docs.length})`);
+      } catch (e) {
+        log.push(`Skipped MatecitoDB: ${col} — ${e instanceof Error ? e.message : String(e)}`);
       }
     }
 
