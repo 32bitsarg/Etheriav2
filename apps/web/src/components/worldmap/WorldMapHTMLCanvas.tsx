@@ -207,25 +207,8 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, size.w, size.h);
 
-    const fogAlpha = myCityId ? 0.42 : cities.length > 0 ? 0.18 : 0.1;
-    ctx.fillStyle = `rgba(2,4,8,${fogAlpha})`;
-    ctx.fillRect(0, 0, size.w, size.h);
-
-    if (myCityId) {
-      const myCity = cities.find((c) => c.id === myCityId);
-      if (myCity) {
-        const l = worldToLocal(myCity.posX, myCity.posY);
-        const s = localToScreen(l.x, l.y);
-        const fogRadius = 140;
-        ctx.save();
-        ctx.globalCompositeOperation = "destination-out";
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, fogRadius * cam.current.zoom, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-    }
-  }, [cities, myCityId, worldToLocal, localToScreen, size]);
+    // Fog desactivado — canvas limpio
+  }, [size]);
 
   // ─── Terrain overlay (editor) ────────────────────────────────────────────
 
@@ -255,14 +238,14 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
 
   // ─── Procedural terrain ──────────────────────────────────────────────────
 
-  // Rich multi-tone palette — each biome has base + dark + light for micro-variation
+  // Rich multi-tone palette — each biome has 5 variants for organic micro-variation
   const TILE_PALETTE: Record<string, [number, number, number][]> = {
-    WATER:    [[18, 52, 88], [14, 42, 74], [22, 64, 108], [16, 48, 96], [20, 58, 100]],
-    COAST:    [[194, 178, 128], [180, 165, 112], [208, 192, 140], [188, 172, 120], [200, 185, 132]],
-    PLAINS:   [[74, 118, 46], [62, 104, 38], [86, 132, 54], [70, 112, 42], [80, 124, 50]],
-    FOREST:   [[32, 72, 24], [24, 58, 18], [40, 84, 30], [28, 66, 20], [36, 78, 26]],
-    MOUNTAIN: [[108, 96, 84], [92, 80, 70], [124, 112, 98], [100, 88, 76], [116, 104, 90]],
-    ROAD:     [[158, 132, 78], [144, 120, 66], [170, 144, 90], [152, 126, 72], [162, 138, 84]],
+    WATER:    [[22, 58, 95], [16, 46, 78], [28, 70, 112], [18, 52, 88], [24, 64, 104]],
+    COAST:    [[194, 174, 118], [182, 162, 105], [208, 188, 132], [188, 168, 112], [200, 180, 124]],
+    PLAINS:   [[68, 110, 42], [58, 96, 34], [80, 126, 52], [64, 104, 38], [74, 118, 46]],
+    FOREST:   [[34, 74, 22], [26, 60, 16], [42, 86, 28], [30, 68, 18], [38, 80, 24]],
+    MOUNTAIN: [[110, 98, 86], [94, 82, 72], [126, 114, 100], [102, 90, 78], [118, 106, 92]],
+    ROAD:     [[148, 120, 68], [136, 110, 58], [160, 132, 78], [142, 114, 62], [154, 126, 72]],
   };
 
   // Fast seeded hash for per-tile color micro-variation (no React state, just math)
@@ -489,13 +472,8 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
       // Fog of war: PvP foreign marches only show inside visibility circle.
       // Barbarian movements (BARBARIAN_ATTACK / BARBARIAN_RAID) are always visible
       // so the world feels alive with bot activity.
-      const isBarbarian = m.type === "BARBARIAN_ATTACK" || m.type === "BARBARIAN_RAID";
-      if (!isBarbarian && myCity && m.relation !== "own") {
-        const dist = Math.hypot(wx - myCity.posX, wy - myCity.posY);
-        const visible = dist <= FOG_RADIUS;
-        el.style.display = visible ? "" : "none";
-        if (!visible) continue;
-      }
+      // Todos los movimientos visibles (fog desactivado)
+      el.style.display = "";
       const l = worldToLocal(wx, wy);
       el.style.transform = `translate3d(${l.x}px, ${l.y}px, 0) translate(-50%, -50%)`;
     }
