@@ -563,8 +563,10 @@ function chooseBarbarianHunt(snapshot: BotSnapshot, profile: BotProfile, config:
   );
   const camp = sorted[0];
   const available = availableTroops(snapshot);
+  // Use 60% of troops for barbarian hunts — enough to send a real force while keeping defense.
+  // 0.4 was too low: with starter units (15 total), floor(15×0.4)=6 < minAttackTroops(8) → permanent IDLE.
   const units = available
-    .map((u) => ({ type: u.type as UnitType, count: Math.floor(u.count * 0.4) }))
+    .map((u) => ({ type: u.type as UnitType, count: Math.floor(u.count * 0.6) }))
     .filter((u) => u.count > 0);
 
   if (units.reduce((s, u) => s + u.count, 0) < config.minAttackTroops) return null;
