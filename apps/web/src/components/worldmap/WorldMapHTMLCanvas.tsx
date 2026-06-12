@@ -115,8 +115,8 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   const pinch = useRef<{ dist: number; midX: number; midY: number } | null>(null);
   const fogCanvasRef = useRef<HTMLCanvasElement>(null);
   const terrainCanvasRef = useRef<HTMLCanvasElement>(null);
-  const proceduralCanvasRef = useRef<HTMLCanvasElement>(null);
-  const [proceduralCells, setProceduralCells] = useState<{ cells: string[]; cols: number; rows: number; heights?: Uint8Array } | null>(null);
+  const [proceduralCells, setProceduralCells] = useState<null>(null); // kept for type compat, unused
+  const [terrainImageLoaded, setTerrainImageLoaded] = useState(false);
   const weatherRef = useRef<HTMLDivElement>(null);
   // Tracks active paint stroke so dragging paints continuously
   const isPaintingRef = useRef(false);
@@ -238,130 +238,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
 
   // ─── Procedural terrain ──────────────────────────────────────────────────
 
-  // Fast seeded hash for micro-variation
-  function tileHash(col: number, row: number): number {
-    const n = (col * 1619 + row * 31337) | 0;
-    return ((n ^ (n << 13)) ^ n) >>> 0;
-  }
-
-  useEffect(() => {
-    fetch("/api/world/terrain")
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (!data?.rle) return;
-        const cells: string[] = [];
-        for (const [kind, count] of data.rle as Array<[string, number]>) {
-          for (let i = 0; i < count; i++) cells.push(kind);
-        }
-        // Decode elevation array (base64 Uint8Array heights 0–100)
-        let heights: Uint8Array | undefined;
-        if (data.elev) {
-          try {
-            const bin = atob(data.elev);
-            heights = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) heights[i] = bin.charCodeAt(i);
-          } catch {}
-        }
-        setProceduralCells({ cells, cols: data.cols, rows: data.rows, heights });
-      })
-      .catch(() => {});
-  }, []);
-
-  const drawProceduralMap = useCallback(() => {
-    const canvas = proceduralCanvasRef.current;
-    if (!canvas || !proceduralCells) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const { cells, cols, rows, heights } = proceduralCells;
-
-    // Render at half-resolution (SCALE px per tile); CSS stretches to worldW/worldH.
-    // Browser bilinear scaling smooths edges for free.
-    const SCALE = 12;
-    const cW = cols * SCALE;
-    const cH = rows * SCALE;
-    canvas.width = cW;
-    canvas.height = cH;
-
-    const imgData = ctx.createImageData(cW, cH);
-    const px = imgData.data;
-
-    function getH(c: number, r: number): number {
-      if (!heights) return 50;
-      return heights[Math.max(0, Math.min(rows - 1, r)) * cols + Math.max(0, Math.min(cols - 1, c))];
-    }
-
-    function lrp(a: number, b: number, t: number) { return a + (b - a) * t; }
-
-    function biomeColor(kind: string, hN: number, tc: number, tr: number): [number, number, number] {
-      const j = ((tileHash(tc, tr) & 15) - 7) * 0.8;
-      switch (kind) {
-        case "WATER": {
-          const t = Math.max(0, Math.min(1, hN / 0.19));
-          return [Math.round(lrp(10, 42, t) + j), Math.round(lrp(30, 88, t) + j), Math.round(lrp(72, 140, t) + j)];
-        }
-        case "COAST": {
-          return [Math.round(196 + j), Math.round(176 + j), Math.round(116 + j)];
-        }
-        case "PLAINS": {
-          const t = Math.max(0, Math.min(1, (hN - 0.24) / 0.48));
-          return [Math.round(lrp(64, 82, t) + j), Math.round(lrp(108, 132, t) + j), Math.round(lrp(38, 54, t) + j)];
-        }
-        case "FOREST": {
-          const t = Math.max(0, Math.min(1, (hN - 0.24) / 0.48));
-          return [Math.round(lrp(28, 46, t) + j), Math.round(lrp(66, 88, t) + j), Math.round(lrp(18, 30, t) + j)];
-        }
-        case "MOUNTAIN": {
-          const t = Math.max(0, Math.min(1, (hN - 0.72) / 0.28));
-          return [Math.round(lrp(108, 220, t) + j), Math.round(lrp(94, 218, t) + j), Math.round(lrp(80, 222, t) + j)];
-        }
-        case "ROAD":
-          return [Math.round(148 + j), Math.round(120 + j), Math.round(68 + j)];
-        default:
-          return [80, 80, 80];
-      }
-    }
-
-    for (let py = 0; py < cH; py++) {
-      const tileRow = Math.floor(py / SCALE);
-      const fy = (py % SCALE) / SCALE;
-      for (let px2 = 0; px2 < cW; px2++) {
-        const tileCol = Math.floor(px2 / SCALE);
-        const fx = (px2 % SCALE) / SCALE;
-        const kind = cells[tileRow * cols + tileCol] ?? "PLAINS";
-
-        // Bilinear height interpolation
-        const h00 = getH(tileCol, tileRow);
-        const h10 = getH(tileCol + 1, tileRow);
-        const h01 = getH(tileCol, tileRow + 1);
-        const h11 = getH(tileCol + 1, tileRow + 1);
-        const hVal = h00 * (1 - fx) * (1 - fy) + h10 * fx * (1 - fy) + h01 * (1 - fx) * fy + h11 * fx * fy;
-
-        // Hillshading: NW light
-        const dx = (getH(tileCol + 1, tileRow) - getH(tileCol - 1, tileRow)) * 0.5;
-        const dy = (getH(tileCol, tileRow + 1) - getH(tileCol, tileRow - 1)) * 0.5;
-        const shade = Math.min(1.28, Math.max(0.72, 1 + (dx - dy) * 0.016));
-
-        let [r, g, b] = biomeColor(kind, hVal / 100, tileCol, tileRow);
-        r = Math.min(255, Math.max(0, Math.round(r * shade)));
-        g = Math.min(255, Math.max(0, Math.round(g * shade)));
-        b = Math.min(255, Math.max(0, Math.round(b * shade)));
-
-        const idx = (py * cW + px2) * 4;
-        px[idx] = r; px[idx + 1] = g; px[idx + 2] = b; px[idx + 3] = 255;
-      }
-    }
-
-    ctx.putImageData(imgData, 0, 0);
-
-    // Vignette
-    const vg = ctx.createRadialGradient(cW / 2, cH / 2, cW * 0.25, cW / 2, cH / 2, cW * 0.75);
-    vg.addColorStop(0, "rgba(0,0,0,0)");
-    vg.addColorStop(1, "rgba(0,0,0,0.38)");
-    ctx.fillStyle = vg;
-    ctx.fillRect(0, 0, cW, cH);
-  }, [proceduralCells]);
-
-  useEffect(() => { drawProceduralMap(); }, [proceduralCells, drawProceduralMap]);
+  // Terrain is pre-rendered server-side as WebP — no client-side computation needed.
 
   const paintCell = useCallback((screenX: number, screenY: number) => {
     const mask = terrainMaskRef.current;
@@ -770,22 +647,24 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
             height: worldH,
           }}
         >
-          {/* Procedural terrain canvas — internal size set by drawProceduralMap, CSS stretches to world size */}
-          <canvas
-            ref={proceduralCanvasRef}
-            className="absolute inset-0 pointer-events-none"
-            style={{ width: worldW, height: worldH, imageRendering: "auto", zIndex: 0 }}
-          />
-          {/* Fallback static image while procedural terrain loads */}
-          {!proceduralCells && (
+          {/* Terrain image pre-rendered server-side — loaded as a single WebP, zero client JS */}
+          {!terrainImageLoaded && (
             <img
               src={bgPath}
               alt=""
               className="absolute inset-0 h-full w-full pointer-events-none"
               draggable={false}
-              style={{ zIndex: 1 }}
+              style={{ zIndex: 0 }}
             />
           )}
+          <img
+            src="/api/world/terrain-image"
+            alt=""
+            className="absolute inset-0 pointer-events-none"
+            draggable={false}
+            style={{ width: worldW, height: worldH, zIndex: 1, opacity: terrainImageLoaded ? 1 : 0, transition: "opacity 0.4s" }}
+            onLoad={() => setTerrainImageLoaded(true)}
+          />
 
           {/* Cities */}
           {cities.map((city) => (

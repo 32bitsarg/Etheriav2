@@ -19,7 +19,7 @@ import { AttackBarbarianRequestSchema } from '@etheria/shared';
 import { ScoutTargetRequestSchema } from '@etheria/shared';
 import { requireMatecitoAuth } from '../infrastructure/authMiddleware.js';
 import { calculatePathSpeedMultiplier } from '../domain/worldTerrainConfigData.js';
-import { ensureWorldTerrain } from '../domain/worldTerrainRuntime.js';
+import { ensureWorldTerrain, invalidateWorldTerrain } from '../domain/worldTerrainRuntime.js';
 import { repairWorldEntityPlacements } from '../domain/worldTerrainRepair.js';
 import { getUnitStats } from '../domain/units.js';
 import { calculateTechBonuses } from '../domain/techs.js';
@@ -421,3 +421,135 @@ worldRouter.get('/terrain', async (c) => {
   const result = await ensureWorldTerrain(worldId === 'local' ? undefined : worldId);
   return c.json(result);
 });
+
+// ─── GET /world/terrain-image — Pre-rendered terrain PNG (mobile-friendly) ───
+// Renders terrain server-side with sharp, caches result in memory.
+// Invalidated by /admin/ops/reset-world. Set long cache on CDN.
+
+const terrainImageCache = new Map<string, Buffer>();
+
+function tileHash(col: number, row: number): number {
+  const n = (col * 1619 + row * 31337) | 0;
+  return ((n ^ (n << 13)) ^ n) >>> 0;
+}
+
+function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
+
+function biomeColor(kind: string, hN: number, tc: number, tr: number): [number, number, number] {
+  const j = ((tileHash(tc, tr) & 15) - 7) * 0.8;
+  switch (kind) {
+    case "WATER": {
+      const t = Math.max(0, Math.min(1, hN / 0.19));
+      return [Math.round(lerp(10, 42, t) + j), Math.round(lerp(30, 88, t) + j), Math.round(lerp(72, 140, t) + j)];
+    }
+    case "COAST":
+      return [Math.round(196 + j), Math.round(176 + j), Math.round(116 + j)];
+    case "PLAINS": {
+      const t = Math.max(0, Math.min(1, (hN - 0.24) / 0.48));
+      return [Math.round(lerp(64, 82, t) + j), Math.round(lerp(108, 132, t) + j), Math.round(lerp(38, 54, t) + j)];
+    }
+    case "FOREST": {
+      const t = Math.max(0, Math.min(1, (hN - 0.24) / 0.48));
+      return [Math.round(lerp(28, 46, t) + j), Math.round(lerp(66, 88, t) + j), Math.round(lerp(18, 30, t) + j)];
+    }
+    case "MOUNTAIN": {
+      const t = Math.max(0, Math.min(1, (hN - 0.72) / 0.28));
+      return [Math.round(lerp(108, 220, t) + j), Math.round(lerp(94, 218, t) + j), Math.round(lerp(80, 222, t) + j)];
+    }
+    default:
+      return [80, 80, 80];
+  }
+}
+
+worldRouter.get('/terrain-image', async (c) => {
+  const worldId = c.req.query('worldId') ?? 'local';
+  const cacheKey = worldId;
+
+  if (!terrainImageCache.has(cacheKey)) {
+    const { default: sharp } = await import('sharp');
+    const terrain = await ensureWorldTerrain(worldId === 'local' ? undefined : worldId);
+
+    // Decode cells from RLE
+    const cells: string[] = [];
+    for (const [kind, count] of terrain.rle) {
+      for (let i = 0; i < count; i++) cells.push(kind);
+    }
+    const heights = Buffer.from(terrain.elev, 'base64');
+    const { cols, rows } = terrain;
+
+    // Render at 2×tile resolution (smooth but fast). CSS stretches to world size.
+    const SCALE = 4;
+    const imgW = cols * SCALE;
+    const imgH = rows * SCALE;
+    const raw = Buffer.alloc(imgW * imgH * 3);
+
+    function getH(c: number, r: number): number {
+      return heights[Math.max(0, Math.min(rows - 1, r)) * cols + Math.max(0, Math.min(cols - 1, c))];
+    }
+
+    for (let py = 0; py < imgH; py++) {
+      const tileRow = Math.floor(py / SCALE);
+      const fy = (py % SCALE) / SCALE;
+      for (let px = 0; px < imgW; px++) {
+        const tileCol = Math.floor(px / SCALE);
+        const fx = (px % SCALE) / SCALE;
+        const kind = cells[tileRow * cols + tileCol] ?? 'PLAINS';
+
+        // Bilinear height interp
+        const h00 = getH(tileCol, tileRow);
+        const h10 = getH(tileCol + 1, tileRow);
+        const h01 = getH(tileCol, tileRow + 1);
+        const h11 = getH(tileCol + 1, tileRow + 1);
+        const hVal = h00 * (1 - fx) * (1 - fy) + h10 * fx * (1 - fy) + h01 * (1 - fx) * fy + h11 * fx * fy;
+
+        // Hillshading: NW light
+        const dx = (getH(tileCol + 1, tileRow) - getH(tileCol - 1, tileRow)) * 0.5;
+        const dy = (getH(tileCol, tileRow + 1) - getH(tileCol, tileRow - 1)) * 0.5;
+        const shade = Math.min(1.28, Math.max(0.72, 1 + (dx - dy) * 0.016));
+
+        let [r, g, b] = biomeColor(kind, hVal / 100, tileCol, tileRow);
+        r = Math.min(255, Math.max(0, Math.round(r * shade)));
+        g = Math.min(255, Math.max(0, Math.round(g * shade)));
+        b = Math.min(255, Math.max(0, Math.round(b * shade)));
+
+        const idx = (py * imgW + px) * 3;
+        raw[idx] = r; raw[idx + 1] = g; raw[idx + 2] = b;
+      }
+    }
+
+    // Vignette pass
+    const cx = imgW / 2, cy = imgH / 2;
+    const maxR = Math.sqrt(cx * cx + cy * cy);
+    for (let py = 0; py < imgH; py++) {
+      for (let px = 0; px < imgW; px++) {
+        const dist = Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
+        const t = Math.max(0, (dist / maxR - 0.25) / 0.75);
+        const darkness = t * t * 0.38;
+        const idx = (py * imgW + px) * 3;
+        raw[idx]     = Math.round(raw[idx]     * (1 - darkness));
+        raw[idx + 1] = Math.round(raw[idx + 1] * (1 - darkness));
+        raw[idx + 2] = Math.round(raw[idx + 2] * (1 - darkness));
+      }
+    }
+
+    const webpBuf = await sharp(raw, { raw: { width: imgW, height: imgH, channels: 3 } })
+      .webp({ quality: 82, effort: 4 })
+      .toBuffer();
+
+    terrainImageCache.set(cacheKey, webpBuf);
+  }
+
+  const buf = terrainImageCache.get(cacheKey)!;
+  return new Response(buf.buffer as ArrayBuffer, {
+    headers: {
+      'Content-Type': 'image/webp',
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'Content-Length': String(buf.length),
+    },
+  });
+});
+
+export function invalidateTerrainImageCache(worldId?: string) {
+  if (worldId) terrainImageCache.delete(worldId);
+  else terrainImageCache.clear();
+}
