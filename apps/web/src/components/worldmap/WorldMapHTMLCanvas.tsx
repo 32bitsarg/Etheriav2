@@ -817,19 +817,19 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
                     className="pointer-events-none"
                     style={{
                       width: 0, height: 0,
-                      borderLeft: "6px solid transparent",
-                      borderRight: "6px solid transparent",
-                      borderBottom: `10px solid ${color}`,
+                      borderLeft: "9px solid transparent",
+                      borderRight: "9px solid transparent",
+                      borderBottom: `15px solid ${color}`,
                       filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.6))",
                     }}
                   />
                   <span
-                    className="text-[8px] font-bold whitespace-nowrap px-1 py-0.5 rounded pointer-events-none"
+                    className="text-[9px] font-bold whitespace-nowrap px-1 py-0.5 rounded pointer-events-none"
                     style={{ color: "#ff6b6b", backgroundColor: "rgba(5,7,7,0.7)", marginTop: 1 }}
                   >
                     Lv.{camp.level}
                   </span>
-                  <span className="text-[8px] font-semibold whitespace-nowrap px-1 py-0.5 rounded pointer-events-none"
+                  <span className="text-[9px] font-semibold whitespace-nowrap px-1 py-0.5 rounded pointer-events-none"
                     style={{ color, backgroundColor: "rgba(5,7,7,0.7)" }}>
                     {camp.name}
                   </span>
@@ -1039,7 +1039,7 @@ const CityMarker = memo(function CityMarker({ city, x, y, isMe, onClick, onDoubl
         className="pointer-events-none"
         draggable={false}
         style={{
-          width: 20, height: 20,
+          width: 30, height: 30,
           filter: `drop-shadow(0 2px 3px rgba(0,0,0,0.5))`,
         }}
       />
@@ -1047,7 +1047,7 @@ const CityMarker = memo(function CityMarker({ city, x, y, isMe, onClick, onDoubl
         <div
           className="absolute rounded-full pointer-events-none animate-pulse"
           style={{
-            width: 28, height: 28, top: -4,
+            width: 40, height: 40, top: -5,
             border: `2px solid ${color}`,
             boxShadow: `0 0 10px ${color}44`,
           }}
