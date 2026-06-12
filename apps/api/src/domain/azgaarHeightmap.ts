@@ -135,7 +135,10 @@ function addPit(g: HeightGrid, rng: RNG, count: number, depth: [number, number],
   }
 }
 
-// Range: draws a ridge spine then expands laterally (Azgaar-style mountain ranges).
+// Range: draws an organic ridge spine then expands laterally.
+// Fix vs naive impl: spine avoids 45° diagonals by alternating axis movement (Bresenham-style).
+// Lateral expansion uses the ridge CONTRIBUTION (curH at that step), not the total cell height,
+// so it doesn't blow up into a massive plateau.
 function addRange(g: HeightGrid, rng: RNG, count: number, height: number, rangeX: [number, number], rangeY: [number, number]) {
   const { h, cols, rows } = g;
   const N = cols * rows;
@@ -147,48 +150,68 @@ function addRange(g: HeightGrid, rng: RNG, count: number, height: number, rangeX
     const toC = Math.floor(rng() * cols);
     const toR = Math.floor(rng() * rows);
 
-    // Step 1: draw ridge spine
-    const spine: number[] = [];
+    // Step 1: organic spine with Bresenham-style axis alternation (no forced 45° diagonals)
+    const spine: Array<[number, number]> = []; // [cellIndex, contribution at this step]
     let curC = fromC, curR = fromR, curH = height;
     const spineVisited = new Set<number>();
-    for (let step = 0; step < (cols + rows) * 3 && curH > 0.5; step++) {
+    // Accumulate fractional error like Bresenham to decide which axis to advance
+    const totalDC = toC - fromC, totalDR = toR - fromR;
+    let errC = 0, errR = 0;
+
+    for (let step = 0; step < (cols + rows) * 4 && curH > 0.5; step++) {
       const i = Math.max(0, Math.min(rows - 1, curR)) * cols + Math.max(0, Math.min(cols - 1, curC));
       if (!spineVisited.has(i)) {
         spineVisited.add(i);
         h[i] = Math.min(100, h[i] + curH);
-        spine.push(i);
+        spine.push([i, curH]);
       }
       curH *= linePower;
-      if (rng() < 0.15) {
+
+      // 30% pure random walk for organic feel
+      if (rng() < 0.30) {
         curC += rng() < 0.5 ? 1 : -1;
         curR += rng() < 0.5 ? 1 : -1;
-      } else {
-        curC += Math.sign(toC - curC) || (rng() < 0.5 ? 1 : -1);
-        curR += Math.sign(toR - curR) || (rng() < 0.5 ? 1 : -1);
+        continue;
       }
+
+      // Bresenham-style: advance one axis at a time based on accumulated error
+      const sc = Math.sign(totalDC) || (rng() < 0.5 ? 1 : -1);
+      const sr = Math.sign(totalDR) || (rng() < 0.5 ? 1 : -1);
+      const remC = Math.abs(toC - curC);
+      const remR = Math.abs(toR - curR);
+
+      if (remC === 0 && remR === 0) { curC += rng() < 0.5 ? 1 : -1; continue; }
+      if (remC === 0) { curR += sr; continue; }
+      if (remR === 0) { curC += sc; continue; }
+
+      errC += remC;
+      errR += remR;
+      // Move along whichever axis has more remaining distance, with some noise
+      if (errC >= errR) { curC += sc; errC -= remC + remR; }
+      else { curR += sr; errR -= remC + remR; }
     }
 
-    // Step 2: BFS lateral expansion from spine — gives mountain ranges real width
+    // Step 2: lateral expansion using CONTRIBUTION (curH), not total cell height
+    const expandPower = linePower * 0.75; // narrower than spine decay
     const expanded = new Set<number>(spineVisited);
-    const bfsQ: [number, number][] = spine.map(i => [i, h[i]]);
+    const bfsQ: [number, number][] = spine.map(([i, contrib]) => [i, contrib * expandPower]);
     while (bfsQ.length) {
-      const [i, hVal] = bfsQ.shift()!;
-      const lateral = hVal * linePower;
-      if (lateral < 0.5) continue;
+      const [i, contrib] = bfsQ.shift()!;
+      if (contrib < 0.5) continue;
       for (const nb of neighbors8(i, cols, rows)) {
         if (!expanded.has(nb)) {
           expanded.add(nb);
-          h[nb] = Math.min(100, h[nb] + lateral);
-          bfsQ.push([nb, lateral]);
+          h[nb] = Math.min(100, h[nb] + contrib);
+          bfsQ.push([nb, contrib * expandPower]);
         }
       }
     }
 
-    // Step 3: Prominence — every ~6 spine cells, push local dip toward ridge height
+    // Step 3: prominence bumps along spine
     for (let si = 0; si < spine.length; si += 6) {
-      const ridgeH = h[spine[si]];
-      for (const nb of neighbors8(spine[si], cols, rows)) {
-        if (h[nb] < ridgeH) h[nb] = (ridgeH * 2 + h[nb]) / 3;
+      const ridgeH = h[spine[si][0]];
+      for (const nb of neighbors8(spine[si][0], cols, rows)) {
+        if (h[nb] < ridgeH * 0.8) h[nb] = (ridgeH * 2 + h[nb]) / 3;
       }
     }
   }
