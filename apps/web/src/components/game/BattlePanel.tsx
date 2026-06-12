@@ -212,18 +212,21 @@ function ActiveTab({ cityId }: { cityId: string }) {
 
 function BattleTimer({ battle, cityId }: { battle: import("@/hooks/useCity").ActiveBattle; cityId: string }) {
   const { t } = useI18n();
+  const isBarbarian = !!(battle as any).isBarbarian;
   const { remaining } = useCountdown(battle.status === "MARCHING" ? battle.arrivesAt : battle.returnsAt ?? battle.arrivesAt);
   const seconds = remaining() ?? 0;
   const isAttacker = battle.attackerCityId === cityId;
-  const label = battle.status === "MARCHING"
-    ? isAttacker ? t("play.battle.marching") : t("play.battle.enemyApproaching")
-    : isAttacker ? t("play.battle.returningHome") : t("play.battle.enemyReturning");
+  const label = isBarbarian
+    ? battle.status === "MARCHING" ? t("play.battle.marchingBarbarian") : t("play.battle.returningHome")
+    : battle.status === "MARCHING"
+      ? isAttacker ? t("play.battle.marching") : t("play.battle.enemyApproaching")
+      : isAttacker ? t("play.battle.returningHome") : t("play.battle.enemyReturning");
 
   return (
-    <div className="rounded-lg border border-etheria-border/50 bg-etheria-bg-light/50 p-3">
+    <div className={`rounded-lg border p-3 ${isBarbarian ? "border-amber-700/50 bg-amber-950/30" : "border-etheria-border/50 bg-etheria-bg-light/50"}`}>
       <div className="mb-2 flex items-start justify-between">
         <span className={`text-[10px] font-bold uppercase tracking-wider ${battle.status === "MARCHING" ? "text-red-400" : "text-blue-400"}`}>
-          {battle.status === "MARCHING" ? "??" : "??"} {label}
+          {battle.status === "MARCHING" ? "⚔️" : "🏠"} {label}
         </span>
         <span className="font-mono text-xs text-amber-400">{formatTime(seconds)}</span>
       </div>

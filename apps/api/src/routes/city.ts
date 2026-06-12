@@ -1147,13 +1147,52 @@ cityRouter.get("/:id/battles/reports", requireMatecitoAuth(), async (c) => {
   if (!ownership) return c.json({ error: "City not found" }, 404);
   if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
 
-  const reports = await prisma.battleReport.findMany({
-    where: { cityId },
-    orderBy: { createdAt: "desc" },
-    take: 30,
+  const [reports, barbBattles] = await Promise.all([
+    prisma.battleReport.findMany({
+      where: { cityId },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+    }),
+    prisma.barbarianBattle.findMany({
+      where: { attackerCityId: cityId, status: "DONE" as any },
+      orderBy: { resolvedAt: "desc" },
+      take: 20,
+    }),
+  ]);
+
+  const barbReports = barbBattles.map((b) => {
+    const result = b.result as any ?? {};
+    const loot = b.loot as any ?? {};
+    // Normalize attackerLosses/defenderLosses to {TYPE: count} object like BattleReport
+    const toLossObj = (arr: any[]) => {
+      if (!Array.isArray(arr)) return {};
+      return Object.fromEntries(arr.map((u: any) => [u.type, u.count ?? u.lost ?? 0]));
+    };
+    const outcome = result.outcome ?? result.result ?? "UNKNOWN";
+    return {
+      id: `barb_${b.id}`,
+      cityId,
+      attackerCityId: cityId,
+      defenderCityId: null,
+      targetCampId: b.targetCampId,
+      isBarbarian: true,
+      status: outcome === "WIN" ? "VICTORY" : outcome === "DEFEAT" ? "DEFEAT" : "DEFEAT",
+      attackerName: "Tu ciudad",
+      defenderName: `Campamento bárbaro`,
+      attackerLosses: toLossObj(result.attackerLosses ?? []),
+      defenderLosses: toLossObj(result.defenderLosses ?? result.campLosses ?? []),
+      loot: { gold: loot.gold ?? 0, wood: loot.wood ?? 0, stone: loot.stone ?? 0, food: loot.food ?? 0, gems: loot.gems ?? 0 },
+      isBarbarianAttack: true,
+      read: true,
+      createdAt: (b.resolvedAt ?? b.arrivesAt).toISOString(),
+    };
   });
 
-  return c.json({ reports: serializeRecord(reports) });
+  const allReports = [...serializeRecord(reports), ...barbReports]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 40);
+
+  return c.json({ reports: allReports });
 });
 
 cityRouter.post("/:id/battles/reports/:reportId/read", requireMatecitoAuth(), async (c) => {
@@ -1178,16 +1217,33 @@ cityRouter.get("/:id/battles/active", requireMatecitoAuth(), async (c) => {
   if (!ownership) return c.json({ error: "City not found" }, 404);
   if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
 
-  const active = await prisma.battle.findMany({
-    where: {
-      OR: [{ attackerCityId: cityId }, { defenderCityId: cityId }],
-      status: { in: ["MARCHING", "RETURNING"] as any },
-    },
-    orderBy: [{ arrivesAt: "asc" }],
-    take: 20,
-  });
+  const [pvpBattles, barbBattles] = await Promise.all([
+    prisma.battle.findMany({
+      where: {
+        OR: [{ attackerCityId: cityId }, { defenderCityId: cityId }],
+        status: { in: ["MARCHING", "RETURNING"] as any },
+      },
+      orderBy: [{ arrivesAt: "asc" }],
+      take: 20,
+    }),
+    prisma.barbarianBattle.findMany({
+      where: {
+        attackerCityId: cityId,
+        status: { in: ["MARCHING", "RETURNING"] as any },
+      },
+      orderBy: [{ arrivesAt: "asc" }],
+      take: 10,
+    }),
+  ]);
 
-  return c.json({ battles: serializeRecord(active) });
+  const barbBattlesNormalized = barbBattles.map((b) => ({
+    ...b,
+    defenderCityId: null,
+    targetCampId: b.targetCampId,
+    isBarbarian: true,
+  }));
+
+  return c.json({ battles: serializeRecord([...pvpBattles, ...barbBattlesNormalized].sort((a, b) => new Date(a.arrivesAt).getTime() - new Date(b.arrivesAt).getTime())) });
 });
 
 // ─── Tech / Research ───

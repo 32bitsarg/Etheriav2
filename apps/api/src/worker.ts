@@ -4,6 +4,7 @@ if (!process.env.NEXT_PUBLIC_MATECITO_URL) {
 }
 
 import { ensureGameConfigsLoaded } from './app.js';
+import { ensureWorldTerrain } from './domain/worldTerrainRuntime.js';
 import { startQueueWorker } from './workers/queueWorker.js';
 import { startSeasonWorker } from './workers/seasonWorker.js';
 import { startBarbarianSpawnWorker } from './workers/barbarianSpawnWorker.js';
@@ -11,6 +12,7 @@ import { startBotWorker } from './workers/botWorker.js';
 
 async function bootstrapWorker() {
   await ensureGameConfigsLoaded();
+  await ensureWorldTerrain().catch(err => console.error('Worker terrain preload failed:', err));
   startQueueWorker();
   startSeasonWorker();
   startBarbarianSpawnWorker();
