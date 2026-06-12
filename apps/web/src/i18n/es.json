@@ -206,7 +206,8 @@
     "rememberEmail": "Recordar mi usuario",
     "loading": "Cargando...",
     "hasAccount": "¿Ya tenés cuenta?",
-    "loginLink": "Iniciá sesión"
+    "loginLink": "Iniciá sesión",
+    "emailNotice": "Todavía no enviamos emails de verificación. Guardá bien tu contraseña — la recuperación de cuenta llega pronto."
   },
   "validation": {
     "email": {

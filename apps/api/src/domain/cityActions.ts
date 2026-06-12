@@ -1,6 +1,8 @@
 import type { BuildingType, UnitType } from "@etheria/shared";
+import { prisma } from "@etheria/database";
 import { db, COLLECTIONS } from "../infrastructure/matecito.js";
 import { mergeRecordBySelector } from "../infrastructure/matecitoRecord.js";
+import { commitCityResources, withConcurrencyRetry, ConcurrentModificationError } from "./atomicResources.js";
 import { calculateTravelTimeWithMultiplier } from "./battles.js";
 import { getWorldConfig } from "./worldConfig.js";
 import { calculatePathSpeedMultiplier } from "./worldTerrainConfigData.js";
@@ -143,6 +145,9 @@ async function loadCityActionSnapshot(cityId: string): Promise<CitySnapshot | nu
     buildQueues,
     trainingQueues,
     activeResearch: researchQueue[0] ?? null,
+    // resourceStamp: raw DB Date used as optimistic version stamp in commitCityResources.
+    // Do NOT overwrite with resourceSnapshotAt here — the stamp must match what's in the DB.
+    resourceStamp: new Date(city.lastResourceUpdate ?? city.createdAt),
     lastResourceUpdate: resourceSnapshotAt.toISOString(),
     resources,
     production: stats.production,
@@ -207,27 +212,33 @@ export async function createBuildingAction(input: {
     throw new CityActionError("Not enough resources", 400, { required: cost, available: city.resources });
   }
 
-  const now = new Date().toISOString();
   const buildingId = genId();
   const newResources = subtractResources(city.resources, cost);
-  await mergeRecordBySelector(COLLECTIONS.CITIES, city, {
-    gold: newResources.gold,
-    wood: newResources.wood,
-    stone: newResources.stone,
-    food: newResources.food,
-    gems: newResources.gems,
-    lastResourceUpdate: now,
-  });
-  await db.from(COLLECTIONS.BUILDINGS).insert({
-    id: buildingId,
-    cityId: input.cityId,
-    type: input.type,
-    level: 1,
-    positionX: input.positionX,
-    positionY: input.positionY,
-    createdAt: now,
-    upgradedAt: now,
-  });
+  try {
+    await commitCityResources({
+      cityId: input.cityId,
+      expectedStamp: city.resourceStamp,
+      newResources,
+      extraWork: async (tx) => {
+        const nowIso = new Date().toISOString();
+        await tx.building.create({
+          data: {
+            id: buildingId,
+            cityId: input.cityId,
+            type: input.type,
+            level: 1,
+            positionX: input.positionX,
+            positionY: input.positionY,
+            createdAt: new Date(nowIso),
+            upgradedAt: new Date(nowIso),
+          },
+        });
+      },
+    });
+  } catch (e) {
+    if (e instanceof ConcurrentModificationError) throw new CityActionError("Try again", 409);
+    throw e;
+  }
   await refreshCityStats(input.cityId);
   await advanceQuest(input.cityId, "BUILD_OR_UPGRADE", 1);
 
@@ -279,24 +290,30 @@ export async function upgradeBuildingAction(input: {
   const queueId = genId();
   const newResources = subtractResources(city.resources, cost);
 
-  await mergeRecordBySelector(COLLECTIONS.CITIES, city, {
-    gold: newResources.gold,
-    wood: newResources.wood,
-    stone: newResources.stone,
-    food: newResources.food,
-    gems: newResources.gems,
-    lastResourceUpdate: nowIso,
-  });
-  await db.from(COLLECTIONS.BUILD_QUEUES).insert({
-    id: queueId,
-    cityId: input.cityId,
-    buildingId: input.buildingId,
-    buildingType: building.type,
-    targetLevel: nextLevel,
-    startedAt: schedule.startedAt,
-    completesAt: schedule.completesAt,
-    isComplete: false,
-  });
+  try {
+    await commitCityResources({
+      cityId: input.cityId,
+      expectedStamp: city.resourceStamp,
+      newResources,
+      extraWork: async (tx) => {
+        await tx.buildQueue.create({
+          data: {
+            id: queueId,
+            cityId: input.cityId,
+            buildingId: input.buildingId,
+            buildingType: building.type,
+            targetLevel: nextLevel,
+            startedAt: new Date(schedule.startedAt),
+            completesAt: new Date(schedule.completesAt),
+            isComplete: false,
+          },
+        });
+      },
+    });
+  } catch (e) {
+    if (e instanceof ConcurrentModificationError) throw new CityActionError("Try again", 409);
+    throw e;
+  }
   await advanceQuest(input.cityId, "BUILD_OR_UPGRADE", 1);
 
   return {
@@ -328,57 +345,72 @@ export async function trainUnitsAction(input: {
   if (input.actor.type === "bot" && process.env.BOT_TRACE === "true") {
     console.debug(`[BOT_TRACE] ${input.actor.botId} training ${input.count}x ${input.unitType} in ${input.cityId}`);
   }
-  const city = await getCitySnapshot(input.cityId, input.citySnapshot);
-  const activeTrainingQueues = sortPendingQueues(city.trainingQueues ?? []);
-  assertQueueSlotAvailable("training", activeTrainingQueues);
-  const cost = applyTrainingCostReduction(
-    getUnitCost(input.unitType, input.count),
-    city.techBonuses?.trainingCostReduction ?? 0
-  );
-  if (!canAfford(city.resources, cost)) {
-    throw new CityActionError("Not enough resources", 400, { required: cost, available: city.resources, blockedBy: "resources" });
-  }
+  let schedule: { startedAt: string; completesAt: string };
+  let queueId: string;
+  let newResources: ReturnType<typeof subtractResources>;
 
-  const eventEffect = getActiveEventEffect();
-  const trainSpeedMult = eventEffect?.type === 'TRAINING_SPEED_MULTIPLIER' ? eventEffect.value : 1;
-  const trainingTime = Math.ceil(getTrainingTime(input.unitType, input.count) / trainSpeedMult);
-  const now = new Date();
-  const nowIso = now.toISOString();
-  const schedule = scheduleSequentialQueue("training", activeTrainingQueues, trainingTime, now);
-  const queueId = genId();
-  const newResources = subtractResources(city.resources, cost);
+  await withConcurrencyRetry(async () => {
+    // Always reload fresh on retry so stamp and queue state are current.
+    const city = await loadCityActionSnapshot(input.cityId);
+    if (!city) throw new CityActionError("City not found", 404);
+    const activeTrainingQueues = sortPendingQueues(city.trainingQueues ?? []);
+    assertQueueSlotAvailable("training", activeTrainingQueues);
+    const cost = applyTrainingCostReduction(
+      getUnitCost(input.unitType, input.count),
+      city.techBonuses?.trainingCostReduction ?? 0
+    );
+    if (!canAfford(city.resources, cost)) {
+      throw new CityActionError("Not enough resources", 400, { required: cost, available: city.resources, blockedBy: "resources" });
+    }
+    const eventEffect = getActiveEventEffect();
+    const trainSpeedMult = eventEffect?.type === 'TRAINING_SPEED_MULTIPLIER' ? eventEffect.value : 1;
+    const trainingTime = Math.ceil(getTrainingTime(input.unitType, input.count) / trainSpeedMult);
+    const now = new Date();
+    schedule = scheduleSequentialQueue("training", activeTrainingQueues, trainingTime, now);
+    queueId = genId();
+    newResources = subtractResources(city.resources, cost);
+    try {
+      await commitCityResources({
+        cityId: input.cityId,
+        expectedStamp: city.resourceStamp,
+        newResources,
+        extraWork: async (tx) => {
+          await tx.trainingQueue.create({
+            data: {
+              id: queueId,
+              cityId: input.cityId,
+              unitType: input.unitType as any,
+              count: input.count,
+              startedAt: new Date(schedule.startedAt),
+              completesAt: new Date(schedule.completesAt),
+              isComplete: false,
+            },
+          });
+        },
+      });
+    } catch (e) {
+      if (e instanceof ConcurrentModificationError) throw e; // let withConcurrencyRetry handle it
+      throw e;
+    }
+  }).catch((e) => {
+    if (e instanceof ConcurrentModificationError) throw new CityActionError("Try again", 409);
+    throw e;
+  });
 
-  await mergeRecordBySelector(COLLECTIONS.CITIES, city, {
-    gold: newResources.gold,
-    wood: newResources.wood,
-    stone: newResources.stone,
-    food: newResources.food,
-    gems: newResources.gems,
-    lastResourceUpdate: nowIso,
-  });
-  await db.from(COLLECTIONS.TRAINING_QUEUES).insert({
-    id: queueId,
-    cityId: input.cityId,
-    unitType: input.unitType,
-    count: input.count,
-    startedAt: schedule.startedAt,
-    completesAt: schedule.completesAt,
-    isComplete: false,
-  });
   await advanceQuest(input.cityId, "TRAIN_UNITS", input.count);
 
   return {
     success: true,
-    completesIn: trainingTime,
-    completesAt: schedule.completesAt,
-    resources: newResources,
+    completesIn: 0,
+    completesAt: schedule!.completesAt,
+    resources: newResources!,
     queue: {
-      id: queueId,
+      id: queueId!,
       cityId: input.cityId,
       unitType: input.unitType,
       count: input.count,
-      startedAt: schedule.startedAt,
-      completesAt: schedule.completesAt,
+      startedAt: schedule!.startedAt,
+      completesAt: schedule!.completesAt,
       isComplete: false,
     },
   };
@@ -416,28 +448,33 @@ export async function startResearchAction(input: {
   }
 
   const now = new Date();
-  const nowIso = now.toISOString();
   const schedule = scheduleSequentialQueue("research", activeResearchQueues, researchTime, now);
   const queueId = genId();
   const newResources = subtractResources(city.resources, cost);
 
-  await mergeRecordBySelector(COLLECTIONS.CITIES, city, {
-    gold: newResources.gold,
-    wood: newResources.wood,
-    stone: newResources.stone,
-    food: newResources.food,
-    gems: newResources.gems,
-    lastResourceUpdate: nowIso,
-  });
-  await db.from(COLLECTIONS.RESEARCH_QUEUES).insert({
-    id: queueId,
-    cityId: input.cityId,
-    techId: input.techId,
-    targetLevel,
-    startedAt: schedule.startedAt,
-    completesAt: schedule.completesAt,
-    isComplete: false,
-  });
+  try {
+    await commitCityResources({
+      cityId: input.cityId,
+      expectedStamp: city.resourceStamp,
+      newResources,
+      extraWork: async (tx) => {
+        await tx.researchQueue.create({
+          data: {
+            id: queueId,
+            cityId: input.cityId,
+            techId: input.techId,
+            targetLevel,
+            startedAt: new Date(schedule.startedAt),
+            completesAt: new Date(schedule.completesAt),
+            isComplete: false,
+          },
+        });
+      },
+    });
+  } catch (e) {
+    if (e instanceof ConcurrentModificationError) throw new CityActionError("Try again", 409);
+    throw e;
+  }
   await advanceQuest(input.cityId, "RESEARCH", 1);
 
   return {
@@ -495,14 +532,26 @@ export async function attackCityAction(input: {
   const arrivesAt = new Date(now.getTime() + travelTime * 1000).toISOString();
   const battleId = genId();
 
-  await db.from(COLLECTIONS.BATTLES).insert({
-    id: battleId,
-    attackerCityId: input.attackerCityId,
-    defenderCityId: input.targetCityId,
-    status: "MARCHING",
-    startedAt: nowIso,
-    arrivesAt,
-    units: input.units.map((u) => ({ type: u.type, count: u.count })),
+  // Deduct units atomically first, then create battle — prevents double-send race.
+  await prisma.$transaction(async (tx) => {
+    for (const unit of input.units) {
+      const result = await tx.cityUnit.updateMany({
+        where: { cityId: input.attackerCityId, type: unit.type as any, count: { gte: unit.count } },
+        data: { count: { decrement: unit.count } },
+      });
+      if (result.count === 0) throw new CityActionError(`Not enough ${unit.type}`, 400);
+    }
+    await tx.battle.create({
+      data: {
+        id: battleId,
+        attackerCityId: input.attackerCityId,
+        defenderCityId: input.targetCityId,
+        status: "MARCHING",
+        startedAt: now,
+        arrivesAt: new Date(arrivesAt),
+        units: input.units.map((u) => ({ type: u.type, count: u.count })),
+      },
+    });
   });
 
   await createGameReport({
@@ -513,13 +562,6 @@ export async function attackCityAction(input: {
     summary: `${attackerCity.name} is attacking. Enemy troops arrive in ${formatTravelTime(travelTime)}.`,
     payload: { attackerCityId: input.attackerCityId, attackerName: attackerCity.name, arrivesAt, battleId, units: input.units },
   });
-
-  for (const unit of input.units) {
-    const existing = attackerCity.units.find((u: any) => u.type === unit.type);
-    if (existing) {
-      await mergeRecordBySelector(COLLECTIONS.UNITS, existing, { count: existing.count - unit.count });
-    }
-  }
 
   return { battleId, travelTime, arrivesAt };
 }
@@ -561,23 +603,28 @@ export async function attackBarbarianCampAction(input: {
   const arrivesAt = new Date(now.getTime() + travelTime * 1000).toISOString();
   const battleId = genId();
 
-  await db.from(COLLECTIONS.BARBARIAN_BATTLES).insert({
-    id: battleId,
-    attackerCityId: input.attackerCityId,
-    targetCampId: input.targetCampId,
-    status: "MARCHING",
-    startedAt: nowIso,
-    arrivesAt,
-    units: input.units.map((u) => ({ type: u.type, count: u.count })),
+  // Deduct units atomically first, then create battle — prevents double-send race.
+  await prisma.$transaction(async (tx) => {
+    for (const unit of input.units) {
+      const result = await tx.cityUnit.updateMany({
+        where: { cityId: input.attackerCityId, type: unit.type as any, count: { gte: unit.count } },
+        data: { count: { decrement: unit.count } },
+      });
+      if (result.count === 0) throw new CityActionError(`Not enough ${unit.type}`, 400);
+    }
+    await tx.barbarianBattle.create({
+      data: {
+        id: battleId,
+        attackerCityId: input.attackerCityId,
+        targetCampId: input.targetCampId,
+        status: "MARCHING",
+        startedAt: now,
+        arrivesAt: new Date(arrivesAt),
+        units: input.units.map((u) => ({ type: u.type, count: u.count })),
+      },
+    });
   });
   await advanceQuest(input.attackerCityId, "ATTACK_BARBARIAN", 1);
-
-  for (const unit of input.units) {
-    const existing = attackerCity.units.find((u: any) => u.type === unit.type);
-    if (existing) {
-      await mergeRecordBySelector(COLLECTIONS.UNITS, existing, { count: existing.count - unit.count });
-    }
-  }
 
   return { battleId, travelTime, arrivesAt };
 }

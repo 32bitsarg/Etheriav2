@@ -319,6 +319,10 @@ export default function RegistroPage() {
             >
               {!auth.ready ? t("register.loading") : t("register.submit")}
             </button>
+
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-700 leading-relaxed">
+              <strong>Early Access:</strong> {t("register.emailNotice")}
+            </div>
           </form>
 
           <p className="mt-6 text-center text-[14px] text-stone-500">

@@ -37,6 +37,15 @@ case "${1:-}" in
   deploy)
     sudo -u etheria /opt/etheria/deploy.sh
     ;;
+  backup-db)
+    /opt/etheria/backup-db.sh
+    ;;
+  backups)
+    ls -lht /opt/etheria/backups/daily /opt/etheria/backups/weekly 2>/dev/null || echo "No backups found"
+    ;;
+  logs-backup)
+    journalctl -u etheria-db-backup -n "${2:-50}" --no-pager
+    ;;
   *)
     echo "Invalid action" >&2
     exit 64

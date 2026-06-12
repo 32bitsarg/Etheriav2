@@ -60,7 +60,7 @@ export const LOCAL_WORLD_CONFIG: WorldConfigDoc = {
     clusterRadius: 420,
     clusterTargetPlayers: 8,
     clusterSearchStep: 180,
-    edgePadding: 500,
+    edgePadding: 150,
     maxPlacementAttempts: 80,
   },
   createdAt: now,

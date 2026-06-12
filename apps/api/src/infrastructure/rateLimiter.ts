@@ -6,9 +6,21 @@ interface RateLimitEntry {
 }
 
 const stores = new Map<string, Map<string, RateLimitEntry>>();
+const cleanupIntervals = new Set<string>();
 
 function getStore(name: string) {
-  if (!stores.has(name)) stores.set(name, new Map());
+  if (!stores.has(name)) {
+    stores.set(name, new Map());
+    if (!cleanupIntervals.has(name)) {
+      cleanupIntervals.add(name);
+      const interval = setInterval(() => {
+        const now = Date.now();
+        const store = stores.get(name);
+        if (store) for (const [key, entry] of store) if (entry.resetAt <= now) store.delete(key);
+      }, 60_000);
+      interval.unref(); // don't hold the process open
+    }
+  }
   return stores.get(name)!;
 }
 
@@ -24,33 +36,38 @@ export function rateLimit(opts: {
   name: string;
   windowMs: number;
   max: number;
+  keyGenerator?: (c: any) => string;
 }): MiddlewareHandler {
-  const { name, windowMs, max } = opts;
+  const { name, windowMs, max, keyGenerator } = opts;
   const store = getStore(name);
 
-  setInterval(() => {
-    const now = Date.now();
-    for (const [key, entry] of store) {
-      if (entry.resetAt <= now) store.delete(key);
-    }
-  }, 60_000);
-
   return async (c, next) => {
-    const ip = getClientIp(c);
+    const key = keyGenerator ? keyGenerator(c) : getClientIp(c);
     const now = Date.now();
-    const entry = store.get(ip);
+    const entry = store.get(key);
 
     if (!entry || entry.resetAt <= now) {
-      store.set(ip, { count: 1, resetAt: now + windowMs });
+      store.set(key, { count: 1, resetAt: now + windowMs });
       await next();
       return;
     }
 
     entry.count++;
     if (entry.count > max) {
+      const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
+      c.header("Retry-After", String(retryAfter));
       return c.json({ error: "Too many requests, try again later" }, 429);
     }
 
     await next();
   };
+}
+
+// Rate limiter keyed by authenticated userId (falls back to IP).
+// Must be placed AFTER requireMatecitoAuth() in the middleware chain.
+export function userRateLimit(opts: { name: string; windowMs: number; max: number }): MiddlewareHandler {
+  return rateLimit({
+    ...opts,
+    keyGenerator: (c) => c.get("userId") ?? getClientIp(c),
+  });
 }

@@ -195,62 +195,77 @@ export function runTemplate(g: HeightGrid, rng: RNG, template: string) {
 }
 
 // ── Templates (adapted from Azgaar FMG, MIT) ─────────────────────────────────
+// Continental variants: land fills the entire map, lakes are inland depressions.
+// Base Add +30 lifts all cells above sea level (20); Pit ops carve lake basins.
+// Mask values ≥ 8 are nearly imperceptible (power formula: higher = weaker falloff).
 
 export const TEMPLATES: Record<string, string> = {
+  // Llanuras amplias con lago grande central y cordillera norte
   highIsland: `
-Hill 1 90-100 30-70 30-70
-Hill 2 70-90 20-80 20-80
-Hill 4 50-75 20-80 20-80
-Hill 6 30-55 20-80 20-80
-Add -10 all
+Add 30 all
+Hill 3 55-75 30-70 30-70
+Hill 6 35-55 10-90 10-90
+Range 2 45 20-80 10-40
+Pit 1 55-70 40-60 40-60
+Pit 2 28-42 15-85 15-85
 Smooth 3
-Mask 1.3
 `,
+  // Dos placas continentales separadas por cadena montañosa central
   continents: `
-Hill 2 72-82 10-30 20-80
-Hill 2 72-82 70-90 20-80
-Hill 4 50-70 10-90 20-80
-Hill 6 30-55 10-90 20-80
-Range 3 40 20-80 20-80
-Add -8 all
+Add 32 all
+Hill 3 65-80 10-35 15-85
+Hill 3 65-80 65-90 15-85
+Hill 5 40-60 10-90 10-90
+Range 3 50 40-60 20-80
+Pit 1 50-65 20-35 30-70
+Pit 1 50-65 65-80 30-70
+Pit 1 28-40 45-55 10-25
 Smooth 2
-Mask 1.1
 `,
+  // Gran masa única con relieve interior variado
   pangea: `
-Hill 2 82-95 40-60 40-60
-Hill 4 65-80 25-75 25-75
-Hill 5 45-65 20-80 20-80
-Range 2 50 20-80 20-80
-Add -8 all
+Add 34 all
+Hill 2 75-90 35-65 35-65
+Hill 4 55-75 20-80 20-80
+Hill 6 38-58 10-90 10-90
+Range 2 55 20-80 20-80
+Pit 2 45-60 25-45 25-75
+Pit 2 28-42 55-75 25-75
 Smooth 2
-Mask 1.05
 `,
+  // Mundo clásico: norte montañoso, sur de llanuras, rift de lagos al centro
   oldWorld: `
-Hill 3 62-80 20-50 20-80
-Hill 2 55-75 50-80 20-80
-Hill 5 35-60 20-80 20-80
-Range 4 40 20-80 20-80
-Trough 2 25 30-70 30-70
-Add -7 all
+Add 30 all
+Hill 4 60-78 15-50 10-90
+Hill 3 50-68 50-85 10-90
+Hill 5 35-55 10-90 10-90
+Range 4 42 20-80 20-80
+Trough 2 22 38-62 20-80
+Pit 2 40-58 35-65 35-65
+Pit 1 28-40 15-30 15-30
 Smooth 3
-Mask 1.1
 `,
+  // Tierra quebrada con muchos lagos chicos y colinas dispersas
   shattered: `
-Hill 8 50-75 10-90 10-90
-Hill 4 30-55 10-90 10-90
-Pit 3 25 20-80 20-80
-Add -10 all
-Smooth 1
-Mask 1.15
-`,
-  mediterranean: `
-Hill 2 72-85 20-40 20-80
-Hill 2 65-80 60-80 20-80
-Trough 2 30 40-60 20-80
-Hill 4 40-65 20-80 20-80
-Add -8 all
+Add 28 all
+Hill 10 42-65 10-90 10-90
+Hill 6 28-48 10-90 10-90
+Range 2 38 20-80 20-80
+Pit 4 30-50 10-90 10-90
+Pit 3 20-35 10-90 10-90
 Smooth 2
-Mask 1.2
+`,
+  // Altiplano central, valles profundos con lagos alargados, montañas en los flancos
+  mediterranean: `
+Add 32 all
+Hill 2 68-82 15-40 15-85
+Hill 2 62-78 60-85 15-85
+Hill 4 42-60 20-80 20-80
+Trough 2 28 35-65 15-85
+Pit 1 48-62 25-45 30-70
+Pit 1 48-62 55-75 30-70
+Pit 1 30-42 45-55 45-55
+Smooth 2
 `,
 };
 

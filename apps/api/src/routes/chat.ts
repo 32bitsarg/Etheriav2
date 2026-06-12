@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { ChatChannelSchema, SendChatMessageRequestSchema } from '@etheria/shared';
 import { requireMatecitoAuth } from '../infrastructure/authMiddleware.js';
+import { userRateLimit } from '../infrastructure/rateLimiter.js';
 import { createChatMessage, listChatMessages } from '../domain/chat.js';
 import { getSocialConfig } from '../domain/socialConfig.js';
 import { getModerationState } from '../domain/moderationService.js';
@@ -22,7 +23,7 @@ chatRouter.get('/messages', requireMatecitoAuth(), async (c) => {
   return c.json({ messages: result.messages, allianceId: result.membership?.allianceId ?? null });
 });
 
-chatRouter.post('/messages', requireMatecitoAuth(), zValidator('json', SendChatMessageRequestSchema), async (c) => {
+chatRouter.post('/messages', requireMatecitoAuth(), userRateLimit({ name: "chat", windowMs: 10_000, max: 8 }), zValidator('json', SendChatMessageRequestSchema), async (c) => {
   const userId = c.get('userId');
   const modState = await getModerationState(userId);
   if (modState.muted) return c.json({ error: "muted", reason: modState.muteReason, mutedUntil: modState.mutedUntil }, 403);

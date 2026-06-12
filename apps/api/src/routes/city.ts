@@ -51,7 +51,7 @@ import {
 import { STARTER_BUILDINGS } from "../domain/cityCreation.js";
 import { createStarterCityForUser } from "../domain/cityCreation.js";
 import { requireMatecitoAuth } from "../infrastructure/authMiddleware.js";
-import { rateLimit } from "../infrastructure/rateLimiter.js";
+import { rateLimit, userRateLimit } from "../infrastructure/rateLimiter.js";
 import { getWorldConfig } from "../domain/worldConfig.js";
 import { getAllianceMembershipForUser } from "../domain/alliances.js";
 import { normalizeBuildingsByType } from "../domain/buildingNormalization.js";
@@ -919,7 +919,7 @@ cityRouter.get("/:id", requireMatecitoAuth(), async (c) => {
 });
 
 // Create building
-cityRouter.post("/:id/build", requireMatecitoAuth(), zValidator("json", CreateBuildingRequestSchema), async (c) => {
+cityRouter.post("/:id/build", requireMatecitoAuth(), userRateLimit({ name: "game-action", windowMs: 10_000, max: 20 }), zValidator("json", CreateBuildingRequestSchema), async (c) => {
   const cityId = c.req.param("id");
   const userId = c.get("userId");
   const ownership = await assertCityOwner(cityId, userId);
@@ -937,7 +937,7 @@ cityRouter.post("/:id/build", requireMatecitoAuth(), zValidator("json", CreateBu
 });
 
 // Upgrade building
-cityRouter.post("/:id/buildings/:buildingId/upgrade", requireMatecitoAuth(), async (c) => {
+cityRouter.post("/:id/buildings/:buildingId/upgrade", requireMatecitoAuth(), userRateLimit({ name: "game-action", windowMs: 10_000, max: 20 }), async (c) => {
   const cityId = c.req.param("id");
   const userId = c.get("userId");
   const ownership = await assertCityOwner(cityId, userId);
@@ -1015,7 +1015,7 @@ cityRouter.post("/:id/build-queues/:queueId/cancel", requireMatecitoAuth(), asyn
 });
 
 // Train units
-cityRouter.post("/:id/train", requireMatecitoAuth(), zValidator("json", TrainUnitsRequestSchema), async (c) => {
+cityRouter.post("/:id/train", requireMatecitoAuth(), userRateLimit({ name: "game-action", windowMs: 10_000, max: 20 }), zValidator("json", TrainUnitsRequestSchema), async (c) => {
   const cityId = c.req.param("id");
   const userId = c.get("userId");
   const ownership = await assertCityOwner(cityId, userId);
@@ -1077,7 +1077,7 @@ cityRouter.post("/:id/training-queues/:queueId/cancel", requireMatecitoAuth(), a
 });
 
 // Attack
-cityRouter.post("/:id/attack", requireMatecitoAuth(), zValidator("json", AttackRequestSchema), async (c) => {
+cityRouter.post("/:id/attack", requireMatecitoAuth(), userRateLimit({ name: "attack", windowMs: 60_000, max: 30 }), zValidator("json", AttackRequestSchema), async (c) => {
   const attackerCityId = c.req.param("id");
   const userId = c.get("userId");
   const ownership = await assertCityOwner(attackerCityId, userId);
@@ -1097,7 +1097,7 @@ cityRouter.post("/:id/attack", requireMatecitoAuth(), zValidator("json", AttackR
 });
 
 // Trade / Send resources
-cityRouter.post("/:id/trade", requireMatecitoAuth(), zValidator("json", SendResourcesRequestSchema), async (c) => {
+cityRouter.post("/:id/trade", requireMatecitoAuth(), userRateLimit({ name: "trade", windowMs: 60_000, max: 10 }), zValidator("json", SendResourcesRequestSchema), async (c) => {
   const senderCityId = c.req.param("id");
   const userId = c.get("userId");
   const ownership = await assertCityOwner(senderCityId, userId);
@@ -1210,7 +1210,7 @@ cityRouter.get("/:id/techs", requireMatecitoAuth(), async (c) => {
   return c.json(buildTechResponse(cityTechs, researchQueue));
 });
 
-cityRouter.post("/:id/research", requireMatecitoAuth(), zValidator("json", StartResearchRequestSchema), async (c) => {
+cityRouter.post("/:id/research", requireMatecitoAuth(), userRateLimit({ name: "game-action", windowMs: 10_000, max: 20 }), zValidator("json", StartResearchRequestSchema), async (c) => {
   const cityId = c.req.param("id");
   const userId = c.get("userId");
   const ownership = await assertCityOwner(cityId, userId);
