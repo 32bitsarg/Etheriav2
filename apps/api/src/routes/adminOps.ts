@@ -259,7 +259,8 @@ adminOpsRouter.post("/reset-world", async (c) => {
 
     for (const col of matecitoCollections) {
       try {
-        const docs = await db.from(col).getAll();
+        const res = await (db.from(col).limit(10000) as any).get();
+        const docs: any[] = res?.data ?? [];
         for (const doc of docs) {
           if (doc?.id) await db.from(col).eq("id", doc.id).delete().execute();
         }
