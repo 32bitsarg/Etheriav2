@@ -135,9 +135,61 @@ function addPit(g: HeightGrid, rng: RNG, count: number, depth: [number, number],
   }
 }
 
-// Range: draws an organic ridge spine then expands laterally.
-// KEY INVARIANT: each step moves EXACTLY ONE cell (H or V), never diagonal.
-// This prevents 45° banding. Axis chosen proportional to remaining distance.
+// Walk a line from (fromC, fromR) to (toC, toR) applying fn(cellIndex) at each step.
+// KEY: each step moves EXACTLY one cell, H or V — never both simultaneously.
+// To avoid 45° bands the caller MUST pass a target where one axis dominates
+// (|ΔC| >> |ΔR|  OR  |ΔR| >> |ΔC|), which is enforced by chooseBiasedTarget.
+function walkLine(
+  cols: number, rows: number, rng: RNG,
+  fromC: number, fromR: number, toC: number, toR: number,
+  fn: (idx: number) => boolean          // return false to stop early
+) {
+  let curC = fromC, curR = fromR;
+  const maxSteps = (cols + rows) * 4;
+  for (let step = 0; step < maxSteps; step++) {
+    const ci = Math.max(0, Math.min(cols - 1, curC));
+    const ri = Math.max(0, Math.min(rows - 1, curR));
+    if (!fn(ri * cols + ci)) break;
+
+    const remC = Math.abs(toC - curC);
+    const remR = Math.abs(toR - curR);
+    const sc = Math.sign(toC - curC) || (rng() < 0.5 ? 1 : -1);
+    const sr = Math.sign(toR - curR) || (rng() < 0.5 ? 1 : -1);
+
+    // 20% random single-axis walk for organic waviness
+    if (rng() < 0.20) {
+      if (rng() < 0.5) curC += rng() < 0.5 ? 1 : -1;
+      else             curR += rng() < 0.5 ? 1 : -1;
+      continue;
+    }
+
+    // Deterministic Bresenham on the dominant axis → NEVER draws 45°
+    if (remC >= remR) curC += sc;
+    else              curR += sr;
+  }
+}
+
+// Choose a target where ONE axis strongly dominates — avoids diagonal paths.
+// isHorizontal: target spans full width with small row variation.
+// isVertical:   target spans full height with small col variation.
+function chooseBiasedTarget(
+  cols: number, rows: number, rng: RNG,
+  fromC: number, fromR: number
+): [number, number] {
+  // Alternate between H/V features using the rng to keep variety
+  if (rng() < 0.5) {
+    // Horizontal ridge/valley: cross to opposite side of the map horizontally
+    const toC = fromC < cols / 2 ? Math.floor((0.7 + rng() * 0.3) * cols) : Math.floor(rng() * 0.3 * cols);
+    const toR = Math.floor(fromR + (rng() - 0.5) * rows * 0.15); // small vertical drift
+    return [toC, toR];
+  } else {
+    // Vertical ridge/valley: cross to opposite side vertically
+    const toR = fromR < rows / 2 ? Math.floor((0.7 + rng() * 0.3) * rows) : Math.floor(rng() * 0.3 * rows);
+    const toC = Math.floor(fromC + (rng() - 0.5) * cols * 0.15); // small horizontal drift
+    return [toC, toR];
+  }
+}
+
 function addRange(g: HeightGrid, rng: RNG, count: number, height: number, rangeX: [number, number], rangeY: [number, number]) {
   const { h, cols, rows } = g;
   const N = cols * rows;
@@ -146,50 +198,24 @@ function addRange(g: HeightGrid, rng: RNG, count: number, height: number, rangeX
   for (let n = 0; n < count; n++) {
     const fromC = Math.floor((rangeX[0] / 100 + rng() * (rangeX[1] - rangeX[0]) / 100) * cols);
     const fromR = Math.floor((rangeY[0] / 100 + rng() * (rangeY[1] - rangeY[0]) / 100) * rows);
-    const toC = Math.floor(rng() * cols);
-    const toR = Math.floor(rng() * rows);
+    const [toC, toR] = chooseBiasedTarget(cols, rows, rng, fromC, fromR);
 
-    // Step 1: spine — always moves exactly one cell per step (no diagonal)
     const spine: Array<[number, number]> = [];
-    let curC = fromC, curR = fromR, curH = height;
     const spineVisited = new Set<number>();
+    let curH = height;
 
-    for (let step = 0; step < (cols + rows) * 4 && curH > 0.5; step++) {
-      const ci = Math.max(0, Math.min(cols - 1, curC));
-      const ri = Math.max(0, Math.min(rows - 1, curR));
-      const idx = ri * cols + ci;
+    walkLine(cols, rows, rng, fromC, fromR, toC, toR, (idx) => {
+      if (curH <= 0.5) return false;
       if (!spineVisited.has(idx)) {
         spineVisited.add(idx);
         h[idx] = Math.min(100, h[idx] + curH);
         spine.push([idx, curH]);
       }
       curH *= linePower;
+      return true;
+    });
 
-      const remC = Math.abs(toC - curC);
-      const remR = Math.abs(toR - curR);
-      const sc = Math.sign(toC - curC) || (rng() < 0.5 ? 1 : -1);
-      const sr = Math.sign(toR - curR) || (rng() < 0.5 ? 1 : -1);
-
-      // 25% single-axis random perturbation (never both axes at once)
-      if (rng() < 0.25) {
-        if (rng() < 0.5) curC += rng() < 0.5 ? 1 : -1;
-        else             curR += rng() < 0.5 ? 1 : -1;
-        continue;
-      }
-
-      // Choose axis weighted by remaining distance — one axis per step
-      const total = remC + remR;
-      if (total === 0) {
-        if (rng() < 0.5) curC += sc; else curR += sr;
-      } else if (rng() < remC / total) {
-        curC += sc;
-      } else {
-        curR += sr;
-      }
-    }
-
-    // Step 2: lateral expansion using 4-directional BFS (no diagonal spread)
-    // Start value = each spine cell's contribution × damping factor
+    // Lateral BFS expansion (4-directional to avoid diagonal spread)
     const expandPower = linePower * 0.80;
     const expanded = new Set<number>(spineVisited);
     const bfsQ: [number, number][] = spine.map(([i, contrib]) => [i, contrib * expandPower]);
@@ -197,7 +223,7 @@ function addRange(g: HeightGrid, rng: RNG, count: number, height: number, rangeX
       const [i, contrib] = bfsQ.shift()!;
       if (contrib < 0.5) continue;
       const r = Math.floor(i / cols), c = i % cols;
-      for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+      for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]] as const) {
         const nr = r + dr, nc = c + dc;
         if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
         const nb = nr * cols + nc;
@@ -209,11 +235,12 @@ function addRange(g: HeightGrid, rng: RNG, count: number, height: number, rangeX
       }
     }
 
-    // Step 3: prominence bumps along spine
+    // Prominence bumps
     for (let si = 0; si < spine.length; si += 6) {
       const ridgeH = h[spine[si][0]];
       const r = Math.floor(spine[si][0] / cols), c = spine[si][0] % cols;
-      for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]]) {
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
         const nr = r + dr, nc = c + dc;
         if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
         const nb = nr * cols + nc;
@@ -230,29 +257,14 @@ function addTrough(g: HeightGrid, rng: RNG, count: number, depth: number, rangeX
   for (let n = 0; n < count; n++) {
     const fromC = Math.floor((rangeX[0] / 100 + rng() * (rangeX[1] - rangeX[0]) / 100) * cols);
     const fromR = Math.floor((rangeY[0] / 100 + rng() * (rangeY[1] - rangeY[0]) / 100) * rows);
-    const toC = Math.floor(rng() * cols);
-    const toR = Math.floor(rng() * rows);
-    let curC = fromC, curR = fromR, curD = depth;
-    for (let step = 0; step < (cols + rows) * 3 && curD > 0.5; step++) {
-      const ci = Math.max(0, Math.min(cols - 1, curC));
-      const ri = Math.max(0, Math.min(rows - 1, curR));
-      h[ri * cols + ci] = Math.max(0, h[ri * cols + ci] - curD);
+    const [toC, toR] = chooseBiasedTarget(cols, rows, rng, fromC, fromR);
+    let curD = depth;
+    walkLine(cols, rows, rng, fromC, fromR, toC, toR, (idx) => {
+      if (curD <= 0.5) return false;
+      h[idx] = Math.max(0, h[idx] - curD);
       curD *= linePower;
-      // Single-axis step per iteration — no diagonal movement
-      const remC = Math.abs(toC - curC);
-      const remR = Math.abs(toR - curR);
-      const sc = Math.sign(toC - curC) || (rng() < 0.5 ? 1 : -1);
-      const sr = Math.sign(toR - curR) || (rng() < 0.5 ? 1 : -1);
-      if (rng() < 0.25) {
-        if (rng() < 0.5) curC += rng() < 0.5 ? 1 : -1;
-        else             curR += rng() < 0.5 ? 1 : -1;
-      } else {
-        const total = remC + remR;
-        if (total === 0) { if (rng() < 0.5) curC += sc; else curR += sr; }
-        else if (rng() < remC / total) curC += sc;
-        else curR += sr;
-      }
-    }
+      return true;
+    });
   }
 }
 

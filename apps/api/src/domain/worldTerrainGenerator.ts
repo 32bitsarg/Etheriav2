@@ -112,18 +112,15 @@ function traceFluxRivers(
   // Seed flux with precipitation
   for (const i of landCells) flux[i] = prec[i];
 
-  // Accumulate flux downhill
+  // Accumulate flux downhill — 4-directional only (NSEW) to avoid diagonal rivers
   for (const i of landCells) {
     const col = i % cols, row = Math.floor(i / cols);
     let bestNb = -1, bestH = h[i];
-    for (let dr = -1; dr <= 1; dr++) {
-      for (let dc = -1; dc <= 1; dc++) {
-        if (!dr && !dc) continue;
-        const nc = col + dc, nr = row + dr;
-        if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
-        const nb = nr * cols + nc;
-        if (h[nb] < bestH) { bestH = h[nb]; bestNb = nb; }
-      }
+    for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]] as const) {
+      const nc = col + dc, nr = row + dr;
+      if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+      const nb = nr * cols + nc;
+      if (h[nb] < bestH) { bestH = h[nb]; bestNb = nb; }
     }
     if (bestNb >= 0) flux[bestNb] += flux[i];
   }
