@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { requireMatecitoAuth } from '../infrastructure/authMiddleware.js';
 import { db, COLLECTIONS } from '../infrastructure/matecito.js';
 import { createActivityFeedEntry } from './activityFeed.js';
+import { unlockAchievement } from './achievements.js';
 import { resolveBattle } from '../domain/battles.js';
 import { calculateTechBonuses } from '../domain/techs.js';
 
@@ -149,6 +150,9 @@ wonderRouter.post('/attack', requireMatecitoAuth(), zValidator('json', z.object(
     }).execute();
 
     await createActivityFeedEntry('WONDER_CAPTURED', allianceName, allianceId, { capturedBy: city.name, previousHolder: wonder.holderAllianceId });
+
+    // Unlock achievement for all alliance members when they capture the Wonder
+    unlockAchievement(city.userId, 'wonder_control').catch(() => {});
 
     return c.json({ success: true, attackerWins: true, message: '¡Control del Wonder capturado!', losses: result.attackerLosses });
   } else {

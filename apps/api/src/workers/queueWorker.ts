@@ -28,6 +28,8 @@ import {
   ZONE_WINTER_INTENSITY,
 } from '../domain/winterPressure.js';
 import type { UnitType, Season } from '@etheria/shared';
+import { advanceDailyQuest } from '../routes/dailyQuests.js';
+import { unlockAchievement } from '../routes/achievements.js';
 import { finishWorkerMetric, startWorkerMetric } from '../infrastructure/perfMetrics.js';
 import { getActiveEventEffect } from '../routes/events.js';
 import { resolveEspionageMission } from '../routes/espionage.js';
@@ -661,6 +663,17 @@ async function resolveAndProcessBattle(battle: any) {
     } catch (_) { /* non-critical */ }
   }
 
+  // Daily quests + achievements for PvP
+  if (result.victory) {
+    const attackerCityId = battle.attackerCityId;
+    const attackerUserRes = await db.from(COLLECTIONS.CITIES).eq('id', attackerCityId).getFirst() as any;
+    const attackerUserId = attackerUserRes.data?.userId;
+    advanceDailyQuest(attackerCityId, 'ATTACK_PLAYER').catch(() => {});
+    if (attackerUserId) {
+      unlockAchievement(attackerUserId, 'first_victory').catch(() => {});
+    }
+  }
+
   // Mark incoming attack reports as read for the defender
   const incomingReports = await db.from(COLLECTIONS.GAME_REPORTS)
     .eq("type", "INCOMING_ATTACK")
@@ -879,6 +892,24 @@ async function resolveAndProcessBarbarianBattle(battle: any) {
       const { createActivityFeedEntry } = await import('../routes/activityFeed.js');
       const cityRes = await db.from(COLLECTIONS.CITIES).eq('id', battle.attackerCityId).getFirst() as any;
       await createActivityFeedEntry('BARBARIAN_CAMP_CLEARED', cityRes.data?.name ?? 'Ciudad', battle.attackerCityId, { loot });
+
+      // Daily quests + achievements for barbarian victory
+      const attackerCityId = battle.attackerCityId;
+      const attackerUserId = cityRes.data?.userId;
+      advanceDailyQuest(attackerCityId, 'ATTACK_BARBARIAN').catch(() => {});
+      if (attackerUserId) {
+        unlockAchievement(attackerUserId, 'first_barbarian').catch(() => {});
+        // Track barbarian kill count for Exterminador achievement
+        const killsRes = await db.from(COLLECTIONS.PLAYER_ACHIEVEMENTS)
+          .eq('userId', attackerUserId).eq('achievementKey', 'barbarian_kills_tracker').getFirst() as any;
+        const kills = (killsRes.data?.count ?? 0) + 1;
+        if (killsRes.data) {
+          await db.from(COLLECTIONS.PLAYER_ACHIEVEMENTS).eq('id', killsRes.data.id).merge({ count: kills }).execute();
+        } else {
+          await db.from(COLLECTIONS.PLAYER_ACHIEVEMENTS).insert({ id: crypto.randomUUID(), userId: attackerUserId, achievementKey: 'barbarian_kills_tracker', count: 1 });
+        }
+        if (kills >= 100) unlockAchievement(attackerUserId, '100_barbarian_kills').catch(() => {});
+      }
     } catch (_) { /* non-critical */ }
   }
 }

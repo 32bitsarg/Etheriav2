@@ -1191,7 +1191,53 @@
       "barbarian": {
         "title": "First camp",
         "summary": "Attack a barbarian camp."
+      },
+      "lore": {
+        "firstWinter": {
+          "title": "The First Storm",
+          "summary": "The Northern Dwarves warn of a fierce winter. Build or upgrade 3 buildings to prepare."
+        },
+        "barbarianLeader": {
+          "title": "Saúl's Head",
+          "summary": "The barbarian Saúl sows chaos. Defeat 5 barbarian camps to stop them."
+        },
+        "allianceOath": {
+          "title": "The Oath of the Lands",
+          "summary": "Forge a pact with other kings. Join an alliance and act in its name."
+        },
+        "marketDeal": {
+          "title": "The First Deal",
+          "summary": "The Land's Fair opens its gates. Complete 3 trades in the market."
+        },
+        "wonderGaze": {
+          "title": "The Eye of the Wonder",
+          "summary": "The ancient wonder calls to conquerors. Defeat a nearby barbarian camp."
+        }
       }
+    },
+    "dailyQuests": {
+      "title": "Daily Missions",
+      "loading": "Loading missions...",
+      "completed": "Mission completed",
+      "claimError": "Error claiming reward",
+      "claim": "Claim",
+      "resetSoon": "Resets soon",
+      "templates": {
+        "attackBarbarian": { "title": "Plunderer of the Day", "summary": "Attack 3 barbarian camps today" },
+        "trainUnits": { "title": "Active Recruitment", "summary": "Train 20 units today" },
+        "upgradeBuilding": { "title": "Builder of the Day", "summary": "Upgrade 1 building today" },
+        "sendTrade": { "title": "Merchant", "summary": "Send 1 trade caravan" },
+        "attackPlayer": { "title": "Warrior", "summary": "Launch 1 attack on another player" },
+        "donateAlliance": { "title": "Loyal Ally", "summary": "Contribute to alliance objective" }
+      }
+    },
+    "weeklyEvents": {
+      "title": "Weekly Events",
+      "loading": "Loading events...",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "active": "ACTIVE",
+      "schedule": "Events run from 20:00 to 22:00 UTC"
     },
     "market": {
       "title": "Market",

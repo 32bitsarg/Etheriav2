@@ -39,7 +39,7 @@ function useCountdownStr(target: string | undefined) {
   return str;
 }
 
-export function DailyEventBanner({ compact }: { compact?: boolean } = {}) {
+export function DailyEventBanner({ compact, onOpenSchedule }: { compact?: boolean; onOpenSchedule?: () => void } = {}) {
   const { locale } = useI18n();
   const { data } = useQuery<EventsResponse>({
     queryKey: ["daily-events"],
@@ -61,35 +61,42 @@ export function DailyEventBanner({ compact }: { compact?: boolean } = {}) {
 
   if (activeEvent) {
     return (
-      <div
-        className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-white text-xs font-semibold animate-pulse-slow"
+      <button
+        onClick={onOpenSchedule}
+        className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-white text-xs font-semibold animate-pulse-slow cursor-pointer"
         style={{ background: activeEvent.color }}
       >
         <span className="text-base">{activeEvent.icon}</span>
         {!compact && <span>{activeEvent.name}</span>}
         {!compact && <span className="opacity-80">— {countdownEnds}</span>}
         {compact && <span className="font-bold">{activeEvent.name}</span>}
-      </div>
+      </button>
     );
   }
 
   if (todayEvent && countdownStarts) {
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 text-white/70 text-xs font-medium">
+      <button
+        onClick={onOpenSchedule}
+        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 text-white/70 text-xs font-medium cursor-pointer"
+      >
         <span className="text-base">{todayEvent.icon}</span>
         {!compact && <><span className="hidden sm:inline">{todayEvent.name} en</span><span className="font-bold text-white/85">{countdownStarts}</span></>}
         {compact && <span className="font-bold text-white/85">{countdownStarts}</span>}
-      </div>
+      </button>
     );
   }
 
   if (nextEvent) {
     const tomorrow = new Date(nextEvent.startsAt).toLocaleDateString(locale, { weekday: "short" });
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 text-white/60 text-xs">
+      <button
+        onClick={onOpenSchedule}
+        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 text-white/60 text-xs cursor-pointer"
+      >
         <span>{nextEvent.icon}</span>
         {!compact && <span className="hidden sm:inline">{nextEvent.name} — {tomorrow} 20:00</span>}
-      </div>
+      </button>
     );
   }
 

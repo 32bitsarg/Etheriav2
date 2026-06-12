@@ -3,6 +3,7 @@ import { requireMatecitoAuth } from '../infrastructure/authMiddleware.js';
 import { db, COLLECTIONS } from '../infrastructure/matecito.js';
 import { createNotification } from './notifications.js';
 import { createActivityFeedEntry } from './activityFeed.js';
+import { unlockAchievement } from './achievements.js';
 
 const genId = () => crypto.randomUUID();
 
@@ -62,6 +63,7 @@ export async function recordConquestWin(attackerCityId: string, defenderCityId: 
         .merge({ wins: 0, updatedAt: now })
         .execute();
 
+      if (attacker) unlockAchievement(attacker.userId, 'city_conqueror').catch(() => {});
       return { conquered: true };
     }
 

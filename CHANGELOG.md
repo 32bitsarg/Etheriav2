@@ -9,6 +9,38 @@ Each release is named after a legendary era in the world of Etheria.
 
 ---
 
+## [0.6.0] - La Tierra que Respira - 2026-06-12
+
+> *"Etheria nació de nuevo. El mapa es ahora un mundo vivo, generado único para cada partida."*
+
+### Novedades
+- **El mapa del mundo es ahora procedural** — ya no hay una imagen fija de fondo. Cada mundo se genera automáticamente con su propia geografía: océanos, costas, llanuras, bosques, montañas y caminos. Dos mundos distintos nunca tienen el mismo mapa
+- **Nuevo evento semanal visible** — podés ver el calendario completo de eventos de la semana haciendo clic en el banner de evento activo
+- **Misiones de historia** — cinco nuevas misiones con trasfondo narrativo del mundo: La Primera Tormenta, La Cabeza de Saúl, El Juramento de las Tierras, El Primer Trato y El Ojo de la Maravilla
+- **Las misiones diarias ahora funcionan de verdad** — entrenar tropas, mejorar edificios, atacar bárbaros o comerciar ya actualiza el progreso automáticamente
+- **Los logros se desbloquean solos** — ya no hace falta hacer nada especial: Constructor, Primera Victoria, Cazador de Bárbaros, Aliado y otros se activan cuando cumplís la condición
+
+### Mejoras
+- Los eventos de la semana están más integrados: el banner de evento es clickeable y muestra el horario completo
+- Textos y botones traducidos correctamente al inglés y español en los paneles de misiones diarias y eventos
+
+---
+
+## [0.5.9] - El Despertar de las Crónicas - 2026-06-12
+
+> *"Tus hazañas quedaron grabadas en piedra. Las misiones recuerdan tu historia, y los logros llegan solos."*
+
+### Novedades
+- **Misiones de historia:** cinco misiones con lore del mundo de Etheria que se van desbloqueando a medida que jugás
+- **Calendario de eventos semanales:** un nuevo panel muestra todos los eventos de la semana con su horario y efecto
+- **Misiones diarias activas:** entrenar, construir, atacar o comerciar ya avanza el progreso automáticamente
+- **Logros automáticos:** Constructor, Primera Victoria, Cazador de Bárbaros, Aliado, y otros se desbloquean solos cuando cumplís la condición
+
+### Mejoras
+- El banner de evento del día ahora es un botón que abre el calendario semanal
+
+---
+
 ## [Unreleased]
 
 ### Planned
@@ -19,20 +51,14 @@ Each release is named after a legendary era in the world of Etheria.
 
 > *"El mapa fluye, el HUD respira, y el mundo sigue girando aunque el teléfono duerma."*
 
-### Performance
-- Marcadores de movimiento en el mapa ahora usan `transform: translate3d` en vez de `left/top` — elimina reflow del DOM cada 140ms con marchas activas
-- Canvas de niebla de guerra escala por `devicePixelRatio` (cap 2) — niebla nítida en pantallas de alta densidad
-- `backdrop-filter` y glints ambientales desactivados en dispositivos táctiles (`pointer: coarse`) — ganancia directa de fluidez al panear bajo el HUD
-- `willChange` en botones de edificios pasa de permanente a condicional — reduce capas de compositor permanentes en GPU de gama baja
-- HUDs (`MobileHUD`, `DesktopHUD`) envueltos en `React.memo` + callbacks estables vía `useMemo` — abrir un modal ya no re-renderiza el HUD completo
-- 9 paneles/modales secundarios migrados a `next/dynamic` — menos JS parseado al arrancar `/play`
-- Queries de reportes en Mail ahora solo se disparan al abrir la pestaña "Reportes"
-- Polling adaptativo (`etaInterval`) aplicado a `useWorldMovements` (idle 30s) y `useActiveBattles` (idle 45s)
-- `useMailMessages`, `useBarbarianAttackAlerts`, `useWinterPressure`, `useConquestStatus` — interval subido a 60s en idle
-- `focusManager` de React Query conectado a `visibilitychange` — polls se pausan garantizadamente al backgroundear el APK
-
-### Changed
-- APK actualizado a versión 0.5.8 (versionCode 4)
+### Mejoras
+- El mapa se mueve mucho más fluido: los marcadores de tropas y caravanas ya no hacen que la pantalla tiemble
+- La niebla de guerra se ve nítida en pantallas de alta resolución
+- Abrir un panel o modal ya no hace que el HUD entero parpadeé o se actualice
+- El juego carga más rápido al entrar a `/play` — varios paneles secundarios ahora se cargan sólo cuando los abrís
+- Los correos con reportes de batalla se cargan sólo cuando abrís la pestaña de reportes, no al inicio
+- En celular: el juego pausa sus actualizaciones automáticas cuando ponés el teléfono de costado o lo bloqueás — menos batería consumida en segundo plano
+- APK actualizado a versión 0.5.8
 
 ---
 

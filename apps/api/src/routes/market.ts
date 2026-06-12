@@ -3,6 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { AcceptMarketOfferRequestSchema, CreateMarketOfferRequestSchema } from "@etheria/shared";
 import { requireMatecitoAuth } from "../infrastructure/authMiddleware.js";
 import { acceptMarketOffer, createMarketOffer, listMarketOffers } from "../domain/marketOffers.js";
+import { advanceDailyQuest } from "./dailyQuests.js";
 
 const marketRouter = new Hono();
 
@@ -13,6 +14,7 @@ marketRouter.get("/offers", async (c) => {
 marketRouter.post("/offers", requireMatecitoAuth(), zValidator("json", CreateMarketOfferRequestSchema), async (c) => {
   const result = await createMarketOffer(c.get("userId"), c.req.valid("json"));
   if ("error" in result) return c.json({ error: result.error }, result.status as any);
+  advanceDailyQuest((result as any).offer?.cityId ?? '', 'SEND_TRADE').catch(() => {});
   return c.json(result);
 });
 

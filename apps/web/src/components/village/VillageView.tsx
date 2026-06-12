@@ -32,6 +32,7 @@ const ChatPanel = dynamic(() => import("@/components/game/ChatPanel").then(m => 
 const PlayerProfileModal = dynamic(() => import("@/components/game/PlayerProfileModal").then(m => m.PlayerProfileModal), { ssr: false });
 const BarbarianCampModal = dynamic(() => import("@/components/barbarians/BarbarianCampModal").then(m => m.BarbarianCampModal), { ssr: false });
 const SettingsModal = dynamic(() => import("@/components/village/SettingsModal").then(m => m.SettingsModal), { ssr: false });
+const WeeklyEventsPanel = dynamic(() => import("@/components/game/WeeklyEventsPanel").then(m => m.WeeklyEventsPanel), { ssr: false });
 import { useState, useMemo, useCallback, useEffect, useRef, memo, startTransition, type ReactNode } from "react";
 import { useI18n } from "@/i18n";
 import { normalizeVillageLayout, resolveVillageRenderableBuildings } from "@/lib/villageLayout";
@@ -67,6 +68,7 @@ export function VillageView() {
   const [isActivityFeedOpen, setIsActivityFeedOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isMarketOpen, setIsMarketOpen] = useState(false);
+  const [isWeeklyEventsOpen, setIsWeeklyEventsOpen] = useState(false);
   const [profileCityId, setProfileCityId] = useState<string | null>(null);
   const [runtimePollingEnabled, setRuntimePollingEnabled] = useState(false);
   const upgradeLockRef = useRef<string | null>(null);
@@ -178,6 +180,7 @@ export function VillageView() {
     onOpenSettings: () => startTransition(() => setIsSettingsOpen(true)),
     onOpenChat: () => setIsChatOpen((v) => !v),
     onOpenMarket: () => startTransition(() => setIsMarketOpen(true)),
+    onOpenWeeklyEvents: () => startTransition(() => setIsWeeklyEventsOpen(true)),
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
   const hudProps: HudActions = {
@@ -211,7 +214,7 @@ export function VillageView() {
   }, [buildings]);
 
   const selectedBuilding = uniqueBuildings.find((b) => b.id === selectedBuildingId);
-  const isModalOpen = !!selectedBuilding || isMailOpen || isAllianceOpen || isQuestsOpen || isRenameOpen || isSettingsOpen || isDailyQuestsOpen || isNewRankingsOpen || isWonderOpen || isAchievementsOpen || isActivityFeedOpen;
+  const isModalOpen = !!selectedBuilding || isMailOpen || isAllianceOpen || isQuestsOpen || isRenameOpen || isSettingsOpen || isDailyQuestsOpen || isNewRankingsOpen || isWonderOpen || isAchievementsOpen || isActivityFeedOpen || isWeeklyEventsOpen;
 
   // Escape closes whatever panel/modal is open
   useEffect(() => {
@@ -231,6 +234,7 @@ export function VillageView() {
       setIsWonderOpen(false);
       setIsAchievementsOpen(false);
       setIsActivityFeedOpen(false);
+      setIsWeeklyEventsOpen(false);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -381,6 +385,7 @@ export function VillageView() {
       {isAchievementsOpen && <AchievementsPanel onClose={() => setIsAchievementsOpen(false)} />}
       {isActivityFeedOpen && <ActivityFeedPanel onClose={() => setIsActivityFeedOpen(false)} />}
       {isMarketOpen && <MarketModal cityId={cityId} onClose={() => setIsMarketOpen(false)} t={t} />}
+      {isWeeklyEventsOpen && <WeeklyEventsPanel onClose={() => setIsWeeklyEventsOpen(false)} />}
       {profileCityId && <PlayerProfileModal cityId={profileCityId} onClose={() => setProfileCityId(null)} onOpenMail={() => setIsMailOpen(true)} />}
       {tutorialData && tutorialData.step < 4 && <TutorialOverlay initialStep={tutorialData.step} />}
       {isChatOpen && isMobile !== null && (
@@ -1936,21 +1941,42 @@ function ReportsModal({ onClose, t }: any) {
 function QuestsModal({ cityId, onClose, t }: any) {
   const { data: quests } = usePlayerQuests(cityId);
   const claim = useClaimQuest();
+  const loreQuests = (quests ?? []).filter((q: any) => q.questId?.startsWith("lore_"));
+  const regularQuests = (quests ?? []).filter((q: any) => !q.questId?.startsWith("lore_"));
+
+  function QuestCard({ quest }: { quest: any }) {
+    return (
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <div className="font-serif text-lg text-white">{t(quest.titleKey)}</div>
+        <div className="mt-1 text-sm text-white/55">{t(quest.summaryKey)}</div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/40">
+          <div className="h-full bg-etheria-gold" style={{ width: `${Math.min(100, (quest.progress / quest.target) * 100)}%` }} />
+        </div>
+        <div className="mt-2 text-xs text-white/45">{quest.progress}/{quest.target}</div>
+        <button disabled={quest.status !== "CLAIMABLE" || claim.isPending} onClick={() => claim.mutate(quest.id)} className="mt-3 w-full rounded-xl bg-etheria-gold px-4 py-2 text-sm font-bold text-black disabled:opacity-30">{quest.status === "CLAIMED" ? t("play.quests.claimed") : t("play.quests.claim")}</button>
+      </div>
+    );
+  }
+
   return (
     <ModalBase isOpen={true} onClose={onClose} size="3xl" title={t("play.quests.title")} zIndex="z-[90]">
+      {regularQuests.length > 0 && (
         <div className="grid gap-3 md:grid-cols-2">
-          {(quests ?? []).map((quest) => (
-            <div key={quest.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-              <div className="font-serif text-lg text-white">{t(quest.titleKey)}</div>
-              <div className="mt-1 text-sm text-white/55">{t(quest.summaryKey)}</div>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/40">
-                <div className="h-full bg-etheria-gold" style={{ width: `${Math.min(100, (quest.progress / quest.target) * 100)}%` }} />
-              </div>
-              <div className="mt-2 text-xs text-white/45">{quest.progress}/{quest.target}</div>
-              <button disabled={quest.status !== "CLAIMABLE" || claim.isPending} onClick={() => claim.mutate(quest.id)} className="mt-3 w-full rounded-xl bg-etheria-gold px-4 py-2 text-sm font-bold text-black disabled:opacity-30">{quest.status === "CLAIMED" ? t("play.quests.claimed") : t("play.quests.claim")}</button>
-            </div>
-          ))}
+          {regularQuests.map((quest: any) => <QuestCard key={quest.id} quest={quest} />)}
         </div>
+      )}
+      {loreQuests.length > 0 && (
+        <>
+          <div className="mt-5 mb-2 flex items-center gap-2">
+            <span className="text-amber-400 text-lg">📜</span>
+            <h3 className="font-serif text-base text-amber-300">Historia</h3>
+            <div className="flex-1 h-px bg-amber-900/40" />
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {loreQuests.map((quest: any) => <QuestCard key={quest.id} quest={quest} />)}
+          </div>
+        </>
+      )}
     </ModalBase>
   );
 }

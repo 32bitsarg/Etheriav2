@@ -30,6 +30,7 @@ export const DesktopHUD = memo(function DesktopHUD({
   onOpenSettings,
   onOpenChat,
   onOpenMarket,
+  onOpenWeeklyEvents,
 }: HudActions) {
   const { t } = useI18n();
 
@@ -100,7 +101,7 @@ export const DesktopHUD = memo(function DesktopHUD({
         </button>
         <SeasonHUD />
         <ActiveBuffsPanel />
-        <DailyEventBanner />
+        <DailyEventBanner onOpenSchedule={onOpenWeeklyEvents} />
       </div>
 
       {/* Top-center: floating resources with hover detail */}

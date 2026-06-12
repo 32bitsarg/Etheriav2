@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { requireMatecitoAuth } from '../infrastructure/authMiddleware.js';
 import { db, COLLECTIONS } from '../infrastructure/matecito.js';
 import { createNotification } from './notifications.js';
+import { unlockAchievement } from './achievements.js';
 
 const genId = () => crypto.randomUUID();
 
@@ -129,6 +130,7 @@ rallyRouter.post('/:id/join', requireMatecitoAuth(), zValidator('json', JoinRall
     joinedAt: new Date().toISOString(),
   });
 
+  unlockAchievement(userId, 'rally_join').catch(() => {});
   return c.json({ success: true });
 });
 

@@ -4,6 +4,11 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { getPerfSnapshot } from "../infrastructure/perfMetrics.js";
 import { requireAdmin } from "../infrastructure/adminMiddleware.js";
+import { db, COLLECTIONS } from "../infrastructure/matecito.js";
+import { prisma } from "@etheria/database";
+import { LOCAL_WORLD_CONFIG } from "../domain/worldConfigData.js";
+import { ensureBotPopulation } from "../domain/botService.js";
+import { terrainCache } from "./world.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -121,5 +126,169 @@ adminOpsRouter.post("/deploy", async (c) => {
     return c.json({ ok: true, ...result });
   } catch (error) {
     return c.json({ ok: false, error: error instanceof Error ? error.message : "Deploy failed" }, 500);
+  }
+});
+
+// Full world reset: wipes all game data and re-seeds bots
+adminOpsRouter.post("/reset-world", async (c) => {
+  const log: string[] = [];
+
+  try {
+    // 1. Update default world config in Prisma with procedural map settings
+    const world = await prisma.world.findFirst({ orderBy: { createdAt: "asc" } });
+    if (world) {
+      const existing = typeof world.config === "string" ? JSON.parse(world.config) : (world.config as any) ?? {};
+      const newConfig = {
+        ...existing,
+        map: {
+          ...LOCAL_WORLD_CONFIG.map,
+          ...(existing.map ?? {}),
+          width: LOCAL_WORLD_CONFIG.map.width,
+          height: LOCAL_WORLD_CONFIG.map.height,
+          cameraMinZoom: LOCAL_WORLD_CONFIG.map.cameraMinZoom,
+          cameraMaxZoom: LOCAL_WORLD_CONFIG.map.cameraMaxZoom,
+          cameraInitialZoom: LOCAL_WORLD_CONFIG.map.cameraInitialZoom,
+          terrainCols: LOCAL_WORLD_CONFIG.map.terrainCols,
+          terrainRows: LOCAL_WORLD_CONFIG.map.terrainRows,
+          tileSize: LOCAL_WORLD_CONFIG.map.tileSize,
+        },
+        spawn: LOCAL_WORLD_CONFIG.spawn,
+        updatedAt: new Date().toISOString(),
+      };
+      await prisma.world.update({ where: { id: world.id }, data: { config: newConfig, playerCount: 0 } });
+      log.push(`Updated world config: ${world.id}`);
+    } else {
+      log.push("No world found — skipping config update");
+    }
+
+    // 2. Clear terrain cache
+    terrainCache.clear();
+    log.push("Cleared terrain cache");
+
+    // 3. Wipe all Prisma game entities (order matters for FK constraints)
+    const prismaDeletes = await Promise.allSettled([
+      prisma.espionageMission.deleteMany(),
+      prisma.cityConquestProgress.deleteMany(),
+      prisma.rallyParticipant.deleteMany(),
+      prisma.rallyAttack.deleteMany(),
+      prisma.playerAchievement.deleteMany(),
+      prisma.playerQuest.deleteMany(),
+      prisma.dailyQuest.deleteMany(),
+      prisma.notification.deleteMany(),
+      prisma.activityFeed.deleteMany(),
+      prisma.gameReport.deleteMany(),
+      prisma.mailMessage.deleteMany(),
+      prisma.tradeCaravan.deleteMany(),
+      prisma.barbarianAttackAlert.deleteMany(),
+      prisma.barbarianAttack.deleteMany(),
+      prisma.barbarianBattle.deleteMany(),
+      prisma.barbarianArmy.deleteMany(),
+      prisma.barbarianCamp.deleteMany(),
+      prisma.worldSeasonState.deleteMany(),
+      prisma.allianceDiplomacyEvent.deleteMany(),
+      prisma.allianceDiplomacy.deleteMany(),
+      prisma.allianceEffect.deleteMany(),
+      prisma.chatMessage.deleteMany(),
+    ]);
+
+    // Delete alliance members before alliances
+    await prisma.allianceMember.deleteMany();
+    await prisma.alliance.deleteMany();
+    log.push("Deleted alliances");
+
+    // Delete city entities before cities
+    await Promise.allSettled([
+      prisma.battleReport.deleteMany(),
+      prisma.battle.deleteMany(),
+      prisma.buildQueue.deleteMany(),
+      prisma.trainingQueue.deleteMany(),
+      prisma.researchQueue.deleteMany(),
+      prisma.cityTech.deleteMany(),
+      prisma.cityUnit.deleteMany(),
+      prisma.building.deleteMany(),
+    ]);
+    log.push("Deleted city sub-entities");
+
+    await prisma.city.deleteMany();
+    log.push("Deleted cities");
+
+    // 4. Wipe MatecitoDB collections
+    const matecitoCollections = [
+      COLLECTIONS.CITIES,
+      COLLECTIONS.BUILDINGS,
+      COLLECTIONS.UNITS,
+      COLLECTIONS.BUILD_QUEUES,
+      COLLECTIONS.TRAINING_QUEUES,
+      COLLECTIONS.RESEARCH_QUEUES,
+      COLLECTIONS.CITY_TECHS,
+      COLLECTIONS.BATTLES,
+      COLLECTIONS.BATTLE_REPORTS,
+      COLLECTIONS.ALLIANCES,
+      COLLECTIONS.ALLIANCE_MEMBERS,
+      COLLECTIONS.ALLIANCE_DIPLOMACY,
+      COLLECTIONS.ALLIANCE_DIPLOMACY_EVENTS,
+      COLLECTIONS.ALLIANCE_EFFECTS,
+      COLLECTIONS.ALLIANCE_OBJECTIVES,
+      COLLECTIONS.ALLIANCE_OBJECTIVE_CONTRIBUTIONS,
+      COLLECTIONS.CHAT_MESSAGES,
+      COLLECTIONS.MAIL_MESSAGES,
+      COLLECTIONS.WORLD_SEASON_STATE,
+      COLLECTIONS.BARBARIAN_CAMPS,
+      COLLECTIONS.BARBARIAN_ARMIES,
+      COLLECTIONS.BARBARIAN_BATTLES,
+      COLLECTIONS.BARBARIAN_ATTACKS,
+      COLLECTIONS.BARBARIAN_ATTACK_ALERTS,
+      COLLECTIONS.TRADE_CARAVANS,
+      COLLECTIONS.MARKET_OFFERS,
+      COLLECTIONS.GAME_REPORTS,
+      COLLECTIONS.PLAYER_QUESTS,
+      COLLECTIONS.DAILY_QUESTS,
+      COLLECTIONS.RALLY_ATTACKS,
+      COLLECTIONS.RALLY_PARTICIPANTS,
+      COLLECTIONS.CITY_CONQUEST_PROGRESS,
+      COLLECTIONS.ESPIONAGE_MISSIONS,
+      COLLECTIONS.PLAYER_ACHIEVEMENTS,
+      COLLECTIONS.ACTIVITY_FEED,
+      COLLECTIONS.NOTIFICATIONS,
+      COLLECTIONS.WONDER,
+      COLLECTIONS.BOT_PLAYERS,
+      COLLECTIONS.BOT_ACTION_LOGS,
+      COLLECTIONS.BOT_METRICS_SNAPSHOTS,
+    ];
+
+    for (const col of matecitoCollections) {
+      try {
+        const docs = await db.from(col).getAll();
+        for (const doc of docs) {
+          if (doc?.id) await db.from(col).delete(doc.id);
+        }
+        log.push(`Wiped MatecitoDB: ${col}`);
+      } catch {
+        log.push(`Skipped MatecitoDB: ${col}`);
+      }
+    }
+
+    // 5. Delete bot users from Prisma (they get re-created by ensureBotPopulation)
+    await prisma.botActionLog.deleteMany();
+    await prisma.botMetricsSnapshot.deleteMany();
+    await prisma.botPlayer.deleteMany();
+    await prisma.user.deleteMany({ where: { email: { contains: "@etheria.game" } } });
+    log.push("Deleted bots from Prisma");
+
+    // 6. Re-populate bots
+    try {
+      await ensureBotPopulation();
+      log.push("Re-seeded bot population");
+    } catch (e) {
+      log.push(`Bot population warning: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    // Log prisma delete results
+    const failed = prismaDeletes.filter(r => r.status === "rejected");
+    if (failed.length) log.push(`${failed.length} Prisma delete(s) failed (FK or empty table — usually OK)`);
+
+    return c.json({ ok: true, log });
+  } catch (error) {
+    return c.json({ ok: false, error: error instanceof Error ? error.message : String(error), log }, 500);
   }
 });

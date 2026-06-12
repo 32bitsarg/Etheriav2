@@ -1191,7 +1191,53 @@
       "barbarian": {
         "title": "Primer campamento",
         "summary": "Ataca un campamento barbaro."
+      },
+      "lore": {
+        "firstWinter": {
+          "title": "La Primera Tormenta",
+          "summary": "Los Enanos del Norte advierten de invierno feroz. Construye o mejora 3 edificios para prepararte."
+        },
+        "barbarianLeader": {
+          "title": "La Cabeza de Saúl",
+          "summary": "El bárbaro Saúl siembra el caos. Derrota 5 campamentos bárbaros para frenarlos."
+        },
+        "allianceOath": {
+          "title": "El Juramento de las Tierras",
+          "summary": "Forja un pacto con otros reyes. Únete a una alianza y actúa en su nombre."
+        },
+        "marketDeal": {
+          "title": "El Primer Trato",
+          "summary": "La Feria de las Tierras abre sus puertas. Realiza 3 intercambios en el mercado."
+        },
+        "wonderGaze": {
+          "title": "El Ojo de la Maravilla",
+          "summary": "La antigua maravilla llama a los conquistadores. Derrota un campamento bárbaro cercano."
+        }
       }
+    },
+    "dailyQuests": {
+      "title": "Misiones Diarias",
+      "loading": "Cargando misiones...",
+      "completed": "Misión completada",
+      "claimError": "Error al reclamar",
+      "claim": "Reclamar",
+      "resetSoon": "Resetea pronto",
+      "templates": {
+        "attackBarbarian": { "title": "Saqueador del día", "summary": "Ataca 3 campos bárbaros hoy" },
+        "trainUnits": { "title": "Reclutamiento activo", "summary": "Entrena 20 unidades hoy" },
+        "upgradeBuilding": { "title": "Constructor del día", "summary": "Mejora 1 edificio hoy" },
+        "sendTrade": { "title": "Comerciante", "summary": "Envía 1 caravana de comercio" },
+        "attackPlayer": { "title": "Guerrero", "summary": "Lanza 1 ataque a otro jugador" },
+        "donateAlliance": { "title": "Aliado leal", "summary": "Contribuye al objetivo de alianza" }
+      }
+    },
+    "weeklyEvents": {
+      "title": "Eventos Semanales",
+      "loading": "Cargando eventos...",
+      "today": "Hoy",
+      "tomorrow": "Mañana",
+      "active": "ACTIVO",
+      "schedule": "Los eventos duran de 20:00 a 22:00 UTC"
     },
     "market": {
       "title": "Mercado",

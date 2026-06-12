@@ -24,7 +24,7 @@ export function getAllianceBuffs(effects: any[], t: TFunc): ActiveBuff[] {
       buffs.push({
         id: `alliance-peace-${effect.id}`,
         icon: "\uD83D\uDD4A\uFE0F",
-        label: t("play.buffs.peacyTreaty") + ` +${pct}%`,
+        label: t("play.buffs.peaceTreaty") + ` +${pct}%`,
         description: t("play.buffs.peaceTreatyDesc").replace("{pct}", String(pct)),
         expiresAt: effect.expiresAt,
         source: t("play.buffs.sourceAlliance"),

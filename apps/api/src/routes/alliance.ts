@@ -7,6 +7,8 @@ import { db, COLLECTIONS } from '../infrastructure/matecito.js';
 import { mergeRecordByLogicalId } from '../infrastructure/matecitoRecord.js';
 import { contributeAllianceObjective, ensureAllianceObjective } from '../domain/allianceObjectives.js';
 import { prisma } from '@etheria/database';
+import { advanceDailyQuest } from './dailyQuests.js';
+import { unlockAchievement } from './achievements.js';
 
 const allianceRouter = new Hono();
 const genId = () => crypto.randomUUID();
@@ -86,6 +88,7 @@ allianceRouter.post('/:id/join', requireMatecitoAuth(), async (c) => {
   const userId = c.get('userId');
   const result = await joinAlliance({ userId, allianceId: c.req.param('id') });
   if ('error' in result) return c.json({ error: result.error }, result.error === 'Alliance not found' ? 404 : 400);
+  unlockAchievement(userId, 'join_alliance').catch(() => {});
   return c.json(result);
 });
 
@@ -214,14 +217,16 @@ allianceRouter.post('/objectives/:id/contribute', requireMatecitoAuth(), zValida
   const userId = c.get('userId');
   const membership = await getAllianceMembershipForUser(userId);
   if (!membership?.allianceId) return c.json({ error: 'No alliance' }, 404);
+  const body = c.req.valid('json');
   const result = await contributeAllianceObjective({
     userId,
     allianceId: membership.allianceId,
     objectiveId: c.req.param('id'),
-    cityId: c.req.valid('json').cityId,
-    resources: c.req.valid('json').resources,
+    cityId: body.cityId,
+    resources: body.resources,
   });
   if ('error' in result) return c.json({ error: result.error }, result.status as any);
+  advanceDailyQuest(body.cityId, 'ALLIANCE_CONTRIBUTE').catch(() => {});
   return c.json(result);
 });
 

@@ -115,6 +115,8 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   const pinch = useRef<{ dist: number; midX: number; midY: number } | null>(null);
   const fogCanvasRef = useRef<HTMLCanvasElement>(null);
   const terrainCanvasRef = useRef<HTMLCanvasElement>(null);
+  const proceduralCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [proceduralCells, setProceduralCells] = useState<{ cells: string[]; cols: number; rows: number } | null>(null);
   const weatherRef = useRef<HTMLDivElement>(null);
   // Tracks active paint stroke so dragging paints continuously
   const isPaintingRef = useRef(false);
@@ -248,6 +250,50 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   }, [showTerrainOverlay]);
 
   useEffect(() => { drawTerrainOverlay(); }, [terrainMask, showTerrainOverlay, drawTerrainOverlay]);
+
+  // ─── Procedural terrain ──────────────────────────────────────────────────
+
+  const TILE_COLORS: Record<string, string> = {
+    WATER: "#1a4d6e",
+    COAST: "#6b8c42",
+    PLAINS: "#3d6b24",
+    FOREST: "#1e4a12",
+    MOUNTAIN: "#5e5047",
+    ROAD: "#9c7c3a",
+  };
+
+  useEffect(() => {
+    fetch("/api/world/terrain")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data?.rle) return;
+        const cells: string[] = [];
+        for (const [kind, count] of data.rle as Array<[string, number]>) {
+          for (let i = 0; i < count; i++) cells.push(kind);
+        }
+        setProceduralCells({ cells, cols: data.cols, rows: data.rows });
+      })
+      .catch(() => {});
+  }, []);
+
+  const drawProceduralMap = useCallback(() => {
+    const canvas = proceduralCanvasRef.current;
+    if (!canvas || !proceduralCells) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const { cells, cols, rows } = proceduralCells;
+    const tileW = worldW / cols;
+    const tileH = worldH / rows;
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const kind = cells[row * cols + col] ?? "PLAINS";
+        ctx.fillStyle = TILE_COLORS[kind] ?? TILE_COLORS.PLAINS;
+        ctx.fillRect(col * tileW, row * tileH, Math.ceil(tileW), Math.ceil(tileH));
+      }
+    }
+  }, [proceduralCells, worldW, worldH]);
+
+  useEffect(() => { drawProceduralMap(); }, [proceduralCells, drawProceduralMap]);
 
   const paintCell = useCallback((screenX: number, screenY: number) => {
     const mask = terrainMaskRef.current;
@@ -659,13 +705,24 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
             height: worldH,
           }}
         >
-          {/* Background image */}
-          <img
-            src={bgPath}
-            alt=""
-            className="absolute inset-0 h-full w-full pointer-events-none"
-            draggable={false}
+          {/* Procedural terrain canvas (replaces static image) */}
+          <canvas
+            ref={proceduralCanvasRef}
+            className="absolute inset-0 pointer-events-none"
+            width={worldW}
+            height={worldH}
+            style={{ width: worldW, height: worldH, zIndex: 0 }}
           />
+          {/* Fallback static image while procedural terrain loads */}
+          {!proceduralCells && (
+            <img
+              src={bgPath}
+              alt=""
+              className="absolute inset-0 h-full w-full pointer-events-none"
+              draggable={false}
+              style={{ zIndex: 1 }}
+            />
+          )}
 
           {/* Cities */}
           {cities.map((city) => (

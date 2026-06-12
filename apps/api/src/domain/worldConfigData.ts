@@ -9,6 +9,10 @@ export type WorldMapConfig = {
   decorDensity: number;
   decorSafeRadius: number;
   terrainOverlayEnabled?: boolean;
+  // Procedural terrain grid dimensions
+  terrainCols: number;
+  terrainRows: number;
+  tileSize: number; // px per tile in world space
 };
 
 export type WorldSpawnConfig = {
@@ -37,15 +41,18 @@ export const LOCAL_WORLD_CONFIG: WorldConfigDoc = {
   version: 1,
   map: {
     width: 3600,
-    height: 2400,
-    cameraMinZoom: 0.72,
-    cameraMaxZoom: 1.8,
-    cameraInitialZoom: 1.02,
+    height: 3600,
+    cameraMinZoom: 0.5,
+    cameraMaxZoom: 2.0,
+    cameraInitialZoom: 0.85,
     backgroundAssetPath: "/assets/backgrounds/world-map-terrain-v2.webp",
     terrainSeed: 1337,
     decorDensity: 0.7,
     decorSafeRadius: 170,
     terrainOverlayEnabled: false,
+    terrainCols: 200,
+    terrainRows: 200,
+    tileSize: 18,
   },
   spawn: {
     strategy: "soft-clusters",

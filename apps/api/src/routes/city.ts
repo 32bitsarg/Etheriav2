@@ -61,6 +61,8 @@ import { getCityPowerMap } from "../domain/cityPower.js";
 import { getActiveMovements } from "../domain/worldActions.js";
 import { generateCityName, generatePlayerName } from "../domain/nameGenerator.js";
 import { getCityQueueConfig } from "../domain/queueConfigData.js";
+import { advanceDailyQuest } from "./dailyQuests.js";
+import { unlockAchievement } from "./achievements.js";
 
 const genId = () => crypto.randomUUID();
 
@@ -925,7 +927,10 @@ cityRouter.post("/:id/build", requireMatecitoAuth(), zValidator("json", CreateBu
   if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
   const data = c.req.valid("json");
   try {
-    return c.json(await createBuildingAction({ cityId, ...data, actor: { type: "human", userId } }));
+    const result = await createBuildingAction({ cityId, ...data, actor: { type: "human", userId } });
+    advanceDailyQuest(cityId, 'UPGRADE_BUILDING').catch(() => {});
+    unlockAchievement(userId, 'first_building').catch(() => {});
+    return c.json(result);
   } catch (error) {
     return actionErrorResponse(c, error);
   }
@@ -940,7 +945,14 @@ cityRouter.post("/:id/buildings/:buildingId/upgrade", requireMatecitoAuth(), asy
   if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
   const buildingId = c.req.param("buildingId");
   try {
-    return c.json(await upgradeBuildingAction({ cityId, buildingId, actor: { type: "human", userId } }));
+    const result = await upgradeBuildingAction({ cityId, buildingId, actor: { type: "human", userId } });
+    advanceDailyQuest(cityId, 'UPGRADE_BUILDING').catch(() => {});
+    unlockAchievement(userId, 'first_building').catch(() => {});
+    // Check level milestones from result
+    const newLevel = (result as any)?.building?.level ?? (result as any)?.level;
+    if (newLevel >= 5) unlockAchievement(userId, 'level_5_building').catch(() => {});
+    if (newLevel >= 10) unlockAchievement(userId, 'level_10_building').catch(() => {});
+    return c.json(result);
   } catch (error) {
     return actionErrorResponse(c, error);
   }
@@ -1011,7 +1023,9 @@ cityRouter.post("/:id/train", requireMatecitoAuth(), zValidator("json", TrainUni
   if (ownership === "FORBIDDEN") return c.json({ error: "Not authorized" }, 403);
   const data = c.req.valid("json");
   try {
-    return c.json(await trainUnitsAction({ cityId, ...data, actor: { type: "human", userId } }));
+    const result = await trainUnitsAction({ cityId, ...data, actor: { type: "human", userId } });
+    advanceDailyQuest(cityId, 'TRAIN_UNITS', data.count ?? 1).catch(() => {});
+    return c.json(result);
   } catch (error) {
     return actionErrorResponse(c, error);
   }

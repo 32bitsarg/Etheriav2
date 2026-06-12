@@ -19,6 +19,13 @@ export const QUEST_CONFIGS: QuestConfig[] = [
   { questId: "send_trade", type: "SEND_TRADE", titleKey: "play.quests.trade.title", summaryKey: "play.quests.trade.summary", target: 1, reward: { gold: 100, wood: 100, stone: 100, food: 100, gems: 0 }, order: 50, enabled: true },
   { questId: "use_alliance", type: "USE_ALLIANCE", titleKey: "play.quests.alliance.title", summaryKey: "play.quests.alliance.summary", target: 1, reward: { gold: 80, wood: 80, stone: 80, food: 80, gems: 0 }, order: 60, enabled: true },
   { questId: "attack_barbarian", type: "ATTACK_BARBARIAN", titleKey: "play.quests.barbarian.title", summaryKey: "play.quests.barbarian.summary", target: 1, reward: { gold: 150, wood: 120, stone: 120, food: 150, gems: 0 }, order: 70, enabled: true },
+
+  // Lore quests — narrative missions tied to LORES.md world
+  { questId: "lore_first_winter", type: "BUILD_OR_UPGRADE", titleKey: "play.quests.lore.firstWinter.title", summaryKey: "play.quests.lore.firstWinter.summary", target: 3, reward: { gold: 0, wood: 0, stone: 0, food: 0, gems: 200 }, order: 100, enabled: true },
+  { questId: "lore_barbarian_leader", type: "ATTACK_BARBARIAN", titleKey: "play.quests.lore.barbarianLeader.title", summaryKey: "play.quests.lore.barbarianLeader.summary", target: 5, reward: { gold: 300, wood: 300, stone: 0, food: 0, gems: 0 }, order: 110, enabled: true },
+  { questId: "lore_alliance_oath", type: "USE_ALLIANCE", titleKey: "play.quests.lore.allianceOath.title", summaryKey: "play.quests.lore.allianceOath.summary", target: 1, reward: { gold: 0, wood: 0, stone: 0, food: 0, gems: 150 }, order: 120, enabled: true },
+  { questId: "lore_market_deal", type: "SEND_TRADE", titleKey: "play.quests.lore.marketDeal.title", summaryKey: "play.quests.lore.marketDeal.summary", target: 3, reward: { gold: 400, wood: 400, stone: 0, food: 0, gems: 0 }, order: 130, enabled: true },
+  { questId: "lore_wonder_gaze", type: "ATTACK_BARBARIAN", titleKey: "play.quests.lore.wonderGaze.title", summaryKey: "play.quests.lore.wonderGaze.summary", target: 1, reward: { gold: 500, wood: 0, stone: 500, food: 0, gems: 0 }, order: 140, enabled: true },
 ];
 
 export function getQuestConfigs() {

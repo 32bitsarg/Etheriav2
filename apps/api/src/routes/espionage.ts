@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { requireMatecitoAuth } from '../infrastructure/authMiddleware.js';
 import { db, COLLECTIONS } from '../infrastructure/matecito.js';
 import { createNotification } from './notifications.js';
+import { unlockAchievement } from './achievements.js';
 
 const genId = () => crypto.randomUUID();
 
@@ -145,6 +146,7 @@ export async function resolveEspionageMission(missionId: string) {
 
     const spyCityRes = await db.from(COLLECTIONS.CITIES).eq('id', mission.spyCityId).getFirst() as any;
     if (spyCityRes.data) {
+      unlockAchievement(spyCityRes.data.userId, 'spy_success').catch(() => {});
       await createNotification(
         spyCityRes.data.userId,
         'SPY_RESULT',

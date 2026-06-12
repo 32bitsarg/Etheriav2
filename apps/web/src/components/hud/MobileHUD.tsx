@@ -28,6 +28,7 @@ export const MobileHUD = memo(function MobileHUD({
   onOpenSettings,
   onOpenChat,
   onOpenMarket,
+  onOpenWeeklyEvents,
 }: HudActions) {
   const { t } = useI18n();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
@@ -116,7 +117,7 @@ export const MobileHUD = memo(function MobileHUD({
           </span>
         </button>
         <span className="pointer-events-auto"><SeasonHUD compact /></span>
-        <span className="pointer-events-auto"><DailyEventBanner compact /></span>
+        <span className="pointer-events-auto"><DailyEventBanner compact onOpenSchedule={onOpenWeeklyEvents} /></span>
       </div>
 
       {/* Dock inferior: glassmorphism pill estilo CoC */}
