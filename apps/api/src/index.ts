@@ -9,9 +9,11 @@ import { startQueueWorker } from './workers/queueWorker.js';
 import { startSeasonWorker } from './workers/seasonWorker.js';
 import { startBarbarianSpawnWorker } from './workers/barbarianSpawnWorker.js';
 import { startBotWorker } from './workers/botWorker.js';
+import { ensureWorldTerrain } from './domain/worldTerrainRuntime.js';
 
 async function bootstrap() {
   await ensureGameConfigsLoaded();
+  await ensureWorldTerrain().catch(err => console.error('Terrain preload failed:', err));
 
   startQueueWorker();
   startSeasonWorker();

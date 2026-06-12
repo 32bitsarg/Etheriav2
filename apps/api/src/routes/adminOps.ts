@@ -8,7 +8,8 @@ import { db, COLLECTIONS } from "../infrastructure/matecito.js";
 import { prisma } from "@etheria/database";
 import { LOCAL_WORLD_CONFIG } from "../domain/worldConfigData.js";
 import { ensureBotPopulation } from "../domain/botService.js";
-import { terrainCache } from "./world.js";
+import { invalidateWorldTerrain, ensureWorldTerrain } from "../domain/worldTerrainRuntime.js";
+import { repairWorldEntityPlacements } from "../domain/worldTerrainRepair.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -161,9 +162,9 @@ adminOpsRouter.post("/reset-world", async (c) => {
       log.push("No world found — skipping config update");
     }
 
-    // 2. Clear terrain cache
-    terrainCache.clear();
-    log.push("Cleared terrain cache");
+    // 2. Invalidate and regenerate terrain cache
+    invalidateWorldTerrain();
+    log.push("Invalidated terrain cache");
 
     // 3. Wipe all Prisma game entities (order matters for FK constraints)
     const prismaDeletes = await Promise.allSettled([
@@ -275,12 +276,28 @@ adminOpsRouter.post("/reset-world", async (c) => {
     await prisma.user.deleteMany({ where: { email: { contains: "@etheria.game" } } });
     log.push("Deleted bots from Prisma");
 
-    // 6. Re-populate bots
+    // 6. Regenerate terrain so spawns land on valid tiles
+    try {
+      await ensureWorldTerrain();
+      log.push("Regenerated terrain");
+    } catch (e) {
+      log.push(`Terrain regen warning: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    // 7. Re-populate bots
     try {
       await ensureBotPopulation();
       log.push("Re-seeded bot population");
     } catch (e) {
       log.push(`Bot population warning: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    // 8. Repair any placements that ended up on invalid terrain
+    try {
+      const repairResult = await repairWorldEntityPlacements();
+      log.push(`Terrain repair: ${JSON.stringify(repairResult)}`);
+    } catch (e) {
+      log.push(`Repair warning: ${e instanceof Error ? e.message : String(e)}`);
     }
 
     // Log prisma delete results

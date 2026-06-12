@@ -19,7 +19,7 @@ import { AttackBarbarianRequestSchema } from '@etheria/shared';
 import { ScoutTargetRequestSchema } from '@etheria/shared';
 import { requireMatecitoAuth } from '../infrastructure/authMiddleware.js';
 import { calculatePathSpeedMultiplier } from '../domain/worldTerrainConfigData.js';
-import { generateTerrain, rleEncode } from '../domain/worldTerrainGenerator.js';
+import { ensureWorldTerrain } from '../domain/worldTerrainRuntime.js';
 import { repairWorldEntityPlacements } from '../domain/worldTerrainRepair.js';
 import { getUnitStats } from '../domain/units.js';
 import { calculateTechBonuses } from '../domain/techs.js';
@@ -411,25 +411,13 @@ worldRouter.post('/admin/repair-terrain', requireAdmin(), async (c) => {
   return c.json({ ok: true, ...result });
 });
 
-// ─── GET /world/terrain — Procedural terrain grid (RLE-compressed) ───
+// ─── GET /world/terrain — Procedural terrain grid (RLE-compressed + elevation) ───
 
-export const terrainCache = new Map<string, { rle: Array<[string, number]>; cols: number; rows: number }>();
+// Keep export for backward-compat with adminOps (will migrate to invalidateWorldTerrain)
+export const terrainCache = { clear: () => {} };
 
 worldRouter.get('/terrain', async (c) => {
   const worldId = c.req.query('worldId') ?? 'local';
-  if (terrainCache.has(worldId)) {
-    return c.json(terrainCache.get(worldId));
-  }
-
-  const worldConfig = await getWorldConfig(worldId);
-  const mapCfg = worldConfig.map as any;
-  const terrainCols: number = mapCfg.terrainCols ?? 200;
-  const terrainRows: number = mapCfg.terrainRows ?? 200;
-  const terrainSeed: number = mapCfg.terrainSeed ?? 1337;
-
-  const cells = generateTerrain(terrainSeed, terrainCols, terrainRows);
-  const rle = rleEncode(cells);
-  const result = { rle, cols: terrainCols, rows: terrainRows };
-  terrainCache.set(worldId, result);
+  const result = await ensureWorldTerrain(worldId === 'local' ? undefined : worldId);
   return c.json(result);
 });

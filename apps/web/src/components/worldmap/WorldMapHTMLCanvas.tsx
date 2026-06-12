@@ -116,7 +116,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   const fogCanvasRef = useRef<HTMLCanvasElement>(null);
   const terrainCanvasRef = useRef<HTMLCanvasElement>(null);
   const proceduralCanvasRef = useRef<HTMLCanvasElement>(null);
-  const [proceduralCells, setProceduralCells] = useState<{ cells: string[]; cols: number; rows: number } | null>(null);
+  const [proceduralCells, setProceduralCells] = useState<{ cells: string[]; cols: number; rows: number; heights?: Uint8Array } | null>(null);
   const weatherRef = useRef<HTMLDivElement>(null);
   // Tracks active paint stroke so dragging paints continuously
   const isPaintingRef = useRef(false);
@@ -238,17 +238,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
 
   // ─── Procedural terrain ──────────────────────────────────────────────────
 
-  // Rich multi-tone palette — each biome has 5 variants for organic micro-variation
-  const TILE_PALETTE: Record<string, [number, number, number][]> = {
-    WATER:    [[22, 58, 95], [16, 46, 78], [28, 70, 112], [18, 52, 88], [24, 64, 104]],
-    COAST:    [[194, 174, 118], [182, 162, 105], [208, 188, 132], [188, 168, 112], [200, 180, 124]],
-    PLAINS:   [[68, 110, 42], [58, 96, 34], [80, 126, 52], [64, 104, 38], [74, 118, 46]],
-    FOREST:   [[34, 74, 22], [26, 60, 16], [42, 86, 28], [30, 68, 18], [38, 80, 24]],
-    MOUNTAIN: [[110, 98, 86], [94, 82, 72], [126, 114, 100], [102, 90, 78], [118, 106, 92]],
-    ROAD:     [[148, 120, 68], [136, 110, 58], [160, 132, 78], [142, 114, 62], [154, 126, 72]],
-  };
-
-  // Fast seeded hash for per-tile color micro-variation (no React state, just math)
+  // Fast seeded hash for micro-variation
   function tileHash(col: number, row: number): number {
     const n = (col * 1619 + row * 31337) | 0;
     return ((n ^ (n << 13)) ^ n) >>> 0;
@@ -263,7 +253,16 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
         for (const [kind, count] of data.rle as Array<[string, number]>) {
           for (let i = 0; i < count; i++) cells.push(kind);
         }
-        setProceduralCells({ cells, cols: data.cols, rows: data.rows });
+        // Decode elevation array (base64 Uint8Array heights 0–100)
+        let heights: Uint8Array | undefined;
+        if (data.elev) {
+          try {
+            const bin = atob(data.elev);
+            heights = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) heights[i] = bin.charCodeAt(i);
+          } catch {}
+        }
+        setProceduralCells({ cells, cols: data.cols, rows: data.rows, heights });
       })
       .catch(() => {});
   }, []);
@@ -273,90 +272,94 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     if (!canvas || !proceduralCells) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const { cells, cols, rows } = proceduralCells;
-    const tileW = worldW / cols;
-    const tileH = worldH / rows;
+    const { cells, cols, rows, heights } = proceduralCells;
 
-    // Build ImageData for maximum performance (avoids fillStyle per tile)
-    const imgData = ctx.createImageData(Math.round(worldW), Math.round(worldH));
+    // Render at half-resolution (SCALE px per tile); CSS stretches to worldW/worldH.
+    // Browser bilinear scaling smooths edges for free.
+    const SCALE = 12;
+    const cW = cols * SCALE;
+    const cH = rows * SCALE;
+    canvas.width = cW;
+    canvas.height = cH;
+
+    const imgData = ctx.createImageData(cW, cH);
     const px = imgData.data;
-    const tw = Math.round(tileW);
-    const th = Math.round(tileH);
-    const canvasW = imgData.width;
 
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        const kind = cells[row * cols + col] ?? "PLAINS";
-        const palette = TILE_PALETTE[kind] ?? TILE_PALETTE.PLAINS;
+    function getH(c: number, r: number): number {
+      if (!heights) return 50;
+      return heights[Math.max(0, Math.min(rows - 1, r)) * cols + Math.max(0, Math.min(cols - 1, c))];
+    }
 
-        // Pick one of the palette variants using a hash of position
-        const h = tileHash(col, row);
-        const [r, g, b] = palette[h % palette.length];
+    function lrp(a: number, b: number, t: number) { return a + (b - a) * t; }
 
-        // Tiny brightness nudge ±6 for organic look without banding
-        const nudge = ((h >> 4) & 15) - 8;
-        const rf = Math.min(255, Math.max(0, r + nudge));
-        const gf = Math.min(255, Math.max(0, g + nudge));
-        const bf = Math.min(255, Math.max(0, b + nudge));
-
-        // Fill every pixel of this tile in the ImageData buffer
-        const x0 = col * tw;
-        const y0 = row * th;
-        const x1 = Math.min(x0 + tw, canvasW);
-        const y1 = Math.min(y0 + th, imgData.height);
-
-        for (let py = y0; py < y1; py++) {
-          for (let px2 = x0; px2 < x1; px2++) {
-            const idx = (py * canvasW + px2) * 4;
-            px[idx]     = rf;
-            px[idx + 1] = gf;
-            px[idx + 2] = bf;
-            px[idx + 3] = 255;
-          }
+    function biomeColor(kind: string, hN: number, tc: number, tr: number): [number, number, number] {
+      const j = ((tileHash(tc, tr) & 15) - 7) * 0.8;
+      switch (kind) {
+        case "WATER": {
+          const t = Math.max(0, Math.min(1, hN / 0.19));
+          return [Math.round(lrp(10, 42, t) + j), Math.round(lrp(30, 88, t) + j), Math.round(lrp(72, 140, t) + j)];
         }
+        case "COAST": {
+          return [Math.round(196 + j), Math.round(176 + j), Math.round(116 + j)];
+        }
+        case "PLAINS": {
+          const t = Math.max(0, Math.min(1, (hN - 0.24) / 0.48));
+          return [Math.round(lrp(64, 82, t) + j), Math.round(lrp(108, 132, t) + j), Math.round(lrp(38, 54, t) + j)];
+        }
+        case "FOREST": {
+          const t = Math.max(0, Math.min(1, (hN - 0.24) / 0.48));
+          return [Math.round(lrp(28, 46, t) + j), Math.round(lrp(66, 88, t) + j), Math.round(lrp(18, 30, t) + j)];
+        }
+        case "MOUNTAIN": {
+          const t = Math.max(0, Math.min(1, (hN - 0.72) / 0.28));
+          return [Math.round(lrp(108, 220, t) + j), Math.round(lrp(94, 218, t) + j), Math.round(lrp(80, 222, t) + j)];
+        }
+        case "ROAD":
+          return [Math.round(148 + j), Math.round(120 + j), Math.round(68 + j)];
+        default:
+          return [80, 80, 80];
+      }
+    }
+
+    for (let py = 0; py < cH; py++) {
+      const tileRow = Math.floor(py / SCALE);
+      const fy = (py % SCALE) / SCALE;
+      for (let px2 = 0; px2 < cW; px2++) {
+        const tileCol = Math.floor(px2 / SCALE);
+        const fx = (px2 % SCALE) / SCALE;
+        const kind = cells[tileRow * cols + tileCol] ?? "PLAINS";
+
+        // Bilinear height interpolation
+        const h00 = getH(tileCol, tileRow);
+        const h10 = getH(tileCol + 1, tileRow);
+        const h01 = getH(tileCol, tileRow + 1);
+        const h11 = getH(tileCol + 1, tileRow + 1);
+        const hVal = h00 * (1 - fx) * (1 - fy) + h10 * fx * (1 - fy) + h01 * (1 - fx) * fy + h11 * fx * fy;
+
+        // Hillshading: NW light
+        const dx = (getH(tileCol + 1, tileRow) - getH(tileCol - 1, tileRow)) * 0.5;
+        const dy = (getH(tileCol, tileRow + 1) - getH(tileCol, tileRow - 1)) * 0.5;
+        const shade = Math.min(1.28, Math.max(0.72, 1 + (dx - dy) * 0.016));
+
+        let [r, g, b] = biomeColor(kind, hVal / 100, tileCol, tileRow);
+        r = Math.min(255, Math.max(0, Math.round(r * shade)));
+        g = Math.min(255, Math.max(0, Math.round(g * shade)));
+        b = Math.min(255, Math.max(0, Math.round(b * shade)));
+
+        const idx = (py * cW + px2) * 4;
+        px[idx] = r; px[idx + 1] = g; px[idx + 2] = b; px[idx + 3] = 255;
       }
     }
 
     ctx.putImageData(imgData, 0, 0);
 
-    // ── Overlay: edge darkening between different biomes ──────────────────
-    // Draw semi-transparent dark border on edges between different terrain types
-    ctx.globalAlpha = 0.18;
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 1;
-    for (let row = 0; row < rows - 1; row++) {
-      for (let col = 0; col < cols - 1; col++) {
-        const cur = cells[row * cols + col];
-        const right = cells[row * cols + col + 1];
-        const down = cells[(row + 1) * cols + col];
-        const x = col * tw;
-        const y = row * th;
-        if (cur !== right) {
-          ctx.beginPath();
-          ctx.moveTo(x + tw, y);
-          ctx.lineTo(x + tw, y + th);
-          ctx.stroke();
-        }
-        if (cur !== down) {
-          ctx.beginPath();
-          ctx.moveTo(x, y + th);
-          ctx.lineTo(x + tw, y + th);
-          ctx.stroke();
-        }
-      }
-    }
-    ctx.globalAlpha = 1;
-
-    // ── Vignette: subtle darkening toward map edges ───────────────────────
-    const vg = ctx.createRadialGradient(
-      worldW / 2, worldH / 2, worldW * 0.25,
-      worldW / 2, worldH / 2, worldW * 0.75
-    );
+    // Vignette
+    const vg = ctx.createRadialGradient(cW / 2, cH / 2, cW * 0.25, cW / 2, cH / 2, cW * 0.75);
     vg.addColorStop(0, "rgba(0,0,0,0)");
     vg.addColorStop(1, "rgba(0,0,0,0.38)");
     ctx.fillStyle = vg;
-    ctx.fillRect(0, 0, worldW, worldH);
-  }, [proceduralCells, worldW, worldH]);
+    ctx.fillRect(0, 0, cW, cH);
+  }, [proceduralCells]);
 
   useEffect(() => { drawProceduralMap(); }, [proceduralCells, drawProceduralMap]);
 
@@ -767,13 +770,11 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
             height: worldH,
           }}
         >
-          {/* Procedural terrain canvas (replaces static image) */}
+          {/* Procedural terrain canvas — internal size set by drawProceduralMap, CSS stretches to world size */}
           <canvas
             ref={proceduralCanvasRef}
             className="absolute inset-0 pointer-events-none"
-            width={worldW}
-            height={worldH}
-            style={{ width: worldW, height: worldH, zIndex: 0 }}
+            style={{ width: worldW, height: worldH, imageRendering: "auto", zIndex: 0 }}
           />
           {/* Fallback static image while procedural terrain loads */}
           {!proceduralCells && (

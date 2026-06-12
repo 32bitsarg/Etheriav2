@@ -1,6 +1,7 @@
 import type { TerrainKind } from "./worldTerrainConfigData.js";
+import { generateHeightmap } from "./azgaarHeightmap.js";
 
-// ── PRNG ─────────────────────────────────────────────────────────────────────
+// ── PRNG (used for moisture + rivers) ────────────────────────────────────────
 
 function mulberry32(seed: number) {
   let s = seed | 0;
@@ -12,7 +13,7 @@ function mulberry32(seed: number) {
   };
 }
 
-// ── VALUE NOISE ───────────────────────────────────────────────────────────────
+// ── VALUE NOISE (for moisture) ────────────────────────────────────────────────
 
 function hash(x: number, y: number, seed: number): number {
   const n = (x * 1619 + y * 31337 + seed * 1013) | 0;
@@ -32,42 +33,24 @@ function valueNoise(x: number, y: number, seed: number): number {
   const ix = Math.floor(x), iy = Math.floor(y);
   const fx = quintic(x - ix), fy = quintic(y - iy);
   return lerp(
-    lerp(hash(ix, iy, seed),     hash(ix + 1, iy, seed),     fx),
+    lerp(hash(ix, iy, seed), hash(ix + 1, iy, seed), fx),
     lerp(hash(ix, iy + 1, seed), hash(ix + 1, iy + 1, seed), fx),
     fy
   );
 }
 
-// ── FRACTAL BROWNIAN MOTION ───────────────────────────────────────────────────
-
 function fbm(x: number, y: number, seed: number, octaves: number): number {
   let v = 0, amp = 0.5, freq = 1.0, max = 0;
   for (let i = 0; i < octaves; i++) {
-    v   += valueNoise(x * freq, y * freq, seed + i * 1997) * amp;
+    v += valueNoise(x * freq, y * freq, seed + i * 1997) * amp;
     max += amp;
-    amp  *= 0.5;
+    amp *= 0.5;
     freq *= 2.0;
   }
   return v / max;
 }
 
-// ── DOMAIN WARPING ────────────────────────────────────────────────────────────
-// Two-level warp (Inigo Quilez) — creates organic, non-circular coastlines.
-// NOTE: warp is applied to raw noise BEFORE redistribution, so it only
-// affects the spatial SHAPE of biomes, not their proportions.
-
-function warpedNoise(x: number, y: number, seed: number): number {
-  const s1 = seed, s2 = seed + 7919, s3 = seed + 15731, s4 = seed + 24137;
-  const qx = fbm(x,           y,           s1, 5);
-  const qy = fbm(x + 5.2,     y + 1.3,     s2, 5);
-  const rx = fbm(x + 4.0*qx + 1.7, y + 4.0*qy + 9.2, s3, 4);
-  const ry = fbm(x + 4.0*qx + 8.3, y + 4.0*qy + 2.8, s4, 4);
-  return fbm(x + 3.0*rx, y + 3.0*ry, seed + 31337, 6);
-}
-
-// ── RANK-PERCENTILE REDISTRIBUTION ───────────────────────────────────────────
-// Maps any noise distribution to a perfectly uniform [0,1].
-// This guarantees exact biome proportions regardless of seed or warp params.
+// ── RANK-PERCENTILE (guarantees uniform biome distribution) ──────────────────
 
 function rankPercentile(arr: Float32Array): Float32Array {
   const n = arr.length;
@@ -81,83 +64,102 @@ function rankPercentile(arr: Float32Array): Float32Array {
 
 // ── TERRAIN GENERATION ────────────────────────────────────────────────────────
 
-export function generateTerrain(seed: number, cols: number, rows: number): TerrainKind[] {
+export type TerrainData = { cells: TerrainKind[]; heights: Uint8Array };
+
+export function generateTerrainData(seed: number, cols: number, rows: number): TerrainData {
   const N = cols * rows;
-  const rng = mulberry32(seed);
+  const rng = mulberry32(seed + 77777);
 
-  const elevSeed  = (seed * 1009 + 7)   | 0;
-  const moistSeed = (seed * 3001 + 17)  | 0;
+  // ── Step 1: Azgaar heightmap ──────────────────────────────────────────────
+  const hg = generateHeightmap(seed, cols, rows);
 
-  // Scale: how many noise units span the full map. Higher = more features.
+  // ── Step 2: Balance land/water ratio ──────────────────────────────────────
+  // Target: 40–60% land. Adjust with Add ops (iterative).
+  for (let attempt = 0; attempt < 12; attempt++) {
+    let landCount = 0;
+    for (let i = 0; i < N; i++) if (hg.h[i] >= 20) landCount++;
+    const ratio = landCount / N;
+    if (ratio >= 0.38 && ratio <= 0.62) break;
+    const delta = ratio < 0.38 ? 3 : -3;
+    for (let i = 0; i < N; i++) hg.h[i] = Math.min(100, Math.max(0, hg.h[i] + delta));
+  }
+
+  // ── Step 3: Moisture via FBM ──────────────────────────────────────────────
+  const moistSeed = (seed * 3001 + 17) | 0;
   const SCALE = 3.5;
-
-  // ── Step 1: Raw noise ─────────────────────────────────────────────────────
-  const elevRaw  = new Float32Array(N);
   const moistRaw = new Float32Array(N);
-
   for (let i = 0; i < N; i++) {
     const col = i % cols;
     const row = Math.floor(i / cols);
-    const wx = (col / cols) * SCALE;
-    const wy = (row / rows) * SCALE;
-    elevRaw[i]  = warpedNoise(wx, wy, elevSeed);
-    // Moisture: plain fbm, heavily offset to decorrelate from elevation
-    moistRaw[i] = fbm(wx + 73.1, wy + 19.7, moistSeed, 5);
+    moistRaw[i] = fbm((col / cols) * SCALE + 73.1, (row / rows) * SCALE + 19.7, moistSeed, 5);
   }
-
-  // ── Step 2: Rank redistribution → perfectly uniform [0,1] ─────────────────
-  const elev  = rankPercentile(elevRaw);
   const moist = rankPercentile(moistRaw);
 
-  // ── Step 3: Island mask on elevation ──────────────────────────────────────
-  // Soft elliptical falloff that pushes only the outer ~30% toward water.
-  // Power of 0.6 makes the transition very gradual so there's no hard border.
+  // ── Step 4: Biome classification ──────────────────────────────────────────
+  const cells: TerrainKind[] = new Array(N);
   for (let i = 0; i < N; i++) {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    const dx = (col / cols - 0.5) * 2; // [-1, 1]
-    const dy = (row / rows - 0.5) * 2;
-    const dist = Math.pow(dx * dx + dy * dy, 0.6); // 0 at center, ~1 at corners
-    const island = Math.max(0, 1 - dist * 0.88);   // only outer ~12% hits 0
-    elev[i] *= island;
+    const h = hg.h[i];
+    const m = moist[i];
+    if (h < 20) cells[i] = "WATER";
+    else if (h < 24) cells[i] = "COAST";
+    else if (h >= 72) cells[i] = "MOUNTAIN";
+    else if (m > 0.55) cells[i] = "FOREST";
+    else cells[i] = "PLAINS";
   }
 
-  // ── Step 4: Second rank pass after island mask ────────────────────────────
-  // Redistribution re-centers the masked elevation so thresholds are stable.
-  const elev2 = rankPercentile(elev);
-
-  // ── Step 5: Whittaker biome classification ────────────────────────────────
-  // Thresholds are percentiles of the UNIFORM distribution, so they directly
-  // control the fraction of tiles for each biome. No seed luck needed.
-  //
-  //  elev2 < 0.35          → WATER     (~35% of map)
-  //  elev2 < 0.43          → COAST     (~8%)
-  //  elev2 ≥ 0.85          → MOUNTAIN  (~15%)
-  //  else, moist < 0.45    → PLAINS    (~22%)
-  //  else                  → FOREST    (~20%)
-
-  const cells: TerrainKind[] = new Array(N);
-
+  // ── Step 5: Rivers (greedy descent to sea) ────────────────────────────────
+  // Find sources at high elevation, well-separated, then descend to water.
+  const highTiles: number[] = [];
   for (let i = 0; i < N; i++) {
-    const e = elev2[i];
-    const m = moist[i];
-
-    if (e < 0.35) {
-      cells[i] = "WATER";
-    } else if (e < 0.43) {
-      cells[i] = "COAST";
-    } else if (e >= 0.85) {
-      cells[i] = "MOUNTAIN";
-    } else if (m < 0.45) {
-      cells[i] = "PLAINS";
-    } else {
-      cells[i] = "FOREST";
+    if (hg.h[i] >= 60 && cells[i] === "MOUNTAIN") highTiles.push(i);
+  }
+  // Shuffle and pick 6 well-separated sources
+  for (let i = highTiles.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [highTiles[i], highTiles[j]] = [highTiles[j], highTiles[i]];
+  }
+  const sources: number[] = [];
+  for (const candidate of highTiles) {
+    const col = candidate % cols;
+    const row = Math.floor(candidate / cols);
+    const tooClose = sources.some(s => {
+      const sc = s % cols;
+      const sr = Math.floor(s / cols);
+      return Math.abs(sc - col) + Math.abs(sr - row) < 25;
+    });
+    if (!tooClose) sources.push(candidate);
+    if (sources.length >= 6) break;
+  }
+  for (const src of sources) {
+    let cur = src;
+    const path = new Set<number>();
+    for (let step = 0; step < cols + rows; step++) {
+      if (hg.h[cur] < 20) break; // reached water
+      path.add(cur);
+      // Find steepest downhill neighbor
+      let best = cur;
+      let bestH = hg.h[cur];
+      const col = cur % cols;
+      const row = Math.floor(cur / cols);
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (!dr && !dc) continue;
+          const nc = col + dc, nr = row + dr;
+          if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+          const ni = nr * cols + nc;
+          if (!path.has(ni) && hg.h[ni] < bestH) { bestH = hg.h[ni]; best = ni; }
+        }
+      }
+      if (best === cur) break; // local minimum — stop
+      cur = best;
+    }
+    // Mark river path as WATER
+    for (const ri of path) {
+      if (cells[ri] !== "WATER") cells[ri] = "WATER";
     }
   }
 
-  // ── Step 6: Smooth isolated specks ───────────────────────────────────────
-  // Any WATER tile surrounded by 6+ land neighbors → COAST (fills tiny water holes)
-  // Any MOUNTAIN tile surrounded by 7 non-mountain → PLAINS (removes orphan peaks)
+  // ── Step 6: Smooth isolated specks ────────────────────────────────────────
   const smoothed = cells.slice();
   for (let row = 1; row < rows - 1; row++) {
     for (let col = 1; col < cols - 1; col++) {
@@ -179,35 +181,16 @@ export function generateTerrain(seed: number, cols: number, rows: number): Terra
     }
   }
 
-  // ── Step 7: Organic roads (1 tile wide, noise-displaced) ─────────────────
-  const centerCol = Math.floor(cols / 2);
-  const centerRow = Math.floor(rows / 2);
+  // ── Step 7: Pack heights into Uint8 ───────────────────────────────────────
+  const heights = new Uint8Array(N);
+  for (let i = 0; i < N; i++) heights[i] = Math.round(Math.min(100, Math.max(0, hg.h[i])));
 
-  for (let col = Math.floor(cols * 0.10); col < Math.floor(cols * 0.90); col++) {
-    const t = (col - cols * 0.10) / (cols * 0.80);
-    const disp = Math.round((rng() - 0.5) * 4 * Math.sin(t * Math.PI));
-    const r = centerRow + disp;
-    if (r >= 0 && r < rows) {
-      const k = smoothed[r * cols + col];
-      if (k !== "WATER" && k !== "MOUNTAIN" && rng() > 0.14) {
-        smoothed[r * cols + col] = "ROAD";
-      }
-    }
-  }
+  return { cells: smoothed, heights };
+}
 
-  for (let row = Math.floor(rows * 0.10); row < Math.floor(rows * 0.90); row++) {
-    const t = (row - rows * 0.10) / (rows * 0.80);
-    const disp = Math.round((rng() - 0.5) * 4 * Math.sin(t * Math.PI));
-    const c = centerCol + disp;
-    if (c >= 0 && c < cols) {
-      const k = smoothed[row * cols + c];
-      if (k !== "WATER" && k !== "MOUNTAIN" && rng() > 0.14) {
-        smoothed[row * cols + c] = "ROAD";
-      }
-    }
-  }
-
-  return smoothed;
+// Compatibility wrapper (returns only cells)
+export function generateTerrain(seed: number, cols: number, rows: number): TerrainKind[] {
+  return generateTerrainData(seed, cols, rows).cells;
 }
 
 // ── RLE ───────────────────────────────────────────────────────────────────────

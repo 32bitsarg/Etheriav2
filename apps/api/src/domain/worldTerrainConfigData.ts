@@ -49,6 +49,15 @@ export const LOCAL_TERRAIN_AREAS: TerrainArea[] = [
 const TERRAIN_KINDS: TerrainKind[] = ["PLAINS", "FOREST", "MOUNTAIN", "WATER", "ROAD", "COAST"];
 let cachedMask: { mtimeMs: number; data: WorldTerrainMaskData | null } | null = null;
 
+// ── Active procedural terrain ─────────────────────────────────────────────────
+// Set by worldTerrainRuntime after generation. Checked first in resolveTerrainAt.
+type ProceduralTerrain = { cols: number; rows: number; cells: TerrainKind[] };
+let activeProcedural: ProceduralTerrain | null = null;
+
+export function setActiveProceduralTerrain(data: ProceduralTerrain | null) {
+  activeProcedural = data;
+}
+
 function getMaskPath() {
   const candidates = [
     path.resolve(process.cwd(), "src", "data", "world-terrain-mask.json"),
@@ -92,6 +101,15 @@ export function worldToNormalized(x: number, y: number, width: number, height: n
 
 export function resolveTerrainAt(x: number, y: number, width: number, height: number): TerrainRule {
   const p = worldToNormalized(x, y, width, height);
+
+  // Check procedural terrain first (registered by worldTerrainRuntime at boot)
+  if (activeProcedural) {
+    const { cols, rows, cells } = activeProcedural;
+    const col = Math.min(cols - 1, Math.max(0, Math.floor(p.x * cols)));
+    const row = Math.min(rows - 1, Math.max(0, Math.floor(p.y * rows)));
+    return TERRAIN_RULES[cells[row * cols + col] ?? "PLAINS"];
+  }
+
   const mask = readTerrainMask();
   if (mask) {
     const col = Math.min(mask.columns - 1, Math.max(0, Math.floor(p.x * mask.columns)));
