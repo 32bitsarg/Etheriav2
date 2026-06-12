@@ -136,9 +136,8 @@ function addPit(g: HeightGrid, rng: RNG, count: number, depth: [number, number],
 }
 
 // Range: draws an organic ridge spine then expands laterally.
-// Fix vs naive impl: spine avoids 45° diagonals by alternating axis movement (Bresenham-style).
-// Lateral expansion uses the ridge CONTRIBUTION (curH at that step), not the total cell height,
-// so it doesn't blow up into a massive plateau.
+// KEY INVARIANT: each step moves EXACTLY ONE cell (H or V), never diagonal.
+// This prevents 45° banding. Axis chosen proportional to remaining distance.
 function addRange(g: HeightGrid, rng: RNG, count: number, height: number, rangeX: [number, number], rangeY: [number, number]) {
   const { h, cols, rows } = g;
   const N = cols * rows;
@@ -150,55 +149,58 @@ function addRange(g: HeightGrid, rng: RNG, count: number, height: number, rangeX
     const toC = Math.floor(rng() * cols);
     const toR = Math.floor(rng() * rows);
 
-    // Step 1: organic spine with Bresenham-style axis alternation (no forced 45° diagonals)
-    const spine: Array<[number, number]> = []; // [cellIndex, contribution at this step]
+    // Step 1: spine — always moves exactly one cell per step (no diagonal)
+    const spine: Array<[number, number]> = [];
     let curC = fromC, curR = fromR, curH = height;
     const spineVisited = new Set<number>();
-    // Accumulate fractional error like Bresenham to decide which axis to advance
-    const totalDC = toC - fromC, totalDR = toR - fromR;
-    let errC = 0, errR = 0;
 
     for (let step = 0; step < (cols + rows) * 4 && curH > 0.5; step++) {
-      const i = Math.max(0, Math.min(rows - 1, curR)) * cols + Math.max(0, Math.min(cols - 1, curC));
-      if (!spineVisited.has(i)) {
-        spineVisited.add(i);
-        h[i] = Math.min(100, h[i] + curH);
-        spine.push([i, curH]);
+      const ci = Math.max(0, Math.min(cols - 1, curC));
+      const ri = Math.max(0, Math.min(rows - 1, curR));
+      const idx = ri * cols + ci;
+      if (!spineVisited.has(idx)) {
+        spineVisited.add(idx);
+        h[idx] = Math.min(100, h[idx] + curH);
+        spine.push([idx, curH]);
       }
       curH *= linePower;
 
-      // 30% pure random walk for organic feel
-      if (rng() < 0.30) {
-        curC += rng() < 0.5 ? 1 : -1;
-        curR += rng() < 0.5 ? 1 : -1;
+      const remC = Math.abs(toC - curC);
+      const remR = Math.abs(toR - curR);
+      const sc = Math.sign(toC - curC) || (rng() < 0.5 ? 1 : -1);
+      const sr = Math.sign(toR - curR) || (rng() < 0.5 ? 1 : -1);
+
+      // 25% single-axis random perturbation (never both axes at once)
+      if (rng() < 0.25) {
+        if (rng() < 0.5) curC += rng() < 0.5 ? 1 : -1;
+        else             curR += rng() < 0.5 ? 1 : -1;
         continue;
       }
 
-      // Bresenham-style: advance one axis at a time based on accumulated error
-      const sc = Math.sign(totalDC) || (rng() < 0.5 ? 1 : -1);
-      const sr = Math.sign(totalDR) || (rng() < 0.5 ? 1 : -1);
-      const remC = Math.abs(toC - curC);
-      const remR = Math.abs(toR - curR);
-
-      if (remC === 0 && remR === 0) { curC += rng() < 0.5 ? 1 : -1; continue; }
-      if (remC === 0) { curR += sr; continue; }
-      if (remR === 0) { curC += sc; continue; }
-
-      errC += remC;
-      errR += remR;
-      // Move along whichever axis has more remaining distance, with some noise
-      if (errC >= errR) { curC += sc; errC -= remC + remR; }
-      else { curR += sr; errR -= remC + remR; }
+      // Choose axis weighted by remaining distance — one axis per step
+      const total = remC + remR;
+      if (total === 0) {
+        if (rng() < 0.5) curC += sc; else curR += sr;
+      } else if (rng() < remC / total) {
+        curC += sc;
+      } else {
+        curR += sr;
+      }
     }
 
-    // Step 2: lateral expansion using CONTRIBUTION (curH), not total cell height
-    const expandPower = linePower * 0.75; // narrower than spine decay
+    // Step 2: lateral expansion using 4-directional BFS (no diagonal spread)
+    // Start value = each spine cell's contribution × damping factor
+    const expandPower = linePower * 0.80;
     const expanded = new Set<number>(spineVisited);
     const bfsQ: [number, number][] = spine.map(([i, contrib]) => [i, contrib * expandPower]);
     while (bfsQ.length) {
       const [i, contrib] = bfsQ.shift()!;
       if (contrib < 0.5) continue;
-      for (const nb of neighbors8(i, cols, rows)) {
+      const r = Math.floor(i / cols), c = i % cols;
+      for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+        const nr = r + dr, nc = c + dc;
+        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+        const nb = nr * cols + nc;
         if (!expanded.has(nb)) {
           expanded.add(nb);
           h[nb] = Math.min(100, h[nb] + contrib);
@@ -210,7 +212,11 @@ function addRange(g: HeightGrid, rng: RNG, count: number, height: number, rangeX
     // Step 3: prominence bumps along spine
     for (let si = 0; si < spine.length; si += 6) {
       const ridgeH = h[spine[si][0]];
-      for (const nb of neighbors8(spine[si][0], cols, rows)) {
+      const r = Math.floor(spine[si][0] / cols), c = spine[si][0] % cols;
+      for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]]) {
+        const nr = r + dr, nc = c + dc;
+        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+        const nb = nr * cols + nc;
         if (h[nb] < ridgeH * 0.8) h[nb] = (ridgeH * 2 + h[nb]) / 3;
       }
     }
@@ -228,15 +234,23 @@ function addTrough(g: HeightGrid, rng: RNG, count: number, depth: number, rangeX
     const toR = Math.floor(rng() * rows);
     let curC = fromC, curR = fromR, curD = depth;
     for (let step = 0; step < (cols + rows) * 3 && curD > 0.5; step++) {
-      const i = Math.max(0, Math.min(rows - 1, curR)) * cols + Math.max(0, Math.min(cols - 1, curC));
-      h[i] = Math.max(0, h[i] - curD);
+      const ci = Math.max(0, Math.min(cols - 1, curC));
+      const ri = Math.max(0, Math.min(rows - 1, curR));
+      h[ri * cols + ci] = Math.max(0, h[ri * cols + ci] - curD);
       curD *= linePower;
-      if (rng() < 0.15) {
-        curC += rng() < 0.5 ? 1 : -1;
-        curR += rng() < 0.5 ? 1 : -1;
+      // Single-axis step per iteration — no diagonal movement
+      const remC = Math.abs(toC - curC);
+      const remR = Math.abs(toR - curR);
+      const sc = Math.sign(toC - curC) || (rng() < 0.5 ? 1 : -1);
+      const sr = Math.sign(toR - curR) || (rng() < 0.5 ? 1 : -1);
+      if (rng() < 0.25) {
+        if (rng() < 0.5) curC += rng() < 0.5 ? 1 : -1;
+        else             curR += rng() < 0.5 ? 1 : -1;
       } else {
-        curC += Math.sign(toC - curC) || (rng() < 0.5 ? 1 : -1);
-        curR += Math.sign(toR - curR) || (rng() < 0.5 ? 1 : -1);
+        const total = remC + remR;
+        if (total === 0) { if (rng() < 0.5) curC += sc; else curR += sr; }
+        else if (rng() < remC / total) curC += sc;
+        else curR += sr;
       }
     }
   }
