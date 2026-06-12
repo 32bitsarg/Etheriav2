@@ -128,17 +128,19 @@ function traceFluxRivers(
     if (bestNb >= 0) flux[bestNb] += flux[i];
   }
 
-  // MIN_FLUX threshold — tuned so ~10 rivers form in the continental map.
-  // Lower = more rivers. Scale with grid size.
-  const MIN_FLUX = Math.max(8, cols * rows / 8000);
+  // MIN_FLUX threshold — percent of max flux so rivers scale correctly regardless of grid size.
+  // Use top 1.5% of land-flux cells as rivers; widest 0.3% become WATER.
+  const landFluxValues = landCells.map(i => flux[i]).filter(f => f > 0);
+  landFluxValues.sort((a, b) => a - b);
+  const pct985 = landFluxValues[Math.floor(landFluxValues.length * 0.985)] ?? 999999;
+  const pct997 = landFluxValues[Math.floor(landFluxValues.length * 0.997)] ?? 999999;
 
-  // Mark river tiles — but only on land, not mountains or coasts
-  // Use flux magnitude to determine river size: thin tributaries vs wide rivers
   for (let i = 0; i < N; i++) {
-    if (h[i] < 20 || h[i] >= 72) continue; // skip water and mountains
-    if (flux[i] >= MIN_FLUX) {
-      // Wide rivers (very high flux) paint WATER; narrow paint COAST (shoreline color)
-      cells[i] = flux[i] >= MIN_FLUX * 6 ? "WATER" : "COAST";
+    if (h[i] < 20 || h[i] >= 72) continue;
+    if (flux[i] >= pct997) {
+      cells[i] = "WATER"; // wide river mouths
+    } else if (flux[i] >= pct985) {
+      cells[i] = "COAST"; // narrow tributaries shown as coastal color
     }
   }
 }
