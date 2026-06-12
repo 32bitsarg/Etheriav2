@@ -130,7 +130,9 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   const halfW = Math.floor(worldW / 2);
   const halfH = Math.floor(worldH / 2);
 
-  const zMin = mapConfig?.cameraMinZoom ?? 0.5;
+  // Minimum zoom: always cover the full viewport so no black edges show
+  const coverZoomMin = Math.max(size.w / worldW, size.h / worldH);
+  const zMin = Math.max(mapConfig?.cameraMinZoom ?? 0.25, coverZoomMin);
   const zMax = mapConfig?.cameraMaxZoom ?? 2.4;
 
   // ─── Coordinate transforms ──────────────────────────────────────────────
@@ -253,14 +255,21 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
 
   // ─── Procedural terrain ──────────────────────────────────────────────────
 
-  const TILE_COLORS: Record<string, string> = {
-    WATER: "#1a4d6e",
-    COAST: "#6b8c42",
-    PLAINS: "#3d6b24",
-    FOREST: "#1e4a12",
-    MOUNTAIN: "#5e5047",
-    ROAD: "#9c7c3a",
+  // Rich multi-tone palette — each biome has base + dark + light for micro-variation
+  const TILE_PALETTE: Record<string, [number, number, number][]> = {
+    WATER:    [[18, 52, 88], [14, 42, 74], [22, 64, 108], [16, 48, 96], [20, 58, 100]],
+    COAST:    [[194, 178, 128], [180, 165, 112], [208, 192, 140], [188, 172, 120], [200, 185, 132]],
+    PLAINS:   [[74, 118, 46], [62, 104, 38], [86, 132, 54], [70, 112, 42], [80, 124, 50]],
+    FOREST:   [[32, 72, 24], [24, 58, 18], [40, 84, 30], [28, 66, 20], [36, 78, 26]],
+    MOUNTAIN: [[108, 96, 84], [92, 80, 70], [124, 112, 98], [100, 88, 76], [116, 104, 90]],
+    ROAD:     [[158, 132, 78], [144, 120, 66], [170, 144, 90], [152, 126, 72], [162, 138, 84]],
   };
+
+  // Fast seeded hash for per-tile color micro-variation (no React state, just math)
+  function tileHash(col: number, row: number): number {
+    const n = (col * 1619 + row * 31337) | 0;
+    return ((n ^ (n << 13)) ^ n) >>> 0;
+  }
 
   useEffect(() => {
     fetch("/api/world/terrain")
@@ -284,13 +293,86 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     const { cells, cols, rows } = proceduralCells;
     const tileW = worldW / cols;
     const tileH = worldH / rows;
+
+    // Build ImageData for maximum performance (avoids fillStyle per tile)
+    const imgData = ctx.createImageData(Math.round(worldW), Math.round(worldH));
+    const px = imgData.data;
+    const tw = Math.round(tileW);
+    const th = Math.round(tileH);
+    const canvasW = imgData.width;
+
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         const kind = cells[row * cols + col] ?? "PLAINS";
-        ctx.fillStyle = TILE_COLORS[kind] ?? TILE_COLORS.PLAINS;
-        ctx.fillRect(col * tileW, row * tileH, Math.ceil(tileW), Math.ceil(tileH));
+        const palette = TILE_PALETTE[kind] ?? TILE_PALETTE.PLAINS;
+
+        // Pick one of the palette variants using a hash of position
+        const h = tileHash(col, row);
+        const [r, g, b] = palette[h % palette.length];
+
+        // Tiny brightness nudge ±6 for organic look without banding
+        const nudge = ((h >> 4) & 15) - 8;
+        const rf = Math.min(255, Math.max(0, r + nudge));
+        const gf = Math.min(255, Math.max(0, g + nudge));
+        const bf = Math.min(255, Math.max(0, b + nudge));
+
+        // Fill every pixel of this tile in the ImageData buffer
+        const x0 = col * tw;
+        const y0 = row * th;
+        const x1 = Math.min(x0 + tw, canvasW);
+        const y1 = Math.min(y0 + th, imgData.height);
+
+        for (let py = y0; py < y1; py++) {
+          for (let px2 = x0; px2 < x1; px2++) {
+            const idx = (py * canvasW + px2) * 4;
+            px[idx]     = rf;
+            px[idx + 1] = gf;
+            px[idx + 2] = bf;
+            px[idx + 3] = 255;
+          }
+        }
       }
     }
+
+    ctx.putImageData(imgData, 0, 0);
+
+    // ── Overlay: edge darkening between different biomes ──────────────────
+    // Draw semi-transparent dark border on edges between different terrain types
+    ctx.globalAlpha = 0.18;
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 1;
+    for (let row = 0; row < rows - 1; row++) {
+      for (let col = 0; col < cols - 1; col++) {
+        const cur = cells[row * cols + col];
+        const right = cells[row * cols + col + 1];
+        const down = cells[(row + 1) * cols + col];
+        const x = col * tw;
+        const y = row * th;
+        if (cur !== right) {
+          ctx.beginPath();
+          ctx.moveTo(x + tw, y);
+          ctx.lineTo(x + tw, y + th);
+          ctx.stroke();
+        }
+        if (cur !== down) {
+          ctx.beginPath();
+          ctx.moveTo(x, y + th);
+          ctx.lineTo(x + tw, y + th);
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    // ── Vignette: subtle darkening toward map edges ───────────────────────
+    const vg = ctx.createRadialGradient(
+      worldW / 2, worldH / 2, worldW * 0.25,
+      worldW / 2, worldH / 2, worldW * 0.75
+    );
+    vg.addColorStop(0, "rgba(0,0,0,0)");
+    vg.addColorStop(1, "rgba(0,0,0,0.38)");
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, worldW, worldH);
   }, [proceduralCells, worldW, worldH]);
 
   useEffect(() => { drawProceduralMap(); }, [proceduralCells, drawProceduralMap]);
@@ -480,7 +562,9 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     const vh = outerRef.current?.clientHeight ?? 0;
     if (vw < 50 || vh < 50) return;
 
-    const initialZoom = mapConfig.cameraInitialZoom;
+    // Compute zoom so map fills the entire viewport (cover, not contain)
+    const coverZoom = Math.max(vw / worldW, vh / worldH);
+    const initialZoom = Math.min(zMax, Math.max(zMin, mapConfig.cameraInitialZoom ?? coverZoom));
     const myCity = myCityId ? cities.find(c => c.id === myCityId) : null;
     const target = myCity ?? (cities[0] ?? null);
 
