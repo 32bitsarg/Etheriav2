@@ -29,12 +29,10 @@ function lerp(a: number, b: number, t: number): number {
 }
 
 function valueNoise(x: number, y: number, seed: number): number {
-  const ix = Math.floor(x);
-  const iy = Math.floor(y);
-  const fx = quintic(x - ix);
-  const fy = quintic(y - iy);
+  const ix = Math.floor(x), iy = Math.floor(y);
+  const fx = quintic(x - ix), fy = quintic(y - iy);
   return lerp(
-    lerp(hash(ix, iy, seed), hash(ix + 1, iy, seed), fx),
+    lerp(hash(ix, iy, seed),     hash(ix + 1, iy, seed),     fx),
     lerp(hash(ix, iy + 1, seed), hash(ix + 1, iy + 1, seed), fx),
     fy
   );
@@ -42,186 +40,168 @@ function valueNoise(x: number, y: number, seed: number): number {
 
 // ── FRACTAL BROWNIAN MOTION ───────────────────────────────────────────────────
 
-function fbm(x: number, y: number, seed: number, octaves: number, lacunarity = 2.0, gain = 0.5): number {
+function fbm(x: number, y: number, seed: number, octaves: number): number {
   let v = 0, amp = 0.5, freq = 1.0, max = 0;
   for (let i = 0; i < octaves; i++) {
-    v += valueNoise(x * freq, y * freq, seed + i * 1997) * amp;
+    v   += valueNoise(x * freq, y * freq, seed + i * 1997) * amp;
     max += amp;
-    amp *= gain;
-    freq *= lacunarity;
+    amp  *= 0.5;
+    freq *= 2.0;
   }
   return v / max;
 }
 
-// ── DOMAIN WARPING (Inigo Quilez two-level) ───────────────────────────────────
+// ── DOMAIN WARPING ────────────────────────────────────────────────────────────
+// Two-level warp (Inigo Quilez) — creates organic, non-circular coastlines.
+// NOTE: warp is applied to raw noise BEFORE redistribution, so it only
+// affects the spatial SHAPE of biomes, not their proportions.
 
 function warpedNoise(x: number, y: number, seed: number): number {
-  const s1 = seed;
-  const s2 = seed + 7919;
-  const s3 = seed + 15731;
-  const s4 = seed + 24137;
+  const s1 = seed, s2 = seed + 7919, s3 = seed + 15731, s4 = seed + 24137;
+  const qx = fbm(x,           y,           s1, 5);
+  const qy = fbm(x + 5.2,     y + 1.3,     s2, 5);
+  const rx = fbm(x + 4.0*qx + 1.7, y + 4.0*qy + 9.2, s3, 4);
+  const ry = fbm(x + 4.0*qx + 8.3, y + 4.0*qy + 2.8, s4, 4);
+  return fbm(x + 3.0*rx, y + 3.0*ry, seed + 31337, 6);
+}
 
-  const qx = fbm(x,        y,        s1, 5);
-  const qy = fbm(x + 5.2,  y + 1.3,  s2, 5);
-  const rx = fbm(x + 4.0 * qx + 1.7, y + 4.0 * qy + 9.2, s3, 4);
-  const ry = fbm(x + 4.0 * qx + 8.3, y + 4.0 * qy + 2.8, s4, 4);
+// ── RANK-PERCENTILE REDISTRIBUTION ───────────────────────────────────────────
+// Maps any noise distribution to a perfectly uniform [0,1].
+// This guarantees exact biome proportions regardless of seed or warp params.
 
-  return fbm(x + 3.5 * rx, y + 3.5 * ry, seed + 31337, 6);
+function rankPercentile(arr: Float32Array): Float32Array {
+  const n = arr.length;
+  const indices = new Uint32Array(n);
+  for (let i = 0; i < n; i++) indices[i] = i;
+  indices.sort((a, b) => arr[a] - arr[b]);
+  const result = new Float32Array(n);
+  for (let rank = 0; rank < n; rank++) result[indices[rank]] = rank / (n - 1);
+  return result;
 }
 
 // ── TERRAIN GENERATION ────────────────────────────────────────────────────────
 
 export function generateTerrain(seed: number, cols: number, rows: number): TerrainKind[] {
+  const N = cols * rows;
   const rng = mulberry32(seed);
 
-  // Per-layer seeds — prevent correlation
-  const contSeed  = (seed * 1009 + 7)    | 0;  // continental low-freq shape
-  const detSeed   = (seed * 2003 + 13)   | 0;  // warped detail
-  const moistSeed = (seed * 3001 + 17)   | 0;  // moisture
-  const tempSeed  = (seed * 4007 + 23)   | 0;  // temperature
-  const ridgeSeed = (seed * 5003 + 31)   | 0;  // mountain ridges
+  const elevSeed  = (seed * 1009 + 7)   | 0;
+  const moistSeed = (seed * 3001 + 17)  | 0;
 
-  // Continental scale — low frequency determines macro land shape
-  const CONT_SCALE   = 1.8;  // large features
-  const DETAIL_SCALE = 3.5;  // fine detail (domain warped)
-  const MOIST_SCALE  = 2.8;
-  const TEMP_SCALE   = 2.0;
-  const RIDGE_SCALE  = 2.6;
+  // Scale: how many noise units span the full map. Higher = more features.
+  const SCALE = 3.5;
 
-  // Edge falloff: push outermost 14% to ocean
-  const MARGIN = 0.14;
-  const marginCols = Math.floor(cols * MARGIN);
-  const marginRows = Math.floor(rows * MARGIN);
+  // ── Step 1: Raw noise ─────────────────────────────────────────────────────
+  const elevRaw  = new Float32Array(N);
+  const moistRaw = new Float32Array(N);
 
-  const cells: TerrainKind[] = new Array(cols * rows);
+  for (let i = 0; i < N; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const wx = (col / cols) * SCALE;
+    const wy = (row / rows) * SCALE;
+    elevRaw[i]  = warpedNoise(wx, wy, elevSeed);
+    // Moisture: plain fbm, heavily offset to decorrelate from elevation
+    moistRaw[i] = fbm(wx + 73.1, wy + 19.7, moistSeed, 5);
+  }
 
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
+  // ── Step 2: Rank redistribution → perfectly uniform [0,1] ─────────────────
+  const elev  = rankPercentile(elevRaw);
+  const moist = rankPercentile(moistRaw);
 
-      // ── Elevation ─────────────────────────────────────────────────────
-      const cx = (col / cols) * CONT_SCALE;
-      const cy = (row / rows) * CONT_SCALE;
-      const dx = (col / cols) * DETAIL_SCALE;
-      const dy = (row / rows) * DETAIL_SCALE;
+  // ── Step 3: Island mask on elevation ──────────────────────────────────────
+  // Soft elliptical falloff that pushes only the outer ~30% toward water.
+  // Power of 0.6 makes the transition very gradual so there's no hard border.
+  for (let i = 0; i < N; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const dx = (col / cols - 0.5) * 2; // [-1, 1]
+    const dy = (row / rows - 0.5) * 2;
+    const dist = Math.pow(dx * dx + dy * dy, 0.6); // 0 at center, ~1 at corners
+    const island = Math.max(0, 1 - dist * 0.88);   // only outer ~12% hits 0
+    elev[i] *= island;
+  }
 
-      // Continental noise: low frequency, determines overall land masses
-      const continental = fbm(cx, cy, contSeed, 4);
+  // ── Step 4: Second rank pass after island mask ────────────────────────────
+  // Redistribution re-centers the masked elevation so thresholds are stable.
+  const elev2 = rankPercentile(elev);
 
-      // Warped detail: high frequency domain-warped for organic coasts
-      const detail = warpedNoise(dx, dy, detSeed);
+  // ── Step 5: Whittaker biome classification ────────────────────────────────
+  // Thresholds are percentiles of the UNIFORM distribution, so they directly
+  // control the fraction of tiles for each biome. No seed luck needed.
+  //
+  //  elev2 < 0.35          → WATER     (~35% of map)
+  //  elev2 < 0.43          → COAST     (~8%)
+  //  elev2 ≥ 0.85          → MOUNTAIN  (~15%)
+  //  else, moist < 0.45    → PLAINS    (~22%)
+  //  else                  → FOREST    (~20%)
 
-      // Blend: continental drives the macro shape, detail adds variety
-      let elevation = 0.55 * continental + 0.45 * detail;
+  const cells: TerrainKind[] = new Array(N);
 
-      // ── Edge falloff (ocean border) ────────────────────────────────────
-      // Only affects the outer MARGIN of the map — pulls toward 0 (WATER)
-      const edgeX = Math.min(col, cols - 1 - col) / marginCols;
-      const edgeY = Math.min(row, rows - 1 - row) / marginRows;
-      const edgeFactor = Math.min(edgeX, edgeY, 1.0);
-      const smoothEdge = edgeFactor * edgeFactor * (3 - 2 * edgeFactor); // smoothstep
-      elevation = elevation * smoothEdge;
+  for (let i = 0; i < N; i++) {
+    const e = elev2[i];
+    const m = moist[i];
 
-      // ── Ridge boost for mountain chains ───────────────────────────────
-      if (elevation > 0.52) {
-        const rx = (col / cols) * RIDGE_SCALE;
-        const ry = (row / rows) * RIDGE_SCALE;
-        const ridgeRaw = fbm(rx, ry, ridgeSeed, 3);
-        const ridge = 1.0 - Math.abs(2 * ridgeRaw - 1); // peaks at 0.5
-        elevation += ridge * 0.11 * Math.max(0, elevation - 0.52);
-      }
-
-      // ── Moisture + temperature ─────────────────────────────────────────
-      const mx = (col / cols) * MOIST_SCALE;
-      const my = (row / rows) * MOIST_SCALE;
-      const moisture = fbm(mx + 17.3, my + 4.1, moistSeed, 5);
-
-      const tx = (col / cols) * TEMP_SCALE;
-      const ty = (row / rows) * TEMP_SCALE;
-      const tempNoise = fbm(tx + 3.7, ty + 11.5, tempSeed, 3);
-      // Temperature: warmer toward equator (center row), cooler toward poles
-      const latitude = Math.abs((row / rows) - 0.5) * 2; // 0=equator, 1=pole
-      const temperature = (1 - latitude * 0.5) * 0.7 + tempNoise * 0.3;
-
-      // ── Biome classification ───────────────────────────────────────────
-      let kind: TerrainKind;
-
-      if (elevation < 0.36) {
-        kind = "WATER";
-      } else if (elevation < 0.43) {
-        kind = "COAST";
-      } else if (elevation > 0.76) {
-        kind = "MOUNTAIN";
-      } else if (elevation > 0.62) {
-        // High mid elevation
-        if (moisture > 0.52) kind = "FOREST";
-        else kind = "MOUNTAIN";
-      } else {
-        // Mid elevation — moisture + temperature determine biome
-        if (moisture > 0.65) {
-          kind = "FOREST";
-        } else if (moisture > 0.50 && temperature > 0.52) {
-          kind = "FOREST";
-        } else {
-          kind = "PLAINS";
-        }
-      }
-
-      cells[row * cols + col] = kind;
+    if (e < 0.35) {
+      cells[i] = "WATER";
+    } else if (e < 0.43) {
+      cells[i] = "COAST";
+    } else if (e >= 0.85) {
+      cells[i] = "MOUNTAIN";
+    } else if (m < 0.45) {
+      cells[i] = "PLAINS";
+    } else {
+      cells[i] = "FOREST";
     }
   }
 
-  // ── Post-process: remove isolated specks ─────────────────────────────────
+  // ── Step 6: Smooth isolated specks ───────────────────────────────────────
+  // Any WATER tile surrounded by 6+ land neighbors → COAST (fills tiny water holes)
+  // Any MOUNTAIN tile surrounded by 7 non-mountain → PLAINS (removes orphan peaks)
   const smoothed = cells.slice();
   for (let row = 1; row < rows - 1; row++) {
     for (let col = 1; col < cols - 1; col++) {
       const i = row * cols + col;
       const kind = cells[i];
-
       if (kind === "WATER") {
-        let landCount = 0;
+        let land = 0;
         for (let dr = -1; dr <= 1; dr++)
           for (let dc = -1; dc <= 1; dc++)
-            if ((dr || dc) && cells[(row + dr) * cols + (col + dc)] !== "WATER") landCount++;
-        if (landCount >= 6) smoothed[i] = "COAST";
+            if ((dr || dc) && cells[(row + dr) * cols + (col + dc)] !== "WATER") land++;
+        if (land >= 6) smoothed[i] = "COAST";
       } else if (kind === "MOUNTAIN") {
-        let nonMountain = 0;
+        let other = 0;
         for (let dr = -1; dr <= 1; dr++)
           for (let dc = -1; dc <= 1; dc++)
-            if ((dr || dc) && cells[(row + dr) * cols + (col + dc)] !== "MOUNTAIN") nonMountain++;
-        if (nonMountain >= 7) smoothed[i] = "PLAINS";
+            if ((dr || dc) && cells[(row + dr) * cols + (col + dc)] !== "MOUNTAIN") other++;
+        if (other >= 7) smoothed[i] = "PLAINS";
       }
     }
   }
 
-  // ── Post-process: organic roads (1 tile wide, noise-displaced) ───────────
-  // Roads only placed on existing land — skip WATER and MOUNTAIN
+  // ── Step 7: Organic roads (1 tile wide, noise-displaced) ─────────────────
   const centerCol = Math.floor(cols / 2);
   const centerRow = Math.floor(rows / 2);
 
-  // Horizontal road
   for (let col = Math.floor(cols * 0.10); col < Math.floor(cols * 0.90); col++) {
     const t = (col - cols * 0.10) / (cols * 0.80);
-    // Smooth displacement: more wiggly in the middle, anchored at ends
-    const maxDisp = 3;
-    const disp = Math.round((rng() - 0.5) * maxDisp * Math.sin(t * Math.PI));
+    const disp = Math.round((rng() - 0.5) * 4 * Math.sin(t * Math.PI));
     const r = centerRow + disp;
-    if (r >= 1 && r < rows - 1) {
+    if (r >= 0 && r < rows) {
       const k = smoothed[r * cols + col];
-      if (k !== "WATER" && k !== "MOUNTAIN" && rng() > 0.12) {
+      if (k !== "WATER" && k !== "MOUNTAIN" && rng() > 0.14) {
         smoothed[r * cols + col] = "ROAD";
       }
     }
   }
 
-  // Vertical road
   for (let row = Math.floor(rows * 0.10); row < Math.floor(rows * 0.90); row++) {
     const t = (row - rows * 0.10) / (rows * 0.80);
-    const maxDisp = 3;
-    const disp = Math.round((rng() - 0.5) * maxDisp * Math.sin(t * Math.PI));
+    const disp = Math.round((rng() - 0.5) * 4 * Math.sin(t * Math.PI));
     const c = centerCol + disp;
-    if (c >= 1 && c < cols - 1) {
+    if (c >= 0 && c < cols) {
       const k = smoothed[row * cols + c];
-      if (k !== "WATER" && k !== "MOUNTAIN" && rng() > 0.12) {
+      if (k !== "WATER" && k !== "MOUNTAIN" && rng() > 0.14) {
         smoothed[row * cols + c] = "ROAD";
       }
     }
