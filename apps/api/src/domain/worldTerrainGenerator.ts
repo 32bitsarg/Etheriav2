@@ -1,5 +1,6 @@
 import type { TerrainKind } from "./worldTerrainConfigData.js";
-import { generateHeightmap } from "./azgaarHeightmap.js";
+import { generateCellHeightmap } from "./voronoiHeightmap.js";
+import { buildSiteOfPixel } from "./voronoiGraph.js";
 
 // ── PRNG ─────────────────────────────────────────────────────────────────────
 
@@ -150,8 +151,38 @@ export function generateTerrainData(seed: number, cols: number, rows: number): T
   const N = cols * rows;
   const rng = mulberry32(seed + 77777);
 
-  // ── Step 1: Azgaar heightmap ──────────────────────────────────────────────
-  const hg = generateHeightmap(seed, cols, rows);
+  // ── Step 1: Voronoi-cell heightmap, rasterized to the grid ────────────────
+  // Generation happens on an irregular Voronoi cell graph (organic, no grid
+  // artifacts), then every grid pixel takes its owning cell's height.
+  const targetCells = Math.max(2000, Math.min(30000, Math.round(N / 18)));
+  const cellHm = generateCellHeightmap(seed, cols, rows, targetCells);
+  // Domain-warp the rasterization so coastlines and biome edges are organic, not faceted.
+  const siteOfPixel = buildSiteOfPixel(cellHm.graph, { seed: (seed * 7919 + 13) | 0, warpAmp: 5, warpScale: 0.05 });
+  const hg = { h: new Float32Array(N), cols, rows };
+  for (let i = 0; i < N; i++) hg.h[i] = cellHm.height[siteOfPixel[i]];
+
+  // Each Voronoi cell rasterizes to a flat-height region; without smoothing,
+  // height-derived fields (temperature, biome cuts) follow the cell facets and
+  // look blocky. A couple of light box-blur passes turn the flat cells into
+  // smooth gradients → organic coastlines, relief and biome boundaries.
+  {
+    for (let pass = 0; pass < 2; pass++) {
+      const src = hg.h.slice();
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          let sum = 0, cnt = 0;
+          for (let dr = -1; dr <= 1; dr++) {
+            const nr = row + dr; if (nr < 0 || nr >= rows) continue;
+            for (let dc = -1; dc <= 1; dc++) {
+              const nc = col + dc; if (nc < 0 || nc >= cols) continue;
+              sum += src[nr * cols + nc]; cnt++;
+            }
+          }
+          hg.h[row * cols + col] = sum / cnt;
+        }
+      }
+    }
+  }
 
   // ── Step 2: Balance land/water ratio ──────────────────────────────────────
   // Target: 82–92% land (continent map).
@@ -235,13 +266,36 @@ export function generateTerrainData(seed: number, cols: number, rows: number): T
 
   // ── Step 4: Moisture via FBM + water proximity ────────────────────────────
   const moistSeed = (seed * 3001 + 17) | 0;
-  // Scale FBM to grid size — 4 cycles across the grid regardless of resolution
-  const SCALE = 4.0;
+  // Three balanced octave bands (broad climate + mid detail + fine grain). Mixing
+  // in stronger mid/high frequencies keeps the field from collapsing into broad
+  // flat plateaus (which a low-freq-dominated FBM does), so the moisture has good
+  // natural variance and biomes interleave without large uniform blocks.
+  // Spectral synthesis: sum of random sinusoids. Unlike value-noise FBM (which
+  // saturates into broad flat plateaus → histogram spikes → rank step-function →
+  // rectangle artifacts), a sum of ~14 waves is a smooth near-Gaussian field with
+  // NO plateaus, so rankPercentile maps it to a clean uniform distribution.
   const moistRaw = new Float32Array(N);
-  for (let i = 0; i < N; i++) {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    moistRaw[i] = fbm((col / cols) * SCALE + 73.1, (row / rows) * SCALE + 19.7, moistSeed, 6);
+  {
+    const wr = mulberry32(moistSeed ^ 0x5bd1e995);
+    const K = 14;
+    const fx = new Float64Array(K), fy = new Float64Array(K), ph = new Float64Array(K), am = new Float64Array(K);
+    let ampNorm = 0;
+    for (let k = 0; k < K; k++) {
+      // frequencies from broad (continents) to fine (groves), in radians per unit
+      const scale = 2.0 + 22.0 * Math.pow(k / (K - 1), 1.6);
+      const ang = wr() * Math.PI * 2;
+      fx[k] = Math.cos(ang) * scale * Math.PI * 2;
+      fy[k] = Math.sin(ang) * scale * Math.PI * 2;
+      ph[k] = wr() * Math.PI * 2;
+      am[k] = 1 / (1 + scale * 0.12); // lower amplitude for finer waves
+      ampNorm += am[k];
+    }
+    for (let i = 0; i < N; i++) {
+      const x = (i % cols) / cols, y = ((i / cols) | 0) / rows;
+      let v = 0;
+      for (let k = 0; k < K; k++) v += am[k] * Math.sin(fx[k] * x + fy[k] * y + ph[k]);
+      moistRaw[i] = 0.5 + 0.5 * (v / ampNorm); // → [0,1], centered
+    }
   }
 
   // BFS water proximity (max 15 tiles → normalized 0–1)
@@ -275,61 +329,140 @@ export function generateTerrainData(seed: number, cols: number, rows: number): T
     }
   }
 
-  // Blend: 65% FBM + 35% water proximity, then rank-percentile
+  // Blend FBM + water proximity, then map to [0,1] with a STANDARDIZED (z-score)
+  // linear transform — deliberately NOT rankPercentile. rankPercentile over a
+  // field with dense value clusters (FBM plateaus) becomes a near-step transfer
+  // function that amplifies tiny variations into sharp-edged AXIS-ALIGNED biome
+  // rectangles. A continuous z-score map keeps every biome boundary a smooth
+  // contour, and mean/std are seed-stable so biome proportions stay consistent.
+  // rankPercentile gives the seed-stable uniform distribution we want (consistent
+  // biome proportions). Its failure mode is sharp edges: where the FBM saturates
+  // into a flat plateau (a histogram spike), the rank becomes a step function and
+  // its index tie-break carves AXIS-ALIGNED RECTANGLES. We then SPATIALLY BLUR the
+  // rank field: a flat rectangle of rank 0 surrounded by rank ~0.6 becomes a
+  // smooth gradient, so the biome threshold contour is an organic curve, not a
+  // straight edge — keeping rank's good distribution while removing the artifact.
   const moistBlended = new Float32Array(N);
-  for (let i = 0; i < N; i++) moistBlended[i] = moistRaw[i] * 0.65 + waterProx[i] * 0.35;
+  for (let i = 0; i < N; i++) moistBlended[i] = moistRaw[i] * 0.72 + waterProx[i] * 0.28;
   const moist = rankPercentile(moistBlended);
+  for (let pass = 0; pass < 3; pass++) {
+    const src = moist.slice();
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        let s = 0, c = 0;
+        for (let dr = -1; dr <= 1; dr++) {
+          const nr = row + dr; if (nr < 0 || nr >= rows) continue;
+          for (let dc = -1; dc <= 1; dc++) {
+            const nc = col + dc; if (nc < 0 || nc >= cols) continue;
+            s += src[nr * cols + nc]; c++;
+          }
+        }
+        moist[row * cols + col] = s / c;
+      }
+    }
+  }
 
-  // ── Step 5: Biome classification ──────────────────────────────────────────
-  // Temperature proxy: latitude (row) — north is colder.
+  // ── Step 5: Biome classification (Whittaker: temperature × moisture × elev) ─
+  // Temperature field: north (row 0) is cold, south is warm; high elevation cools.
   const cells: TerrainKind[] = new Array(N);
   for (let i = 0; i < N; i++) {
     const h = hg.h[i];
     const m = moist[i];
     const row = Math.floor(i / cols);
-    const latNorm = row / (rows - 1); // 0=north, 1=south
+    const latNorm = row / (rows - 1); // 0=north(cold), 1=south(warm)
 
     if (h < 20) { cells[i] = "WATER"; continue; }
-    if (h < 27) { cells[i] = "COAST"; continue; }
-    if (h >= 78) { cells[i] = "MOUNTAIN"; continue; }
 
-    // High altitude frost line varies by latitude
-    const frostLine = 68 - latNorm * 8; // 60–68 range
-    if (h >= frostLine && m < 0.4) { cells[i] = "MOUNTAIN"; continue; }
+    // Elevation bands first (relief). Heights were redistributed so these are stable:
+    // top ~12% reach MOUNTAIN, the next band is HILLS.
+    if (h >= 75) { cells[i] = "MOUNTAIN"; continue; }
 
-    // Moisture + latitude → biome
-    if (m > 0.62) {
-      cells[i] = "FOREST";
-    } else if (m > 0.35) {
-      cells[i] = "PLAINS";
-    } else {
-      // Dry areas: plains near equator, more plains elsewhere (no desert type)
-      cells[i] = "PLAINS";
+    // Temperature [0,1]: latitude warms south, elevation cools, plus a wandering
+    // FBM jitter so isotherms aren't flat horizontal bands.
+    const elevN = (h - 20) / 80;            // 0 at shore, 1 at peak
+    const col = i % cols;
+    const tempNoise = (fbm((col / cols) * 6 + 5.5, (row / rows) * 6 + 31.0, moistSeed + 1500, 4) - 0.5) * 0.20;
+    const temp = Math.max(0, Math.min(1, 0.26 + 0.74 * latNorm - elevN * 0.42 + tempNoise));
+
+    // Cold high ground → snow-capped mountains even below the absolute line.
+    if (h >= 66 && temp < 0.26) { cells[i] = "MOUNTAIN"; continue; }
+    if (h >= 60) { cells[i] = "HILLS"; continue; }
+
+    // Lowland Whittaker matrix.
+    if (h < 34 && m > 0.70 && temp > 0.42) { cells[i] = "SWAMP"; continue; }    // warm wet lowland
+    if (temp < 0.22) { cells[i] = m > 0.55 ? "FOREST" : "TUNDRA"; continue; }    // cold (smaller niche)
+    if (temp > 0.66 && m < 0.30) { cells[i] = "DESERT"; continue; }             // hot + dry
+    if (m > 0.58) { cells[i] = "FOREST"; continue; }                            // wet temperate/warm
+    cells[i] = "PLAINS";                                                         // default grassland
+  }
+
+  // ── Step 5.5: Despeckle biomes (majority vote) ────────────────────────────
+  // Domain-warped rasterization + threshold biomes leave salt-and-pepper at
+  // boundaries. A couple of majority passes merge isolated pixels into their
+  // surrounding region. Runs BEFORE rivers so 1-px river lines stay intact.
+  {
+    // Gentle: only absorb genuinely isolated pixels (≤1 like neighbour) into a
+    // strong surrounding majority. Aggressive majority filtering was creating
+    // blocky axis-aligned artifacts (morphological closing), so keep it light.
+    for (let iter = 0; iter < 2; iter++) {
+      const next = cells.slice();
+      for (let row = 1; row < rows - 1; row++) {
+        for (let col = 1; col < cols - 1; col++) {
+          const i = row * cols + col;
+          const k = cells[i];
+          const counts: Record<string, number> = {};
+          let self = 0, bestK = k, bestN = 0;
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              if (!dr && !dc) continue;
+              const nk = cells[(row + dr) * cols + (col + dc)];
+              const c = (counts[nk] = (counts[nk] || 0) + 1);
+              if (nk === k) self = c;
+              if (c > bestN) { bestN = c; bestK = nk; }
+            }
+          }
+          if (self <= 1 && bestN >= 5 && bestK !== k) next[i] = bestK;
+        }
+      }
+      for (let i = 0; i < N; i++) cells[i] = next[i];
     }
   }
 
   // ── Step 6: Flux-based rivers (Azgaar precipitation model) ───────────────
   traceFluxRivers(hg.h, cells, cols, rows, rng);
 
-  // ── Step 7: Smooth isolated specks ───────────────────────────────────────
+  // ── Step 6b: Coastline pass — land directly touching water becomes COAST ──
+  // (Replaces the old height-band COAST so beaches only appear at real shores.)
+  {
+    const coastOf = cells.slice();
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const i = row * cols + col;
+        const k = cells[i];
+        if (k === "WATER" || k === "MOUNTAIN") continue;
+        let touchesWater = false;
+        for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
+          const nr = row + dr, nc = col + dc;
+          if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+          if (cells[nr * cols + nc] === "WATER") { touchesWater = true; break; }
+        }
+        if (touchesWater) coastOf[i] = "COAST";
+      }
+    }
+    for (let i = 0; i < N; i++) cells[i] = coastOf[i];
+  }
+
+  // ── Step 7: Final light cleanup of isolated water specks ──────────────────
   const smoothed = cells.slice();
   for (let row = 1; row < rows - 1; row++) {
     for (let col = 1; col < cols - 1; col++) {
       const i = row * cols + col;
-      const kind = cells[i];
-      if (kind === "WATER") {
-        let land = 0;
-        for (let dr = -1; dr <= 1; dr++)
-          for (let dc = -1; dc <= 1; dc++)
-            if ((dr || dc) && cells[(row + dr) * cols + (col + dc)] !== "WATER") land++;
-        if (land >= 7) smoothed[i] = "COAST";
-      } else if (kind === "MOUNTAIN") {
-        let other = 0;
-        for (let dr = -1; dr <= 1; dr++)
-          for (let dc = -1; dc <= 1; dc++)
-            if ((dr || dc) && cells[(row + dr) * cols + (col + dc)] !== "MOUNTAIN") other++;
-        if (other >= 7) smoothed[i] = "PLAINS";
-      }
+      if (cells[i] !== "WATER") continue;
+      let land = 0;
+      for (let dr = -1; dr <= 1; dr++)
+        for (let dc = -1; dc <= 1; dc++)
+          if ((dr || dc) && cells[(row + dr) * cols + (col + dc)] !== "WATER") land++;
+      if (land >= 7) smoothed[i] = "COAST";
     }
   }
 

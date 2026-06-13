@@ -1,4 +1,6 @@
-export type TerrainKind = "PLAINS" | "FOREST" | "MOUNTAIN" | "WATER" | "ROAD" | "COAST";
+export type TerrainKind =
+  | "PLAINS" | "FOREST" | "MOUNTAIN" | "WATER" | "ROAD" | "COAST"
+  | "DESERT" | "SWAMP" | "TUNDRA" | "HILLS";
 
 export type WorldTerrainMaskData = {
   version: number;
@@ -21,6 +23,10 @@ export const TERRAIN_RULES: Record<TerrainKind, TerrainRule> = {
   WATER: { buildable: false, walkable: false, speedMultiplier: 0 },
   ROAD: { buildable: true, walkable: true, speedMultiplier: 1.25 },
   COAST: { buildable: true, walkable: true, speedMultiplier: 0.95 },
+  DESERT: { buildable: true, walkable: true, speedMultiplier: 0.90 },
+  SWAMP: { buildable: true, walkable: true, speedMultiplier: 0.70 },
+  TUNDRA: { buildable: true, walkable: true, speedMultiplier: 0.80 },
+  HILLS: { buildable: true, walkable: true, speedMultiplier: 0.80 },
 };
 
 export const TERRAIN_COLOR_HEX: Record<TerrainKind, string> = {
@@ -30,6 +36,10 @@ export const TERRAIN_COLOR_HEX: Record<TerrainKind, string> = {
   WATER: "#247fc0",
   ROAD: "#c69a53",
   COAST: "#58b6a5",
+  DESERT: "#d6c084",
+  SWAMP: "#4a5636",
+  TUNDRA: "#b0b8b2",
+  HILLS: "#8a8a4f",
 };
 
 export const TERRAIN_LABELS: Record<TerrainKind, string> = {
@@ -39,9 +49,13 @@ export const TERRAIN_LABELS: Record<TerrainKind, string> = {
   WATER: "Water",
   ROAD: "Road",
   COAST: "Coast",
+  DESERT: "Desert",
+  SWAMP: "Swamp",
+  TUNDRA: "Tundra",
+  HILLS: "Hills",
 };
 
-export const TERRAIN_KINDS: TerrainKind[] = ["PLAINS", "FOREST", "MOUNTAIN", "WATER", "ROAD", "COAST"];
+export const TERRAIN_KINDS: TerrainKind[] = ["PLAINS", "FOREST", "MOUNTAIN", "WATER", "ROAD", "COAST", "DESERT", "SWAMP", "TUNDRA", "HILLS"];
 
 export const DEFAULT_WORLD_TERRAIN_MASK: WorldTerrainMaskData = {
   version: 1,

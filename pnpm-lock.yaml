@@ -69,6 +69,9 @@ importers:
       '@hono/zod-validator':
         specifier: ^0.4.0
         version: 0.4.3(hono@4.12.15)(zod@3.25.76)
+      delaunator:
+        specifier: ^5.1.0
+        version: 5.1.0
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
@@ -85,6 +88,9 @@ importers:
         specifier: ^3.24.1
         version: 3.25.76
     devDependencies:
+      '@types/delaunator':
+        specifier: ^5.0.3
+        version: 5.0.3
       '@types/node':
         specifier: ^22.13.0
         version: 22.19.17
@@ -1531,6 +1537,9 @@ packages:
   '@types/deep-eql@4.0.2':
     resolution: {integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==}
 
+  '@types/delaunator@5.0.3':
+    resolution: {integrity: sha512-6tTLP8NX0OwtB/fmW9bXp4EWPptawTSsrSGjboWRuzqkxNEEJGyzRPHbr8wnV2DBWfAZ+EPTOvW3B/KysJrl2g==}
+
   '@types/estree@0.0.39':
     resolution: {integrity: sha512-EYNwp3bU+98cpU4lAWYYL7Zz+2gryWH1qbdDTidVd6hkiR6weksdbMadyXKXNPEkQFhXM+hVO9ZygomHXp+AIw==}
 
@@ -1944,6 +1953,9 @@ packages:
 
   defu@6.1.7:
     resolution: {integrity: sha512-7z22QmUWiQ/2d0KkdYmANbRUVABpZ9SNYyH5vx6PZ+nE5bcC0l7uFvEfHlyld/HcGBFTL536ClDt3DEcSlEJAQ==}
+
+  delaunator@5.1.0:
+    resolution: {integrity: sha512-AGrQ4QSgssa1NGmWmLPqN5NY2KajF5MqxetNEO+o0n3ZwZZeTmt7bBnvzHWrmkZFxGgr4HdyFgelzgi06otLuQ==}
 
   destr@2.0.5:
     resolution: {integrity: sha512-ugFTXCtDZunbzasqBxrK93Ik/DRYsO6S/fedkWEMKqt04xZ4csmnmwGDBAb07QWNaGMAmnTIemsYZCksjATwsA==}
@@ -2859,6 +2871,9 @@ packages:
     resolution: {integrity: sha512-LKg+Cr2ZF61fkcaK1UdkH2yEBBKnYjTyWzTJT6KNPcSPaiT7HSdhtMXQuN5wkTX0Xu72KQ1l8S42rlmexS2hSA==}
     engines: {node: 20 || >=22}
     hasBin: true
+
+  robust-predicates@3.0.3:
+    resolution: {integrity: sha512-NS3levdsRIUOmiJ8FZWCP7LG3QpJyrs/TE0Zpf1yvZu8cAJJ6QMW92H1c7kWpdIHo8RvmLxN/o2JXTKHp74lUA==}
 
   rollup@2.80.0:
     resolution: {integrity: sha512-cIFJOD1DESzpjOBl763Kp1AH7UE/0fcdHe6rZXUdQ9c50uvgigvW97u3IcSeBwOkgqL/PXPBktBCh0KEu5L8XQ==}
@@ -4870,6 +4885,8 @@ snapshots:
 
   '@types/deep-eql@4.0.2': {}
 
+  '@types/delaunator@5.0.3': {}
+
   '@types/estree@0.0.39': {}
 
   '@types/estree@1.0.8': {}
@@ -5301,6 +5318,10 @@ snapshots:
       object-keys: 1.1.1
 
   defu@6.1.7: {}
+
+  delaunator@5.1.0:
+    dependencies:
+      robust-predicates: 3.0.3
 
   destr@2.0.5: {}
 
@@ -6235,6 +6256,8 @@ snapshots:
     dependencies:
       glob: 13.0.6
       package-json-from-dist: 1.0.1
+
+  robust-predicates@3.0.3: {}
 
   rollup@2.80.0:
     optionalDependencies:

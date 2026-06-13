@@ -435,26 +435,95 @@ function tileHash(col: number, row: number): number {
 
 function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
 
+// Smooth value noise for procedural biome texture (decorations baked into the map).
+function vhash(x: number, y: number, s: number): number {
+  let n = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 982451653)) | 0;
+  n = Math.imul(n ^ (n >>> 13), 1274126177);
+  n ^= n >>> 16;
+  return (n >>> 0) / 4294967296;
+}
+function vnoise(x: number, y: number, s: number): number {
+  const ix = Math.floor(x), iy = Math.floor(y);
+  const fx = x - ix, fy = y - iy;
+  const ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
+  return vhash(ix, iy, s) * (1 - ux) * (1 - uy) + vhash(ix + 1, iy, s) * ux * (1 - uy)
+    + vhash(ix, iy + 1, s) * (1 - ux) * uy + vhash(ix + 1, iy + 1, s) * ux * uy;
+}
+
+// Per-biome texture multiplier (~0.8–1.2) applied to the base color, giving the
+// map decorative detail (forest canopy clumps, desert dunes, rocky crags, swamp
+// blotches) without any sprite assets. Sampled in render-pixel space.
+function biomeTexture(kind: string, px: number, py: number): number {
+  switch (kind) {
+    case "FOREST": {
+      let t = 1 + (vnoise(px * 0.16, py * 0.16, 7) - 0.5) * 0.34;
+      if (vnoise(px * 0.55, py * 0.55, 9) > 0.82) t *= 0.82; // canopy shadow dots
+      return t;
+    }
+    case "DESERT":
+      // wind ripples / dunes along a wandering direction
+      return 1 + Math.sin(px * 0.34 + py * 0.10 + vnoise(px * 0.05, py * 0.05, 3) * 7) * 0.055;
+    case "MOUNTAIN":
+      return 1 + (vnoise(px * 0.42, py * 0.42, 5) - 0.5) * 0.30;
+    case "HILLS":
+      return 1 + (vnoise(px * 0.34, py * 0.34, 15) - 0.5) * 0.24;
+    case "SWAMP": {
+      let t = 1 + (vnoise(px * 0.22, py * 0.22, 11) - 0.5) * 0.30;
+      if (vnoise(px * 0.5, py * 0.5, 17) > 0.85) t *= 1.12; // murky highlights
+      return t;
+    }
+    case "PLAINS":
+      return 1 + (vnoise(px * 0.18, py * 0.18, 13) - 0.5) * 0.14;
+    case "TUNDRA":
+      return 1 + (vnoise(px * 0.20, py * 0.20, 19) - 0.5) * 0.12;
+    default:
+      return 1;
+  }
+}
+
 function biomeColor(kind: string, hN: number, tc: number, tr: number): [number, number, number] {
-  const j = ((tileHash(tc, tr) & 15) - 7) * 0.8;
+  // Gentle per-tile jitter (reduced) to avoid the speckled / blocky look.
+  const j = ((tileHash(tc, tr) & 15) - 7) * 0.42;
   switch (kind) {
     case "WATER": {
       const t = Math.max(0, Math.min(1, hN / 0.19));
       return [Math.round(lerp(10, 42, t) + j), Math.round(lerp(30, 88, t) + j), Math.round(lerp(72, 140, t) + j)];
     }
     case "COAST":
-      return [Math.round(196 + j), Math.round(176 + j), Math.round(116 + j)];
+      return [Math.round(198 + j), Math.round(180 + j), Math.round(126 + j)];
     case "PLAINS": {
       const t = Math.max(0, Math.min(1, (hN - 0.24) / 0.48));
-      return [Math.round(lerp(64, 82, t) + j), Math.round(lerp(108, 132, t) + j), Math.round(lerp(38, 54, t) + j)];
+      return [Math.round(lerp(78, 96, t) + j), Math.round(lerp(120, 140, t) + j), Math.round(lerp(48, 60, t) + j)];
     }
     case "FOREST": {
       const t = Math.max(0, Math.min(1, (hN - 0.24) / 0.48));
-      return [Math.round(lerp(28, 46, t) + j), Math.round(lerp(66, 88, t) + j), Math.round(lerp(18, 30, t) + j)];
+      return [Math.round(lerp(30, 50, t) + j), Math.round(lerp(74, 96, t) + j), Math.round(lerp(24, 38, t) + j)];
     }
     case "MOUNTAIN": {
+      // Brown rock at the base → grey crag → snow only on the very high peaks.
       const t = Math.max(0, Math.min(1, (hN - 0.72) / 0.28));
-      return [Math.round(lerp(108, 220, t) + j), Math.round(lerp(94, 218, t) + j), Math.round(lerp(80, 222, t) + j)];
+      if (t < 0.72) {
+        const u = t / 0.72;
+        return [Math.round(lerp(102, 144, u) + j), Math.round(lerp(90, 138, u) + j), Math.round(lerp(76, 130, u) + j)];
+      }
+      const u = (t - 0.72) / 0.28;
+      return [Math.round(lerp(144, 232, u) + j), Math.round(lerp(138, 236, u) + j), Math.round(lerp(130, 240, u) + j)];
+    }
+    case "HILLS": {
+      const t = Math.max(0, Math.min(1, (hN - 0.50) / 0.30));
+      // olive-brown rising to rocky tan
+      return [Math.round(lerp(104, 150, t) + j), Math.round(lerp(116, 138, t) + j), Math.round(lerp(64, 88, t) + j)];
+    }
+    case "DESERT":
+      // warm sand with subtle variation
+      return [Math.round(212 + j), Math.round(190 + j), Math.round(134 + j)];
+    case "SWAMP":
+      // murky green-brown
+      return [Math.round(78 + j), Math.round(92 + j), Math.round(58 + j)];
+    case "TUNDRA": {
+      // muted tan-grey at the warm edge → pale frost up high (not pure white)
+      const t = Math.max(0, Math.min(1, (hN - 0.20) / 0.45));
+      return [Math.round(lerp(158, 196, t) + j), Math.round(lerp(164, 202, t) + j), Math.round(lerp(150, 196, t) + j)];
     }
     default:
       return [80, 80, 80];
@@ -477,8 +546,8 @@ worldRouter.get('/terrain-image', async (c) => {
     const heights = Buffer.from(terrain.elev, 'base64');
     const { cols, rows } = terrain;
 
-    // Render at 2×tile resolution (smooth but fast). CSS stretches to world size.
-    const SCALE = 4;
+    // Render at 3×tile resolution (smooth but fast). CSS stretches to world size.
+    const SCALE = 3;
     const imgW = cols * SCALE;
     const imgH = rows * SCALE;
     const raw = Buffer.alloc(imgW * imgH * 3);
@@ -507,10 +576,12 @@ worldRouter.get('/terrain-image', async (c) => {
         const dy = (getH(tileCol, tileRow + 1) - getH(tileCol, tileRow - 1)) * 0.5;
         const shade = Math.min(1.28, Math.max(0.72, 1 + (dx - dy) * 0.016));
 
+        const tex = biomeTexture(kind, px, py);
+        const mod = shade * tex;
         let [r, g, b] = biomeColor(kind, hVal / 100, tileCol, tileRow);
-        r = Math.min(255, Math.max(0, Math.round(r * shade)));
-        g = Math.min(255, Math.max(0, Math.round(g * shade)));
-        b = Math.min(255, Math.max(0, Math.round(b * shade)));
+        r = Math.min(255, Math.max(0, Math.round(r * mod)));
+        g = Math.min(255, Math.max(0, Math.round(g * mod)));
+        b = Math.min(255, Math.max(0, Math.round(b * mod)));
 
         const idx = (py * imgW + px) * 3;
         raw[idx] = r; raw[idx + 1] = g; raw[idx + 2] = b;
@@ -532,8 +603,11 @@ worldRouter.get('/terrain-image', async (c) => {
       }
     }
 
+    // Soften biome edges + residual speckle with one light box blur (sharp blur
+    // is fast/native). sigma kept small so hillshade relief survives.
     const webpBuf = await sharp(raw, { raw: { width: imgW, height: imgH, channels: 3 } })
-      .webp({ quality: 82, effort: 4 })
+      .blur(0.6)
+      .webp({ quality: 80, effort: 4 })
       .toBuffer();
 
     terrainImageCache.set(cacheKey, webpBuf);

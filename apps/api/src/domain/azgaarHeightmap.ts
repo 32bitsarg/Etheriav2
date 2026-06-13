@@ -41,12 +41,12 @@ function neighbors8(i: number, cols: number, rows: number): number[] {
 // Formula: interpolate linearly on log scale, hard-clamp < 0.998.
 // Calibrated at 200×200 (N=40000): blobPower=0.993, linePower=0.84 (known good values).
 // Scales up for larger grids so features stay proportional. Always clamped < 1.
-function calcBlobPower(N: number): number {
+export function calcBlobPower(N: number): number {
   // blob = 1 - (1 - 0.993) * (40000/N)^0.4
   // At N=40000: 0.993. At N=250000: 0.9968. Never ≥1.
   return 1 - 0.007 * Math.pow(40000 / Math.max(N, 1), 0.4);
 }
-function calcLinePower(N: number): number {
+export function calcLinePower(N: number): number {
   // line = 1 - (1 - 0.84) * (40000/N)^0.35
   // At N=40000: 0.84. At N=250000: 0.921.
   return 1 - 0.16 * Math.pow(40000 / Math.max(N, 1), 0.35);
@@ -72,7 +72,7 @@ function valueNoise2(x: number, y: number, seed: number): number {
   );
 }
 
-function fbmNoise(x: number, y: number, seed: number, octaves: number): number {
+export function fbmNoise(x: number, y: number, seed: number, octaves: number): number {
   let v = 0, amp = 0.5, freq = 1.0, max = 0;
   for (let i = 0; i < octaves; i++) {
     v += valueNoise2(x * freq, y * freq, seed + i * 997) * amp;
