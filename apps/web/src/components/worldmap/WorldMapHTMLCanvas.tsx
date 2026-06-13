@@ -159,9 +159,12 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   // ─── Camera clamping ─────────────────────────────────────────────────────
 
   const clampCamera = useCallback((cx: number, cy: number, zoom: number) => {
-    const z = Math.min(zMax, Math.max(zMin, zoom));
     const vw = outerRef.current?.clientWidth ?? size.w;
     const vh = outerRef.current?.clientHeight ?? size.h;
+    // Cover floor computed from LIVE viewport dims (not stale `size` state), so the
+    // world always over-covers the screen and zoom-out can never reveal black.
+    const coverZ = Math.max(vw / worldW, vh / worldH) * COVER_MARGIN;
+    const z = Math.min(zMax, Math.max(zMin, coverZ, zoom));
 
     // Visible world bounds given current zoom
     // Screen left edge (sx=0) → wx = (halfW - cx)/z - halfW  ≥ -halfW  → cx ≤ halfW
