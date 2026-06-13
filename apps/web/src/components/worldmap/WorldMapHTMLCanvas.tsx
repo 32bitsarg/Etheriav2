@@ -130,12 +130,13 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   const halfW = Math.floor(worldW / 2);
   const halfH = Math.floor(worldH / 2);
 
-  // Minimum zoom: always over-cover the viewport so no black edges show.
-  // The 1.08 margin means the world extends ~8% beyond the viewport at full
-  // zoom-out, so sub-pixel rounding of the camera transform and panning to the
-  // clamped world edges never reveal the black background.
-  const COVER_MARGIN = 1.08;
-  const coverZoomMin = Math.max(size.w / worldW, size.h / worldH) * COVER_MARGIN;
+  // Zoom-out limit: at full zoom-out we show only ~1/(ZOOM_OUT_LIMIT) of the world
+  // (here ~1/3). This keeps a generous over-cover so panning never reveals the
+  // background, and avoids downscaling the giant world layer so far that the
+  // browser drops edge pixels (black bands) or markers flicker. rawCover (world =
+  // viewport, whole world visible) ×3 → world ≈ 3× the viewport at min zoom.
+  const ZOOM_OUT_LIMIT = 3.0;
+  const coverZoomMin = Math.max(size.w / worldW, size.h / worldH) * ZOOM_OUT_LIMIT;
   const zMin = Math.max(mapConfig?.cameraMinZoom ?? 0.25, coverZoomMin);
   const zMax = mapConfig?.cameraMaxZoom ?? 2.4;
 
@@ -162,8 +163,8 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     const vw = outerRef.current?.clientWidth ?? size.w;
     const vh = outerRef.current?.clientHeight ?? size.h;
     // Cover floor computed from LIVE viewport dims (not stale `size` state), so the
-    // world always over-covers the screen and zoom-out can never reveal black.
-    const coverZ = Math.max(vw / worldW, vh / worldH) * COVER_MARGIN;
+    // zoom-out limit holds regardless of state and the world always over-covers.
+    const coverZ = Math.max(vw / worldW, vh / worldH) * ZOOM_OUT_LIMIT;
     const z = Math.min(zMax, Math.max(zMin, coverZ, zoom));
 
     // Visible world bounds given current zoom
@@ -616,7 +617,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
 
   if (!mapConfig) {
     return (
-      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#070a0a] gap-3">
+      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#0a1e48] gap-3">
         <div className="w-8 h-8 rounded-full border-2 border-amber-500/30 border-t-amber-500 animate-spin" />
         <p className="text-stone-500 text-xs">Cargando mapa...</p>
       </div>
@@ -630,7 +631,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
       <div
         ref={outerRef}
         className="relative h-full w-full overflow-hidden select-none md:rounded-lg md:border md:border-etheria-border/30"
-        style={{ background: "#070a0a", touchAction: "none", cursor: editorMode ? (terrainTool === "picker" ? "crosshair" : "none") : "default" }}
+        style={{ background: "radial-gradient(ellipse at center, #0c2747 0%, #0a1e48 55%, #061530 100%)", touchAction: "none", cursor: editorMode ? (terrainTool === "picker" ? "crosshair" : "none") : "default" }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -648,6 +649,9 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
           style={{
             transformOrigin: "0 0",
             willChange: "transform",
+            // Stable GPU layer promotion — avoids edge-pixel/marker flicker when
+            // the large world layer repaints during pan at high zoom-out.
+            backfaceVisibility: "hidden",
             left: -halfW,
             top: -halfH,
             width: worldW,
