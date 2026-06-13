@@ -65,8 +65,22 @@ function distance(a: WorldPoint, b: WorldPoint) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+// Rejects spawn points that are on tiny islands: samples a ring of 16 points
+// at radius 600px and requires ≥60% to be buildable (enough surrounding land).
+function hasSufficientLand(x: number, y: number, mapWidth: number, mapHeight: number): boolean {
+  const samples = 16;
+  const radius = 600;
+  let ok = 0;
+  for (let i = 0; i < samples; i++) {
+    const angle = (Math.PI * 2 * i) / samples;
+    if (isBuildableTerrain(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius, mapWidth, mapHeight)) ok++;
+  }
+  return ok / samples >= 0.6;
+}
+
 function isValidCitySpawn(candidate: WorldPoint, occupied: WorldPoint[], minDistance: number, mapWidth: number, mapHeight: number) {
   return isBuildableTerrain(candidate.x, candidate.y, mapWidth, mapHeight)
+    && hasSufficientLand(candidate.x, candidate.y, mapWidth, mapHeight)
     && occupied.every((city) => distance(candidate, city) >= minDistance);
 }
 

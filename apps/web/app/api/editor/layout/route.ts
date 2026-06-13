@@ -6,8 +6,11 @@ import { requireAdmin } from "@/lib/adminAuth";
 
 export const runtime = "nodejs";
 
-const layoutPath = path.join(process.cwd(), "src", "data", "village-layout.json");
-const backupPath = path.join(process.cwd(), "src", "data", "village-layout.backup.json");
+// VILLAGE_LAYOUT_PATH lets ops point to a file outside the git repo so deploys
+// (git pull) never overwrite editor changes. Falls back to the source file in dev.
+const layoutPath = process.env.VILLAGE_LAYOUT_PATH
+  ?? path.join(process.cwd(), "src", "data", "village-layout.json");
+const backupPath = layoutPath.replace(/\.json$/, ".backup.json");
 
 async function readLayout(): Promise<VillageLayoutData> {
   const raw = await readFile(layoutPath, "utf8");

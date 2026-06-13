@@ -390,7 +390,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
       // Todos los movimientos visibles (fog desactivado)
       el.style.display = "";
       const l = worldToLocal(wx, wy);
-      el.style.transform = `translate3d(${l.x}px, ${l.y}px, 0) translate(-50%, -50%) scale(var(--inv-zoom, 1))`;
+      el.style.transform = `translate3d(${l.x}px, ${l.y}px, 0) translate(-50%, -50%) scale(${Math.min(3, 1 / cam.current.zoom).toFixed(4)})`;
     }
   }, [movements, worldToLocal, cities, myCityId]);
 
@@ -730,7 +730,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
                   className="absolute flex flex-col items-center cursor-pointer"
                   style={{
                     left: l.x, top: l.y,
-                    transform: "translate(-50%, -85%) scale(var(--inv-zoom, 1))",
+                    transform: "translate(-50%, -85%) scale(min(1, var(--inv-zoom, 1)))",
                     transformOrigin: "50% 85%",
                     zIndex: 2, willChange: "transform",
                   }}
@@ -838,7 +838,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
                 style={{
                   left: 0, top: 0,
                   // translate3d positions in world space; inner scale counter-acts parent zoom.
-                  transform: `translate3d(${l.x}px, ${l.y}px, 0) translate(-50%, -50%) scale(var(--inv-zoom, 1))`,
+                  transform: `translate3d(${l.x}px, ${l.y}px, 0) translate(-50%, -50%) scale(min(3, var(--inv-zoom, 1)))`,
                   transformOrigin: "50% 50%",
                   zIndex: isHovered ? 9 : 8, willChange: "transform",
                 }}
@@ -986,7 +986,7 @@ const CityMarker = memo(function CityMarker({ city, x, y, isMe, onClick, onDoubl
         left: x, top: y,
         // Anchor at bottom-center, then counter-scale against parent zoom so the marker stays
         // the same screen size regardless of how far the player zooms out.
-        transform: `translate(-50%, -85%) scale(calc(var(--inv-zoom, 1) * ${isMe ? 1.15 : 1}))`,
+        transform: `translate(-50%, -85%) scale(min(1, calc(var(--inv-zoom, 1) * ${isMe ? 1.15 : 1})))`,
         transformOrigin: "50% 85%",
         zIndex: isMe ? 4 : 2,
         willChange: "transform",
