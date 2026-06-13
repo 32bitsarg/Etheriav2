@@ -189,6 +189,8 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     if (!el) return;
     const { x, y, zoom } = cam.current;
     el.style.transform = `translate(${Math.round(x)}px,${Math.round(y)}px) scale(${zoom})`;
+    // Expose inverse zoom so markers inside this scaled div can counter-scale to stay legible.
+    el.style.setProperty("--inv-zoom", String((1 / zoom).toFixed(4)));
 
     const weather = weatherRef.current;
     if (weather) {
@@ -353,8 +355,33 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
       }
       const origin = isReturning ? m.to : m.from;
       const destination = isReturning ? m.from : m.to;
-      const wx = origin.x + (destination.x - origin.x) * progress;
-      const wy = origin.y + (destination.y - origin.y) * progress;
+
+      // Interpolate along the path polyline if available, otherwise straight line.
+      let wx: number, wy: number;
+      const path = m.path && m.path.length >= 2
+        ? (isReturning ? [...m.path].reverse() : m.path)
+        : null;
+      if (path) {
+        // Pre-compute cumulative arc lengths, then find segment for current progress.
+        let totalLen = 0;
+        const lens: number[] = [0];
+        for (let i = 1; i < path.length; i++) {
+          totalLen += Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
+          lens.push(totalLen);
+        }
+        const target = progress * totalLen;
+        let seg = path.length - 2;
+        for (let i = 0; i < path.length - 1; i++) {
+          if (lens[i + 1] >= target) { seg = i; break; }
+        }
+        const segLen = lens[seg + 1] - lens[seg];
+        const t = segLen > 0 ? (target - lens[seg]) / segLen : 0;
+        wx = path[seg].x + (path[seg + 1].x - path[seg].x) * t;
+        wy = path[seg].y + (path[seg + 1].y - path[seg].y) * t;
+      } else {
+        wx = origin.x + (destination.x - origin.x) * progress;
+        wy = origin.y + (destination.y - origin.y) * progress;
+      }
       const el = movementEls.current.get(m.id);
       if (!el) continue;
       // Fog of war: PvP foreign marches only show inside visibility circle.
@@ -363,7 +390,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
       // Todos los movimientos visibles (fog desactivado)
       el.style.display = "";
       const l = worldToLocal(wx, wy);
-      el.style.transform = `translate3d(${l.x}px, ${l.y}px, 0) translate(-50%, -50%)`;
+      el.style.transform = `translate3d(${l.x}px, ${l.y}px, 0) translate(-50%, -50%) scale(var(--inv-zoom, 1))`;
     }
   }, [movements, worldToLocal, cities, myCityId]);
 
@@ -701,7 +728,12 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
                   key={camp.id}
                   onClick={(e) => handleCampClick(camp, e)}
                   className="absolute flex flex-col items-center cursor-pointer"
-                  style={{ left: l.x, top: l.y, transform: "translate(-50%, -85%)", zIndex: 2 }}
+                  style={{
+                    left: l.x, top: l.y,
+                    transform: "translate(-50%, -85%) scale(var(--inv-zoom, 1))",
+                    transformOrigin: "50% 85%",
+                    zIndex: 2, willChange: "transform",
+                  }}
                 >
                   <img
                     src="/assets/map/barbarian-camp.png"
@@ -743,9 +775,13 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
           {(() => {
             const hovered = movements.find((m) => m.id === hoveredMovementId);
             if (!hovered) return null;
-            const from = worldToLocal(hovered.from.x, hovered.from.y);
-            const to = worldToLocal(hovered.to.x, hovered.to.y);
             const color = MOVEMENT_RELATION_COLORS[hovered.relation ?? "neutral"];
+            const pathPts = hovered.path && hovered.path.length >= 2
+              ? hovered.path.map((p) => worldToLocal(p.x, p.y))
+              : [worldToLocal(hovered.from.x, hovered.from.y), worldToLocal(hovered.to.x, hovered.to.y)];
+            const points = pathPts.map((p) => `${p.x},${p.y}`).join(" ");
+            const from = pathPts[0];
+            const to = pathPts[pathPts.length - 1];
             return (
               <svg
                 className="absolute inset-0 pointer-events-none"
@@ -753,8 +789,9 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
                 height={worldH}
                 style={{ zIndex: 7 }}
               >
-                <line
-                  x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+                <polyline
+                  points={points}
+                  fill="none"
                   stroke={color} strokeWidth={1.5} strokeDasharray="6 5"
                   strokeLinecap="round" opacity={0.8}
                   style={{ animation: "march-trail-dash 0.8s linear infinite" }}
@@ -776,14 +813,19 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
             />
           )}
 
-          {/* Movement markers */}
+          {/* Movement markers — sprite-based, counter-scaled against zoom so they stay legible at any distance */}
           {movements.map((m) => {
             const isTrade = m.type === "TRADE";
             const isBarbRaid = m.type === "BARBARIAN_RAID";
             const isBarbAttack = m.type === "BARBARIAN_ATTACK";
+            const isBarb = isBarbRaid || isBarbAttack;
             const l = worldToLocal(m.from.x, m.from.y);
             const color = MOVEMENT_RELATION_COLORS[m.relation ?? "neutral"] ?? (isTrade ? "#ffe066" : "#ff8888");
-            const icon = isTrade ? "📦" : isBarbRaid ? "🏕️" : isBarbAttack ? "🗡️" : "⚔️";
+            const sprite = isTrade
+              ? "/assets/map/merchant-caravan-walk.png"
+              : isBarb
+              ? "/assets/map/barbarian-army-walk.png"
+              : "/assets/map/player-army-walk.png";
             const isHovered = hoveredMovementId === m.id;
             return (
               <div
@@ -795,15 +837,27 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
                 className="absolute flex flex-col items-center pointer-events-auto cursor-pointer"
                 style={{
                   left: 0, top: 0,
-                  transform: `translate3d(${l.x}px, ${l.y}px, 0) translate(-50%, -50%)`,
+                  // translate3d positions in world space; inner scale counter-acts parent zoom.
+                  transform: `translate3d(${l.x}px, ${l.y}px, 0) translate(-50%, -50%) scale(var(--inv-zoom, 1))`,
+                  transformOrigin: "50% 50%",
                   zIndex: isHovered ? 9 : 8, willChange: "transform",
                 }}
                 onPointerEnter={() => setHoveredMovementId(m.id)}
                 onPointerLeave={() => setHoveredMovementId((id) => (id === m.id ? null : id))}
                 onClick={(e) => { e.stopPropagation(); setHoveredMovementId((id) => (id === m.id ? null : m.id)); }}
               >
-                <span style={{ fontSize: 11, filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.7))" }}>{icon}</span>
-                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}` }} />
+                <img
+                  src={sprite}
+                  alt=""
+                  draggable={false}
+                  className="pointer-events-none"
+                  style={{
+                    width: 48, height: 48,
+                    filter: `drop-shadow(0 2px 4px rgba(0,0,0,0.7)) drop-shadow(0 0 6px ${color}88)`,
+                  }}
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                />
+                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}`, marginTop: 2 }} />
                 {isHovered && (() => {
                   const etaMs = new Date(m.status === "RETURNING" && m.returnsAt ? m.returnsAt : m.arrivesAt).getTime() - Date.now();
                   const etaMin = Math.max(0, Math.floor(etaMs / 60000));
@@ -930,9 +984,12 @@ const CityMarker = memo(function CityMarker({ city, x, y, isMe, onClick, onDoubl
       className="absolute flex flex-col items-center cursor-pointer"
       style={{
         left: x, top: y,
-        transform: isMe ? "translate(-50%, -85%) scale(1.15)" : "translate(-50%, -85%)",
+        // Anchor at bottom-center, then counter-scale against parent zoom so the marker stays
+        // the same screen size regardless of how far the player zooms out.
+        transform: `translate(-50%, -85%) scale(calc(var(--inv-zoom, 1) * ${isMe ? 1.15 : 1}))`,
+        transformOrigin: "50% 85%",
         zIndex: isMe ? 4 : 2,
-        willChange: isMe ? "transform" : "auto",
+        willChange: "transform",
       }}
     >
       <img
@@ -955,9 +1012,17 @@ const CityMarker = memo(function CityMarker({ city, x, y, isMe, onClick, onDoubl
           }}
         />
       )}
+      {city.level != null && (
+        <span
+          className="text-[10px] font-bold whitespace-nowrap px-1.5 py-0.5 rounded pointer-events-none"
+          style={{ color: "#ffd700", backgroundColor: "rgba(5,7,7,0.85)", marginTop: 1 }}
+        >
+          Lv.{city.level}
+        </span>
+      )}
       <span
         className="text-xs font-semibold whitespace-nowrap px-2 py-0.5 rounded pointer-events-none"
-        style={{ color, backgroundColor: "rgba(5,7,7,0.80)", marginTop: 2 }}
+        style={{ color, backgroundColor: "rgba(5,7,7,0.80)", marginTop: 1 }}
       >
         {city.name}
       </span>

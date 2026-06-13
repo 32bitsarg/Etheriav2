@@ -179,7 +179,8 @@ function findNearestWalkableCell(col: number, row: number, width: number, height
   return null;
 }
 
-function calculateWalkablePathCost(fromX: number, fromY: number, toX: number, toY: number, width: number, height: number) {
+/** Core A* on the coarse 72×48 grid. Returns {cost, cameFrom} or null if unreachable. */
+function runAStar(fromX: number, fromY: number, toX: number, toY: number, width: number, height: number) {
   const grid = getPathGrid(width, height);
   const startCell = pointToCell(fromX, fromY, width, height);
   const endCell = pointToCell(toX, toY, width, height);
@@ -188,10 +189,12 @@ function calculateWalkablePathCost(fromX: number, fromY: number, toX: number, to
   if (!start || !end) return null;
 
   const key = (col: number, row: number) => row * grid.cols + col;
+  const startKey = key(start.col, start.row);
   const targetKey = key(end.col, end.row);
-  const open = new Set<number>([key(start.col, start.row)]);
-  const gScore = new Map<number, number>([[key(start.col, start.row), 0]]);
-  const fScore = new Map<number, number>([[key(start.col, start.row), Math.hypot(end.col - start.col, end.row - start.row)]]);
+  const open = new Set<number>([startKey]);
+  const gScore = new Map<number, number>([[startKey, 0]]);
+  const fScore = new Map<number, number>([[startKey, Math.hypot(end.col - start.col, end.row - start.row)]]);
+  const cameFrom = new Map<number, number>();
   const neighbors = [
     [-1, 0, 1], [1, 0, 1], [0, -1, 1], [0, 1, 1],
     [-1, -1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, 1, Math.SQRT2], [1, 1, Math.SQRT2],
@@ -202,19 +205,15 @@ function calculateWalkablePathCost(fromX: number, fromY: number, toX: number, to
     let best = Infinity;
     for (const candidate of open) {
       const score = fScore.get(candidate) ?? Infinity;
-      if (score < best) {
-        best = score;
-        current = candidate;
-      }
+      if (score < best) { best = score; current = candidate; }
     }
-    if (current === targetKey) return gScore.get(current) ?? null;
+    if (current === targetKey) return { cost: gScore.get(current) ?? 0, cameFrom, grid, start, end, startKey, targetKey };
     open.delete(current);
     const col = current % grid.cols;
     const row = Math.floor(current / grid.cols);
 
     for (const [dx, dy, stepDistance] of neighbors) {
-      const nextCol = col + dx;
-      const nextRow = row + dy;
+      const nextCol = col + dx, nextRow = row + dy;
       if (nextCol < 0 || nextRow < 0 || nextCol >= grid.cols || nextRow >= grid.rows) continue;
       const center = cellCenter(nextCol, nextRow, width, height);
       const terrain = resolveTerrainAt(center.x, center.y, width, height);
@@ -224,13 +223,81 @@ function calculateWalkablePathCost(fromX: number, fromY: number, toX: number, to
       const moveCost = worldDistance / Math.max(0.1, terrain.speedMultiplier);
       const tentative = (gScore.get(current) ?? Infinity) + moveCost;
       if (tentative >= (gScore.get(nextKey) ?? Infinity)) continue;
+      cameFrom.set(nextKey, current);
       gScore.set(nextKey, tentative);
       fScore.set(nextKey, tentative + Math.hypot(end.col - nextCol, end.row - nextRow) * Math.min(grid.cellW, grid.cellH));
       open.add(nextKey);
     }
   }
-
   return null;
+}
+
+function calculateWalkablePathCost(fromX: number, fromY: number, toX: number, toY: number, width: number, height: number) {
+  const result = runAStar(fromX, fromY, toX, toY, width, height);
+  return result ? result.cost : null;
+}
+
+/** Path cache: keyed by quantized grid coords (static terrain → stable paths). */
+const pathCache = new Map<string, { x: number; y: number }[]>();
+
+/**
+ * Returns the A* waypoints in world coordinates, routed around WATER and MOUNTAIN.
+ * Downsampled to ≤12 points via Douglas-Peucker. Falls back to [from, to] on failure.
+ */
+export function calculateWalkablePath(
+  fromX: number, fromY: number, toX: number, toY: number, width: number, height: number
+): { x: number; y: number }[] {
+  // Quantize to grid cells for cache key
+  const grid = getPathGrid(width, height);
+  const sc = pointToCell(fromX, fromY, width, height);
+  const ec = pointToCell(toX, toY, width, height);
+  const cacheKey = `${sc.col},${sc.row}:${ec.col},${ec.row}`;
+  if (pathCache.has(cacheKey)) return pathCache.get(cacheKey)!;
+
+  const fallback = [{ x: fromX, y: fromY }, { x: toX, y: toY }];
+  const result = runAStar(fromX, fromY, toX, toY, width, height);
+  if (!result) { pathCache.set(cacheKey, fallback); return fallback; }
+
+  // Reconstruct grid path from cameFrom
+  const { cameFrom, targetKey } = result;
+  const rawPath: { x: number; y: number }[] = [];
+  let cur = targetKey;
+  while (cameFrom.has(cur)) {
+    const col = cur % grid.cols, row = Math.floor(cur / grid.cols);
+    const c = cellCenter(col, row, width, height);
+    rawPath.unshift({ x: Math.round(c.x), y: Math.round(c.y) });
+    cur = cameFrom.get(cur)!;
+  }
+  rawPath.unshift({ x: fromX, y: fromY });
+  rawPath.push({ x: toX, y: toY });
+
+  // Douglas-Peucker simplification to ≤12 points
+  const simplified = douglasPeucker(rawPath, Math.min(grid.cellW, grid.cellH) * 0.8);
+  pathCache.set(cacheKey, simplified);
+  return simplified;
+}
+
+function perpendicularDist(pt: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  if (dx === 0 && dy === 0) return Math.hypot(pt.x - a.x, pt.y - a.y);
+  const t = ((pt.x - a.x) * dx + (pt.y - a.y) * dy) / (dx * dx + dy * dy);
+  const cx = a.x + t * dx, cy = a.y + t * dy;
+  return Math.hypot(pt.x - cx, pt.y - cy);
+}
+
+function douglasPeucker(pts: { x: number; y: number }[], epsilon: number): { x: number; y: number }[] {
+  if (pts.length <= 2) return pts;
+  let maxDist = 0, maxIdx = 0;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const d = perpendicularDist(pts[i], pts[0], pts[pts.length - 1]);
+    if (d > maxDist) { maxDist = d; maxIdx = i; }
+  }
+  if (maxDist > epsilon) {
+    const left = douglasPeucker(pts.slice(0, maxIdx + 1), epsilon);
+    const right = douglasPeucker(pts.slice(maxIdx), epsilon);
+    return [...left.slice(0, -1), ...right];
+  }
+  return [pts[0], pts[pts.length - 1]];
 }
 
 export function calculatePathSpeedMultiplier(fromX: number, fromY: number, toX: number, toY: number, width: number, height: number) {

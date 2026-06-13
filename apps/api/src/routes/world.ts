@@ -450,32 +450,42 @@ function vnoise(x: number, y: number, s: number): number {
     + vhash(ix, iy + 1, s) * (1 - ux) * uy + vhash(ix + 1, iy + 1, s) * ux * uy;
 }
 
-// Per-biome texture multiplier (~0.8–1.2) applied to the base color, giving the
-// map decorative detail (forest canopy clumps, desert dunes, rocky crags, swamp
-// blotches) without any sprite assets. Sampled in render-pixel space.
+// Per-biome texture multiplier applied to the base color. Sampled in render-pixel space.
+// FOREST uses layered canopy noise to simulate tree tops viewed from above.
 function biomeTexture(kind: string, px: number, py: number): number {
   switch (kind) {
     case "FOREST": {
-      let t = 1 + (vnoise(px * 0.16, py * 0.16, 7) - 0.5) * 0.34;
-      if (vnoise(px * 0.55, py * 0.55, 9) > 0.82) t *= 0.82; // canopy shadow dots
-      return t;
+      // Three noise layers: large canopy patches, directional NW highlight, micro-detail.
+      const canopy  = vnoise(px * 0.28, py * 0.28, 7);   // blob frequency → ~1.5 trees/tile
+      const lightNW = vnoise(px * 0.60 - 1.4, py * 0.60 - 1.4, 9); // shifted NW for sunlight
+      const micro   = vnoise(px * 1.30, py * 1.30, 13);
+      if (canopy > 0.52) {
+        // Inside canopy dome: brighter towards centre, NW-lit highlight
+        const edgeFade = Math.min(1, (canopy - 0.52) / 0.20);
+        return 0.84 + lightNW * 0.32 * edgeFade + micro * 0.06;
+      }
+      if (canopy > 0.41) {
+        // Shadow gap between canopies
+        return 0.66 + micro * 0.10;
+      }
+      // Ground/understory
+      return 0.80 + micro * 0.14;
     }
     case "DESERT":
-      // wind ripples / dunes along a wandering direction
       return 1 + Math.sin(px * 0.34 + py * 0.10 + vnoise(px * 0.05, py * 0.05, 3) * 7) * 0.055;
     case "MOUNTAIN":
-      return 1 + (vnoise(px * 0.42, py * 0.42, 5) - 0.5) * 0.30;
+      return 1 + (vnoise(px * 0.42, py * 0.42, 5) - 0.5) * 0.34;
     case "HILLS":
-      return 1 + (vnoise(px * 0.34, py * 0.34, 15) - 0.5) * 0.24;
+      return 1 + (vnoise(px * 0.34, py * 0.34, 15) - 0.5) * 0.28;
     case "SWAMP": {
       let t = 1 + (vnoise(px * 0.22, py * 0.22, 11) - 0.5) * 0.30;
-      if (vnoise(px * 0.5, py * 0.5, 17) > 0.85) t *= 1.12; // murky highlights
+      if (vnoise(px * 0.5, py * 0.5, 17) > 0.85) t *= 1.12;
       return t;
     }
     case "PLAINS":
-      return 1 + (vnoise(px * 0.18, py * 0.18, 13) - 0.5) * 0.14;
+      return 1 + (vnoise(px * 0.18, py * 0.18, 13) - 0.5) * 0.16;
     case "TUNDRA":
-      return 1 + (vnoise(px * 0.20, py * 0.20, 19) - 0.5) * 0.12;
+      return 1 + (vnoise(px * 0.20, py * 0.20, 19) - 0.5) * 0.14;
     default:
       return 1;
   }
@@ -546,8 +556,8 @@ worldRouter.get('/terrain-image', async (c) => {
     const heights = Buffer.from(terrain.elev, 'base64');
     const { cols, rows } = terrain;
 
-    // Render at 3×tile resolution (smooth but fast). CSS stretches to world size.
-    const SCALE = 3;
+    // Render at 5× tile resolution, then downsample to 2100px via lanczos3 for AA.
+    const SCALE = 5;
     const imgW = cols * SCALE;
     const imgH = rows * SCALE;
     const raw = Buffer.alloc(imgW * imgH * 3);
@@ -571,10 +581,10 @@ worldRouter.get('/terrain-image', async (c) => {
         const h11 = getH(tileCol + 1, tileRow + 1);
         const hVal = h00 * (1 - fx) * (1 - fy) + h10 * fx * (1 - fy) + h01 * (1 - fx) * fy + h11 * fx * fy;
 
-        // Hillshading: NW light
+        // Hillshading: NW light, slightly stronger contrast range than before.
         const dx = (getH(tileCol + 1, tileRow) - getH(tileCol - 1, tileRow)) * 0.5;
         const dy = (getH(tileCol, tileRow + 1) - getH(tileCol, tileRow - 1)) * 0.5;
-        const shade = Math.min(1.28, Math.max(0.72, 1 + (dx - dy) * 0.016));
+        const shade = Math.min(1.34, Math.max(0.68, 1 + (dx - dy) * 0.020));
 
         const tex = biomeTexture(kind, px, py);
         const mod = shade * tex;
@@ -586,6 +596,19 @@ worldRouter.get('/terrain-image', async (c) => {
         const idx = (py * imgW + px) * 3;
         raw[idx] = r; raw[idx + 1] = g; raw[idx + 2] = b;
       }
+    }
+
+    // Saturation + gentle S-curve contrast pass (before vignette).
+    for (let i = 0; i < raw.length; i += 3) {
+      let r = raw[i], g = raw[i + 1], b = raw[i + 2];
+      // Saturation boost (1.18×)
+      const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+      r = Math.min(255, Math.max(0, gray + (r - gray) * 1.18));
+      g = Math.min(255, Math.max(0, gray + (g - gray) * 1.18));
+      b = Math.min(255, Math.max(0, gray + (b - gray) * 1.18));
+      // Mild S-curve contrast (blend 25% smoothstep with 75% linear)
+      const sc = (v: number) => { const t = v / 255; return (t * t * (3 - 2 * t) * 0.25 + t * 0.75) * 255; };
+      raw[i] = Math.round(sc(r)); raw[i + 1] = Math.round(sc(g)); raw[i + 2] = Math.round(sc(b));
     }
 
     // Vignette pass
@@ -603,11 +626,11 @@ worldRouter.get('/terrain-image', async (c) => {
       }
     }
 
-    // Soften biome edges + residual speckle with one light box blur (sharp blur
-    // is fast/native). sigma kept small so hillshade relief survives.
+    // Downsample 3500→2100 with lanczos3 for AA, then gentle blur to remove residual speckle.
     const webpBuf = await sharp(raw, { raw: { width: imgW, height: imgH, channels: 3 } })
-      .blur(0.6)
-      .webp({ quality: 80, effort: 4 })
+      .resize(2100, 2100, { kernel: 'lanczos3' })
+      .blur(0.4)
+      .webp({ quality: 82, effort: 4 })
       .toBuffer();
 
     terrainImageCache.set(cacheKey, webpBuf);

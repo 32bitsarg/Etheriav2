@@ -1,5 +1,7 @@
 import { prisma } from "@etheria/database";
 import type { WorldMovement } from "@etheria/shared";
+import { calculateWalkablePath } from "./worldTerrainConfigData.js";
+import { LOCAL_WORLD_CONFIG } from "./worldConfigData.js";
 
 // Short TTL cache: every connected client polls this endpoint every ~10s and
 // the result is identical for all of them, so one computation serves everyone.
@@ -79,6 +81,10 @@ async function computeActiveMovements(): Promise<WorldMovement[]> {
   };
 
   const movements: WorldMovement[] = [];
+  const { width, height } = LOCAL_WORLD_CONFIG.map;
+
+  const getPath = (fx: number, fy: number, tx: number, ty: number) =>
+    calculateWalkablePath(fx, fy, tx, ty, width, height);
 
   // Player vs Player Battles
   for (const battle of battles) {
@@ -96,6 +102,7 @@ async function computeActiveMovements(): Promise<WorldMovement[]> {
       arrivesAt: battle.arrivesAt.toISOString(),
       resolvedAt: battle.resolvedAt?.toISOString(),
       returnsAt: battle.returnsAt?.toISOString(),
+      path: getPath(attacker.posX, attacker.posY, defender.posX, defender.posY),
       ...ownerInfo(battle.attackerCityId),
     });
   }
@@ -116,6 +123,7 @@ async function computeActiveMovements(): Promise<WorldMovement[]> {
       arrivesAt: battle.arrivesAt.toISOString(),
       resolvedAt: battle.resolvedAt?.toISOString(),
       returnsAt: battle.returnsAt?.toISOString(),
+      path: getPath(attacker.posX, attacker.posY, camp.posX, camp.posY),
       ...ownerInfo(battle.attackerCityId),
     });
   }
@@ -136,6 +144,7 @@ async function computeActiveMovements(): Promise<WorldMovement[]> {
       arrivesAt: raid.arrivesAt.toISOString(),
       resolvedAt: raid.resolvedAt?.toISOString(),
       returnsAt: raid.returnsAt?.toISOString(),
+      path: getPath(camp.posX, camp.posY, defender.posX, defender.posY),
     });
   }
 
@@ -155,6 +164,7 @@ async function computeActiveMovements(): Promise<WorldMovement[]> {
       arrivesAt: caravan.arrivesAt.toISOString(),
       resolvedAt: caravan.completedAt?.toISOString(),
       returnsAt: undefined,
+      path: getPath(sender.posX, sender.posY, recipient.posX, recipient.posY),
       ...ownerInfo(caravan.senderCityId),
     });
   }

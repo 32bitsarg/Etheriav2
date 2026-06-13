@@ -507,6 +507,8 @@ export const WorldMovementSchema = z.object({
   playerName: z.string().optional(),
   allianceId: z.string().optional(),
   allianceTag: z.string().optional(),
+  /** Waypoints for the march route (routes around water/mountains). If absent, use straight line. */
+  path: z.array(z.object({ x: z.number(), y: z.number() })).optional(),
 });
 
 export type WorldMovement = z.infer<typeof WorldMovementSchema>;
