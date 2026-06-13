@@ -130,8 +130,12 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   const halfW = Math.floor(worldW / 2);
   const halfH = Math.floor(worldH / 2);
 
-  // Minimum zoom: always cover the full viewport so no black edges show
-  const coverZoomMin = Math.max(size.w / worldW, size.h / worldH);
+  // Minimum zoom: always over-cover the viewport so no black edges show.
+  // The 1.08 margin means the world extends ~8% beyond the viewport at full
+  // zoom-out, so sub-pixel rounding of the camera transform and panning to the
+  // clamped world edges never reveal the black background.
+  const COVER_MARGIN = 1.08;
+  const coverZoomMin = Math.max(size.w / worldW, size.h / worldH) * COVER_MARGIN;
   const zMin = Math.max(mapConfig?.cameraMinZoom ?? 0.25, coverZoomMin);
   const zMax = mapConfig?.cameraMaxZoom ?? 2.4;
 
