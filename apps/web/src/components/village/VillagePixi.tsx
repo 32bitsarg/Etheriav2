@@ -211,7 +211,9 @@ export const VillageHTMLCanvas = memo(function VillagePixi({
           anchorStart = { x: a.x, y: a.y };
         });
 
-        c.on("pointermove", (e) => {
+        // Bug 3 fix: globalpointermove dispara en todo el stage aunque el cursor
+        // salga del sprite durante un arrastre rápido (reemplaza pointermove local).
+        c.on("globalpointermove", (e) => {
           if (!dragging) return;
           const dx = e.clientX - dragStart.cx;
           const dy = e.clientY - dragStart.cy;
@@ -246,6 +248,7 @@ export const VillageHTMLCanvas = memo(function VillagePixi({
     let destroyed = false;
     const app = new Application();
     let ro: ResizeObserver | null = null;
+    let dblclickCleanup: (() => void) | null = null;
 
     (async () => {
       const w = el.clientWidth || 1280;
@@ -282,6 +285,13 @@ export const VillageHTMLCanvas = memo(function VillagePixi({
         .decelerate({ friction: 0.88 })
         .clampZoom({ minScale: zMin, maxScale: zMax })
         .clamp({ direction: "all" });
+
+      // Bug 6 fix: doble-click en suelo vacío recentra la cámara (mismo comportamiento
+      // que tenía VillageHTMLCanvas con handleDoubleClick).
+      const initialZoom = w < 768 ? Math.max(1.2, Math.min(900 / Math.min(w, h || w), 2.4)) : 1;
+      const recenter = () => vp.animate({ position: { x: w / 2, y: h / 2 }, scale: initialZoom, time: 400 });
+      el.addEventListener("dblclick", recenter);
+      dblclickCleanup = () => el.removeEventListener("dblclick", recenter);
 
       // Background
       try {
@@ -365,6 +375,7 @@ export const VillageHTMLCanvas = memo(function VillagePixi({
       destroyed = true;
       readyRef.current = false;
       ro?.disconnect();
+      dblclickCleanup?.();
       try { app.destroy({ removeView: true }, { children: true }); } catch {}
       appRef.current = null;
       vpRef.current = null;

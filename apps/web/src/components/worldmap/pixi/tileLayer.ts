@@ -16,7 +16,7 @@ export class TileLayer extends Container {
   private viewport: Viewport;
   private isMobile: boolean;
   private terrainVersion: string;
-  private tiles = new Map<TileKey, Sprite>();
+  private tiles = new Map<TileKey, { sprite: Sprite; url: string }>();
   private loaded = new Set<TileKey>();
   private lastSig = "";
   private prevCamX = 0;
@@ -92,7 +92,7 @@ export class TileLayer extends Container {
     const rx0 = Math.max(0, x0 - RETAIN), rx1 = Math.min(span - 1, x1 + RETAIN);
     const ry0 = Math.max(0, y0 - RETAIN), ry1 = Math.min(span - 1, y1 + RETAIN);
 
-    for (const [key, sprite] of this.tiles) {
+    for (const [key, entry] of this.tiles) {
       const [kz, kx, ky] = key.split(":").map(Number);
       let remove = false;
       if (kz !== z) {
@@ -101,41 +101,44 @@ export class TileLayer extends Container {
         remove = (kx < rx0 || kx > rx1 || ky < ry0 || ky > ry1);
       }
       if (remove) {
-        sprite.destroy({ texture: true });
+        // Bug 4 fix: destruir sólo el sprite, no la textura — Assets.unload evicta el cache
+        // limpiamente y libera GPU sin dejar entradas destruidas que romperían re-carga.
+        entry.sprite.destroy();
+        Assets.unload(entry.url).catch(() => {});
         this.tiles.delete(key);
         this.loaded.delete(key);
       }
     }
   }
 
-  private async loadTile(key: TileKey, z: number, tx: number, ty: number, left: number, top: number, size: number) {
+  private tileUrl(z: number, tx: number, ty: number): string {
     const vParam = this.terrainVersion ? `?v=${encodeURIComponent(this.terrainVersion)}` : "";
-    const url = `/api/world/terrain-tile/${z}/${tx}/${ty}${vParam}`;
+    return `/api/world/terrain-tile/${z}/${tx}/${ty}${vParam}`;
+  }
+
+  private async loadTile(key: TileKey, z: number, tx: number, ty: number, left: number, top: number, size: number) {
+    const url = this.tileUrl(z, tx, ty);
     try {
       const tex: Texture = await Assets.load({ src: url, data: { mipmap: "on" } });
       tex.source.autoGenerateMipmaps = true;
-      // Sprite may already exist if a previous load attempt landed after prune
       if (this.tiles.has(key)) return;
       const sprite = new Sprite(tex);
       sprite.x = left;
       sprite.y = top;
       sprite.width = size;
       sprite.height = size;
-      sprite.alpha = this.loaded.has(key) ? 1 : 0;
+      sprite.alpha = 0;
       this.addChild(sprite);
-      this.tiles.set(key, sprite);
+      this.tiles.set(key, { sprite, url });
       this.loaded.add(key);
       // Fade in
-      if (sprite.alpha < 1) {
-        sprite.alpha = 0;
-        const fade = () => {
-          if (!sprite.destroyed) {
-            sprite.alpha = Math.min(1, sprite.alpha + 0.08);
-            if (sprite.alpha < 1) requestAnimationFrame(fade);
-          }
-        };
-        requestAnimationFrame(fade);
-      }
+      const fade = () => {
+        if (!sprite.destroyed) {
+          sprite.alpha = Math.min(1, sprite.alpha + 0.08);
+          if (sprite.alpha < 1) requestAnimationFrame(fade);
+        }
+      };
+      requestAnimationFrame(fade);
     } catch {
       // Tile load failed — underlying water/ocean base layer visible below
     }

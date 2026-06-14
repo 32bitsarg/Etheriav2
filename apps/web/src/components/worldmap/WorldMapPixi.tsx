@@ -5,7 +5,7 @@ import { Application, Container } from "pixi.js";
 import { Viewport } from "pixi-viewport";
 import type { WorldMovement, WorldRegion, WorldPOI } from "@etheria/shared";
 import { useI18n } from "@/i18n";
-import { useIsMobile } from "@/hooks/useIsMobile";
+import { getIsMobileNow } from "@/hooks/useIsMobile";
 import type { WorldTerrainMaskData } from "@/lib/worldTerrainMask";
 import type { TerrainKind } from "@/lib/worldTerrainMask";
 import { TileLayer } from "./pixi/tileLayer";
@@ -68,7 +68,6 @@ export function WorldMapPixi({
   onPickTerrain?: (kind: TerrainKind) => void;
 }) {
   const { t } = useI18n();
-  const isMobile = useIsMobile();
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
   const viewportRef = useRef<Viewport | null>(null);
@@ -116,7 +115,12 @@ export function WorldMapPixi({
     if (!el) return;
 
     let destroyed = false;
+    const disposers: Array<() => void> = [];
+
     (async () => {
+      // Bug 1 fix: leer mobile sincrónicamente — useIsMobile() llega null en el primer render
+      const isMobileNow = getIsMobileNow();
+
       const app = new Application();
       await app.init({
         preference: "webgpu",
@@ -157,7 +161,7 @@ export function WorldMapPixi({
 
       // ── World layers (all go into viewport) ─────────────────────────────
       const overlay = new OverlayLayer(worldW, worldH, viewport);
-      const tileLayer = new TileLayer(worldW, worldH, viewport, !!isMobile, cfg?.terrainVersion ?? "");
+      const tileLayer = new TileLayer(worldW, worldH, viewport, isMobileNow, cfg?.terrainVersion ?? "");
       const markers = new MarkersLayer(viewport);
       const movLayer = new MovementsLayer(viewport, (k: string) => tRef.current(k));
       const editorLayer = new EditorLayer(viewport, worldW, worldH);
@@ -183,8 +187,8 @@ export function WorldMapPixi({
       viewport.sortableChildren = true;
 
       // ── Load async resources ─────────────────────────────────────────────
-      overlay.loadWater(!!isMobile);
-      overlay.loadOverview(!!isMobile, cfg?.terrainVersion ?? "");
+      overlay.loadWater(isMobileNow);
+      overlay.loadOverview(isMobileNow, cfg?.terrainVersion ?? "");
       overlay.loadRegionBorders();
       markers.loadTextures();
 
@@ -213,11 +217,9 @@ export function WorldMapPixi({
       const canvas = app.canvas as HTMLCanvasElement;
       const handlePointerDown = (e: PointerEvent) => {
         if (!editorModeRef.current) return;
-        if (e.button !== 0) return; // left-click only for paint
+        if (e.button !== 0) return;
         e.preventDefault();
         const rect = canvas.getBoundingClientRect();
-        const sx = (e.clientX - rect.left) * (worldW / rect.width);
-        // Convert screen to world via viewport
         const wp = viewportRef.current!.toWorld(e.clientX - rect.left, e.clientY - rect.top);
         const tool = terrainToolRef.current;
         const mask = terrainMaskRef.current;
@@ -294,11 +296,19 @@ export function WorldMapPixi({
       });
       ro.observe(el);
 
-      return () => { ro.disconnect(); canvas.removeEventListener("pointerdown", handlePointerDown); canvas.removeEventListener("pointermove", handlePointerMove); canvas.removeEventListener("pointerup", handlePointerUp); };
+      // Bug 2 fix: registrar disposers en scope del effect, no dentro del IIFE
+      disposers.push(
+        () => ro.disconnect(),
+        () => canvas.removeEventListener("pointerdown", handlePointerDown),
+        () => canvas.removeEventListener("pointermove", handlePointerMove),
+        () => canvas.removeEventListener("pointerup", handlePointerUp),
+        () => canvas.removeEventListener("pointercancel", handlePointerUp),
+      );
     })();
 
     return () => {
       destroyed = true;
+      for (const d of disposers) { try { d(); } catch {} }
       const app = appRef.current;
       if (app) { try { app.destroy(true, { children: true }); } catch {} appRef.current = null; }
       hasInited.current = false;
