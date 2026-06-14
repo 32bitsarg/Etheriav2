@@ -432,7 +432,8 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
       // Todos los movimientos visibles (fog desactivado)
       el.style.display = "";
       const l = worldToLocal(wx, wy);
-      el.style.transform = `translate3d(${l.x}px, ${l.y}px, 0) translate(-50%, -50%) scale(${Math.min(3, 1 / cam.current.zoom).toFixed(4)})`;
+      const invZ = 1 / cam.current.zoom;
+      el.style.transform = `translate3d(${l.x}px, ${l.y}px, 0) translate(-50%, -50%) scale(${Math.max(0.5, Math.min(2.5, invZ)).toFixed(4)})`;
     }
   }, [movements, worldToLocal, cities, myCityId]);
 
@@ -1065,7 +1066,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
                   className="absolute flex flex-col items-center cursor-pointer"
                   style={{
                     left: l.x, top: l.y,
-                    transform: "translate(-50%, -85%) scale(min(1, var(--inv-zoom, 1)))",
+                    transform: "translate(-50%, -85%) scale(clamp(0.42, var(--inv-zoom, 1), 2.2))",
                     transformOrigin: "50% 85%",
                     zIndex: 2, willChange: "transform",
                   }}
@@ -1076,7 +1077,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
                     className="pointer-events-none"
                     draggable={false}
                     style={{
-                      width: 120, height: 120,
+                      width: 80, height: 80,
                       filter: `drop-shadow(0 3px 6px rgba(0,0,0,0.6)) sepia(0.3) hue-rotate(-10deg)`,
                     }}
                     onError={(e) => {
@@ -1106,36 +1107,47 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
               );
             })}
 
-          {/* March trail for the hovered movement */}
-          {(() => {
-            const hovered = movements.find((m) => m.id === hoveredMovementId);
-            if (!hovered) return null;
-            const color = MOVEMENT_RELATION_COLORS[hovered.relation ?? "neutral"];
-            const pathPts = hovered.path && hovered.path.length >= 2
-              ? hovered.path.map((p) => worldToLocal(p.x, p.y))
-              : [worldToLocal(hovered.from.x, hovered.from.y), worldToLocal(hovered.to.x, hovered.to.y)];
-            const points = pathPts.map((p) => `${p.x},${p.y}`).join(" ");
-            const from = pathPts[0];
-            const to = pathPts[pathPts.length - 1];
-            return (
-              <svg
-                className="absolute inset-0 pointer-events-none"
-                width={worldW}
-                height={worldH}
-                style={{ zIndex: 7 }}
-              >
-                <polyline
-                  points={points}
-                  fill="none"
-                  stroke={color} strokeWidth={1.5} strokeDasharray="6 5"
-                  strokeLinecap="round" opacity={0.8}
-                  style={{ animation: "march-trail-dash 0.8s linear infinite" }}
-                />
-                <circle cx={from.x} cy={from.y} r={3} fill="none" stroke={color} strokeWidth={1.2} opacity={0.7} />
-                <circle cx={to.x} cy={to.y} r={4} fill={color} opacity={0.55} />
-              </svg>
-            );
-          })()}
+          {/* Movement paths — all routes always visible; hovered route highlighted.
+              vector-effect="non-scaling-stroke" keeps stroke width constant in screen
+              pixels regardless of the camera zoom transform applied to the parent div. */}
+          {movements.length > 0 && (
+            <svg
+              className="absolute inset-0 pointer-events-none"
+              width={worldW}
+              height={worldH}
+              style={{ zIndex: 7 }}
+            >
+              {movements.map((m) => {
+                const isHov = hoveredMovementId === m.id;
+                const color = m.type === "BARBARIAN_TRADE"
+                  ? "#a0e870"
+                  : m.type === "BARBARIAN_MOVE"
+                  ? "#c8a060"
+                  : m.type === "BARBARIAN_VS_BARBARIAN"
+                  ? "#e84040"
+                  : MOVEMENT_RELATION_COLORS[m.relation ?? "neutral"] ?? "#b9b3a4";
+                const isReturning = m.status === "RETURNING" && !!m.returnsAt;
+                const rawPath = m.path && m.path.length >= 2 ? m.path : [m.from, m.to];
+                const pathPts = (isReturning ? [...rawPath].reverse() : rawPath).map((p) => worldToLocal(p.x, p.y));
+                const points = pathPts.map((p) => `${p.x},${p.y}`).join(" ");
+                const dest = pathPts[pathPts.length - 1];
+                return (
+                  <g key={m.id} opacity={isHov ? 1 : 0.35}>
+                    <polyline
+                      points={points}
+                      fill="none"
+                      stroke={color}
+                      strokeWidth={isHov ? 2.5 : 1.5}
+                      strokeDasharray="7 5"
+                      strokeLinecap="round"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    <circle cx={dest.x} cy={dest.y} r={4} fill={color} vectorEffect="non-scaling-stroke" />
+                  </g>
+                );
+              })}
+            </svg>
+          )}
 
           {/* Terrain overlay canvas (editor mode) */}
           {editorMode && (
@@ -1148,15 +1160,17 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
             />
           )}
 
-          {/* Movement markers — sprite-based, counter-scaled against zoom so they stay legible at any distance */}
+          {/* Movement markers — geometric SVG shapes, clamp-scaled so they stay legible at any zoom */}
           {movements.map((m) => {
             const isTrade = m.type === "TRADE" || m.type === "BARBARIAN_TRADE";
-            const isBarbRaid = m.type === "BARBARIAN_RAID";
-            const isBarbAttack = m.type === "BARBARIAN_ATTACK";
             const isBarbMove = m.type === "BARBARIAN_MOVE";
             const isBarbDuel = m.type === "BARBARIAN_VS_BARBARIAN";
-            const isBarb = isBarbRaid || isBarbAttack || isBarbMove || isBarbDuel || m.type === "BARBARIAN_TRADE";
+            const isReturning = m.status === "RETURNING";
             const l = worldToLocal(m.from.x, m.from.y);
+            // Angle of travel for directional shapes
+            const dx = isReturning ? m.from.x - m.to.x : m.to.x - m.from.x;
+            const dy = isReturning ? m.from.y - m.to.y : m.to.y - m.from.y;
+            const angleDeg = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
             const color = m.type === "BARBARIAN_TRADE"
               ? "#a0e870"
               : m.type === "BARBARIAN_MOVE"
@@ -1164,12 +1178,8 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
               : m.type === "BARBARIAN_VS_BARBARIAN"
               ? "#e84040"
               : MOVEMENT_RELATION_COLORS[m.relation ?? "neutral"] ?? (isTrade ? "#ffe066" : "#ff8888");
-            const sprite = isTrade
-              ? "/assets/map/merchant-caravan-walk.png"
-              : isBarb
-              ? "/assets/map/barbarian-army-walk.png"
-              : "/assets/map/player-army-walk.png";
             const isHovered = hoveredMovementId === m.id;
+            const sz = isHovered ? 28 : 22;
             return (
               <div
                 key={m.id}
@@ -1180,8 +1190,9 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
                 className="absolute flex flex-col items-center pointer-events-auto cursor-pointer"
                 style={{
                   left: 0, top: 0,
-                  // translate3d positions in world space; inner scale counter-acts parent zoom.
-                  transform: `translate3d(${l.x}px, ${l.y}px, 0) translate(-50%, -50%) scale(min(3, var(--inv-zoom, 1)))`,
+                  // clamp keeps the icon legible at any zoom: min 0.5 so it never
+                  // vanishes zoomed in, max 2.5 so it never becomes giant zoomed out.
+                  transform: `translate3d(${l.x}px, ${l.y}px, 0) translate(-50%, -50%) scale(clamp(0.5, var(--inv-zoom, 1), 2.5))`,
                   transformOrigin: "50% 50%",
                   zIndex: isHovered ? 9 : 8, willChange: "transform",
                 }}
@@ -1189,37 +1200,60 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
                 onPointerLeave={() => setHoveredMovementId((id) => (id === m.id ? null : id))}
                 onClick={(e) => { e.stopPropagation(); setHoveredMovementId((id) => (id === m.id ? null : m.id)); }}
               >
-                <img
-                  src={sprite}
-                  alt=""
-                  draggable={false}
-                  className="pointer-events-none"
-                  style={{
-                    width: 48, height: 48,
-                    filter: `drop-shadow(0 2px 4px rgba(0,0,0,0.7)) drop-shadow(0 0 6px ${color}88)`,
-                  }}
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                />
-                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}`, marginTop: 2 }} />
+                <svg
+                  width={sz} height={sz}
+                  viewBox="-14 -14 28 28"
+                  style={{ overflow: "visible", filter: `drop-shadow(0 2px 5px rgba(0,0,0,0.85)) drop-shadow(0 0 5px ${color}99)` }}
+                >
+                  {isBarbMove ? (
+                    // Barbarian relocation — circle
+                    <circle r={9} fill={color} opacity={isHovered ? 1 : 0.88}
+                      stroke="rgba(0,0,0,0.4)" strokeWidth={1} />
+                  ) : isTrade ? (
+                    // Trade / caravan — diamond (rotated square)
+                    <rect x="-8" y="-8" width="16" height="16"
+                      fill={color} opacity={isHovered ? 1 : 0.92}
+                      stroke="rgba(0,0,0,0.4)" strokeWidth={1}
+                      transform="rotate(45)" />
+                  ) : isBarbDuel ? (
+                    // Barbarian vs barbarian — two opposing triangles
+                    <g opacity={isHovered ? 1 : 0.92}>
+                      <polygon points="0,-10 8,5 -8,5" fill={color}
+                        stroke="rgba(0,0,0,0.4)" strokeWidth={1}
+                        transform={`rotate(${angleDeg})`} />
+                      <polygon points="0,10 8,-5 -8,-5" fill={color} opacity={0.55}
+                        transform={`rotate(${angleDeg})`} />
+                    </g>
+                  ) : (
+                    // Attack / raid — triangle pointing toward destination
+                    <polygon
+                      points="0,-10 8,6 -8,6"
+                      fill={color}
+                      opacity={isHovered ? 1 : 0.92}
+                      stroke="rgba(0,0,0,0.4)" strokeWidth={1}
+                      transform={`rotate(${angleDeg})`}
+                    />
+                  )}
+                </svg>
                 {isHovered && (() => {
                   const etaMs = new Date(m.status === "RETURNING" && m.returnsAt ? m.returnsAt : m.arrivesAt).getTime() - Date.now();
                   const etaMin = Math.max(0, Math.floor(etaMs / 60000));
                   const etaSec = Math.max(0, Math.floor((etaMs % 60000) / 1000));
                   return (
-                  <div
-                    className="absolute bottom-full mb-1 whitespace-nowrap rounded-md border px-2 py-1 text-[9px] leading-snug pointer-events-none"
-                    style={{ backgroundColor: "rgba(5,7,7,0.92)", borderColor: `${color}66`, color: "#e9e2cf" }}
-                  >
-                    <span style={{ color }}>
-                      {m.playerName ?? m.from.name}
-                      {m.allianceTag ? ` [${m.allianceTag}]` : ""}
-                    </span>
-                    {" → "}
-                    {m.status === "RETURNING" ? m.from.name : m.to.name}
-                    <div className="text-white/60">
-                      {m.type === "BARBARIAN_MOVE" ? "Relocation" : m.type === "BARBARIAN_VS_BARBARIAN" ? "Clash" : m.type === "BARBARIAN_TRADE" ? "Barbarian trade" : isTrade ? t("play.map.march.trade") : t("play.map.march.attack")} · {etaMin}m {etaSec}s
+                    <div
+                      className="absolute bottom-full mb-1 whitespace-nowrap rounded-md border px-2 py-1 text-[9px] leading-snug pointer-events-none"
+                      style={{ backgroundColor: "rgba(5,7,7,0.92)", borderColor: `${color}66`, color: "#e9e2cf" }}
+                    >
+                      <span style={{ color }}>
+                        {m.playerName ?? m.from.name}
+                        {m.allianceTag ? ` [${m.allianceTag}]` : ""}
+                      </span>
+                      {" → "}
+                      {m.status === "RETURNING" ? m.from.name : m.to.name}
+                      <div className="text-white/60">
+                        {m.type === "BARBARIAN_MOVE" ? "Relocation" : m.type === "BARBARIAN_VS_BARBARIAN" ? "Clash" : m.type === "BARBARIAN_TRADE" ? "Barbarian trade" : isTrade ? t("play.map.march.trade") : t("play.map.march.attack")} · {etaMin}m {etaSec}s
+                      </div>
                     </div>
-                  </div>
                   );
                 })()}
               </div>
@@ -1272,6 +1306,18 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
               <span className="text-[9px] text-white/55 leading-none">{label}</span>
             </div>
           ))}
+          <div className="mt-0.5 border-t border-white/10 pt-0.5 flex flex-col gap-1">
+            {([
+              ["▲", "#d75f43", t("play.map.legend.attack")],
+              ["◆", "#ffe066", t("play.map.legend.trade")],
+              ["●", "#c8a060", t("play.map.legend.barbMove")],
+            ] as [string, string, string][]).map(([shape, color, label]) => (
+              <div key={label} className="flex items-center gap-1.5">
+                <span className="text-[9px] w-2 text-center leading-none shrink-0" style={{ color }}>{shape}</span>
+                <span className="text-[9px] text-white/55 leading-none">{label}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
       {/* Brush cursor overlay */}
@@ -1329,7 +1375,9 @@ const CityMarker = memo(function CityMarker({ city, x, y, isMe, onClick, onDoubl
         left: x, top: y,
         // Anchor at bottom-center, then counter-scale against parent zoom so the marker stays
         // the same screen size regardless of how far the player zooms out.
-        transform: `translate(-50%, -85%) scale(min(1, calc(var(--inv-zoom, 1) * ${isMe ? 1.15 : 1})))`,
+        // clamp: 0.42 floor keeps the marker visible when very zoomed in;
+        // 2.2 ceiling prevents it from getting giant when zoomed out.
+        transform: `translate(-50%, -85%) scale(clamp(0.42, calc(var(--inv-zoom, 1) * ${isMe ? 1.15 : 1}), 2.2))`,
         transformOrigin: "50% 85%",
         zIndex: isMe ? 4 : 2,
         willChange: "transform",
@@ -1341,7 +1389,7 @@ const CityMarker = memo(function CityMarker({ city, x, y, isMe, onClick, onDoubl
         className="pointer-events-none"
         draggable={false}
         style={{
-          width: 120, height: 120,
+          width: 80, height: 80,
           filter: `drop-shadow(0 3px 6px rgba(0,0,0,0.6))`,
         }}
       />
@@ -1349,7 +1397,7 @@ const CityMarker = memo(function CityMarker({ city, x, y, isMe, onClick, onDoubl
         <div
           className="absolute rounded-full pointer-events-none animate-pulse"
           style={{
-            width: 132, height: 132, top: -6,
+            width: 90, height: 90, top: -5,
             border: `2px solid ${color}`,
             boxShadow: `0 0 10px ${color}44`,
           }}

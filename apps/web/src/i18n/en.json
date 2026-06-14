@@ -1053,7 +1053,10 @@
         "own": "Your city",
         "ally": "Ally",
         "peace": "Peace",
-        "hostile": "Hostile"
+        "hostile": "Hostile",
+        "attack": "Attack",
+        "trade": "Trade",
+        "barbMove": "Barbarian moving"
       }
     },
     "rename": {

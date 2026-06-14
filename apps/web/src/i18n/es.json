@@ -1053,7 +1053,10 @@
         "own": "Tu ciudad",
         "ally": "Aliado",
         "peace": "Paz",
-        "hostile": "Hostil"
+        "hostile": "Hostil",
+        "attack": "Ataque",
+        "trade": "Comercio",
+        "barbMove": "Bárbaro en movimiento"
       }
     },
     "rename": {
