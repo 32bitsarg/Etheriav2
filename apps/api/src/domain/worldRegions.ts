@@ -212,9 +212,9 @@ export function generateRegions(
     });
   }
 
-  // ── Region-map: downsample assignment grid to ~400×400 ──────────────────
-  const RMAP_COLS = 400;
-  const RMAP_ROWS = 400;
+  // ── Region-map: downsample assignment grid to ~512×512 ──────────────────
+  const RMAP_COLS = 512;
+  const RMAP_ROWS = 512;
   const rmapBuf = new Uint8Array(RMAP_COLS * RMAP_ROWS).fill(255);
   for (let ry = 0; ry < RMAP_ROWS; ry++) {
     const gridRow = Math.min(rows - 1, Math.floor((ry / RMAP_ROWS) * rows));

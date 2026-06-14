@@ -693,15 +693,16 @@ async function getDecodedTerrain(worldId: string) {
 
 worldRouter.get('/terrain-image', async (c) => {
   const worldId = c.req.query('worldId') ?? 'local';
-  const cacheKey = worldId;
+  const variant = c.req.query('variant') ?? 'default'; // 'default' | 'mobile'
+  const cacheKey = `${worldId}:${variant}`;
 
   if (!terrainImageCache.has(cacheKey)) {
     const { default: sharp } = await import('sharp');
     const { cells, heights, cols, rows } = await getDecodedTerrain(worldId);
 
-    // Overview: render at 3× cell resolution then downsample to 2100 for AA. Used as
-    // the always-present base layer behind the LOD tiles (fast initial load).
-    const SCALE = 3;
+    // Adaptive scale: cap render size so we don't blow memory at large grids.
+    // At 2200 cols SCALE=1 → 2200² render (4.8M px), previously fixed at 3 (6600²=43M).
+    const SCALE = Math.max(1, Math.round(2600 / cols));
     const imgW = cols * SCALE;
     const imgH = rows * SCALE;
     const raw = Buffer.alloc(imgW * imgH * 3);
@@ -715,10 +716,14 @@ worldRouter.get('/terrain-image', async (c) => {
       }
     }
 
+    const targetSize = variant === 'mobile' ? 1600 : 2600;
+    const blurAmount = variant === 'mobile' ? 0.3 : 0.2;
+    const quality = variant === 'mobile' ? 72 : 80;
+
     const webpBuf = await sharp(raw, { raw: { width: imgW, height: imgH, channels: 3 } })
-      .resize(2100, 2100, { kernel: 'lanczos3' })
-      .blur(0.4)
-      .webp({ quality: 80, effort: 4 })
+      .resize(targetSize, targetSize, { kernel: 'lanczos3' })
+      .blur(blurAmount)
+      .webp({ quality, effort: 4 })
       .toBuffer();
 
     terrainImageCache.set(cacheKey, webpBuf);
@@ -739,7 +744,7 @@ worldRouter.get('/terrain-image', async (c) => {
 // Rendered on-demand at 2× supersample, downscaled with lanczos3, cached LRU.
 
 const TILE_PX = 256;
-const TILE_ZMAX = 8;
+const TILE_ZMAX = 9;
 const TILE_SS = 2; // supersample factor
 const TILE_CACHE_MAX = 1200;
 const terrainTileCache = new Map<string, Buffer>(); // insertion-ordered → LRU

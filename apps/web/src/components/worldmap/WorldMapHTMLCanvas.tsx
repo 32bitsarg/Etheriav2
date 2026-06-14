@@ -6,6 +6,7 @@ import React, {
 import type { WorldMovement, WorldRegion, WorldPOI } from "@etheria/shared";
 import { useI18n } from "@/i18n";
 import { TERRAIN_COLOR_HEX, type TerrainKind, type WorldTerrainMaskData } from "@/lib/worldTerrainMask";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 type WorldCity = {
   id: string;
@@ -70,7 +71,7 @@ const FOG_RADIUS = 140;
 // The client mounts only the tiles visible at the LOD matching the current zoom; the
 // overview image stays behind as a base layer so there are never blank gaps.
 const TILE_PX = 256;
-const TILE_ZMAX = 8;
+const TILE_ZMAX = 9;
 type TileDesc = { z: number; x: number; y: number; left: number; top: number; size: number };
 
 const MOVEMENT_RELATION_COLORS: Record<string, string> = {
@@ -121,6 +122,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   onPickTerrain?: (kind: TerrainKind) => void;
 }) {
   const { t } = useI18n();
+  const isMobile = useIsMobile();
   const [hoveredMovementId, setHoveredMovementId] = useState<string | null>(null);
   const outerRef = useRef<HTMLDivElement>(null);
   const cameraRef = useRef<HTMLDivElement>(null);
@@ -173,7 +175,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   // background, and avoids downscaling the giant world layer so far that the
   // browser drops edge pixels (black bands) or markers flicker. rawCover (world =
   // viewport, whole world visible) ×3 → world ≈ 3× the viewport at min zoom.
-  const ZOOM_OUT_LIMIT = 3.0;
+  const ZOOM_OUT_LIMIT = 6.0;
   const coverZoomMin = Math.max(size.w / worldW, size.h / worldH) * ZOOM_OUT_LIMIT;
   const zMin = Math.max(mapConfig?.cameraMinZoom ?? 0.25, coverZoomMin);
   const zMax = mapConfig?.cameraMaxZoom ?? 2.4;
@@ -448,12 +450,12 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     const span = 1 << z;
     const tileWorld = worldW / span;
 
-    // Visible rect + ±2 prefetch margin
+    // Visible rect + prefetch margin (smaller on mobile to save memory)
     const tl = screenToWorld(0, 0);
     const br = screenToWorld(vw, vh);
     const minWX = Math.min(tl.x, br.x), maxWX = Math.max(tl.x, br.x);
     const minWY = Math.min(tl.y, br.y), maxWY = Math.max(tl.y, br.y);
-    const PREFETCH = 2;
+    const PREFETCH = isMobile ? 1 : 2;
     const x0 = Math.max(0, Math.floor((minWX + halfW) / tileWorld) - PREFETCH);
     const x1 = Math.min(span - 1, Math.floor((maxWX + halfW) / tileWorld) + PREFETCH);
     const y0 = Math.max(0, Math.floor((minWY + halfH) / tileWorld) - PREFETCH);
@@ -487,7 +489,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     //    (the current level now fully covers the viewport → cross-fade done).
     //  - Always remove tiles of the current level outside the ±4 retention margin
     //    to cap DOM node count when panning long distances.
-    const RETAIN = 4;
+    const RETAIN = isMobile ? 2 : 4;
     const rx0 = Math.max(0, x0 - RETAIN), rx1 = Math.min(span - 1, x1 + RETAIN);
     const ry0 = Math.max(0, y0 - RETAIN), ry1 = Math.min(span - 1, y1 + RETAIN);
 
@@ -500,7 +502,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     }
 
     setVisibleTiles([...map.values()]);
-  }, [size.w, size.h, worldW, halfW, halfH, screenToWorld]);
+  }, [size.w, size.h, worldW, halfW, halfH, screenToWorld, isMobile]);
 
   // ─── rAF loop ────────────────────────────────────────────────────────────
 
@@ -858,7 +860,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
           {/* Overview terrain — low-res base layer always behind the LOD tiles so
               there are never blank gaps while tiles load. */}
           <img
-            src="/api/world/terrain-image"
+            src={`/api/world/terrain-image${isMobile ? '?variant=mobile' : ''}`}
             alt=""
             className="absolute inset-0 pointer-events-none"
             draggable={false}

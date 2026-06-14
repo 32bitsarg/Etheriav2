@@ -558,6 +558,52 @@ export function generateTerrainData(seed: number, cols: number, rows: number): T
     }
   }
 
+  // ── Step 5.6: Connected-component blob cleanup ────────────────────────────
+  // Erase tiny isolated biome patches (specks of desert in forest, etc.) by
+  // flood-fill: any land component smaller than MIN_BIOME_BLOB cells is replaced
+  // by the most common biome touching its perimeter.
+  {
+    const MIN_BIOME_BLOB = Math.max(10, Math.round(N / 180000)); // ~27 at 2200²
+    const visited = new Uint8Array(N);
+    for (let start = 0; start < N; start++) {
+      if (visited[start] || cells[start] === "WATER") continue;
+      const kind = cells[start];
+      const component: number[] = [];
+      const queue = [start];
+      visited[start] = 1;
+      let head = 0;
+      while (head < queue.length) {
+        const ci = queue[head++];
+        component.push(ci);
+        const cc = ci % cols, cr = Math.floor(ci / cols);
+        for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]] as const) {
+          const nr = cr + dr, nc = cc + dc;
+          if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+          const ni = nr * cols + nc;
+          if (!visited[ni] && cells[ni] === kind) { visited[ni] = 1; queue.push(ni); }
+        }
+      }
+      if (component.length >= MIN_BIOME_BLOB) continue;
+      // Count perimeter biomes
+      const neighborCounts: Record<string, number> = {};
+      for (const ci of component) {
+        const cc = ci % cols, cr = Math.floor(ci / cols);
+        for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]] as const) {
+          const nr = cr + dr, nc = cc + dc;
+          if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+          const nk = cells[nr * cols + nc];
+          if (nk !== kind && nk !== "WATER") neighborCounts[nk] = (neighborCounts[nk] || 0) + 1;
+        }
+      }
+      let bestBiome = kind, bestCount = 0;
+      for (const [bk, bc] of Object.entries(neighborCounts)) {
+        if (bc > bestCount) { bestCount = bc; bestBiome = bk as typeof kind; }
+      }
+      if (bestCount === 0) continue; // island surrounded by water — leave as is
+      for (const ci of component) cells[ci] = bestBiome;
+    }
+  }
+
   // ── Step 6: Flux-based rivers (Azgaar precipitation model) ───────────────
   traceFluxRivers(hg.h, cells, cols, rows, rng);
 

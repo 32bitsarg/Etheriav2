@@ -40,8 +40,8 @@ export const LOCAL_WORLD_CONFIG: WorldConfigDoc = {
   id: 'local-world-config',
   version: 1,
   map: {
-    width: 40000,
-    height: 40000,
+    width: 80000,
+    height: 80000,
     cameraMinZoom: 0.04,
     cameraMaxZoom: 2.2,
     cameraInitialZoom: 0.16,
@@ -50,9 +50,9 @@ export const LOCAL_WORLD_CONFIG: WorldConfigDoc = {
     decorDensity: 0.7,
     decorSafeRadius: 280,
     terrainOverlayEnabled: false,
-    terrainCols: 1400,
-    terrainRows: 1400,
-    tileSize: 28,
+    terrainCols: 2200,
+    terrainRows: 2200,
+    tileSize: 36,
   },
   spawn: {
     strategy: "soft-clusters",
