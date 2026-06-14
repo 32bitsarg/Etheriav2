@@ -358,17 +358,16 @@ export function WorldMapPixi({
     onCenterMyCity?.();
   }, [cities, myCityId, onCenterMyCity]);
 
-  if (!mapConfig) {
-    return (
-      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#0a1e48] gap-3">
-        <div className="w-8 h-8 rounded-full border-2 border-amber-500/30 border-t-amber-500 animate-spin" />
-        <p className="text-stone-500 text-xs">Cargando mapa...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="relative h-full w-full">
+      {/* Loading overlay — visible hasta que mapConfig cargue. El div del canvas
+          siempre está montado para que el useEffect pueda inicializar Pixi. */}
+      {!mapConfig && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#0a1e48] gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-amber-500/30 border-t-amber-500 animate-spin" />
+          <p className="text-stone-500 text-xs">Cargando mapa...</p>
+        </div>
+      )}
       <div
         ref={containerRef}
         className="h-full w-full select-none md:rounded-lg md:border md:border-etheria-border/30"

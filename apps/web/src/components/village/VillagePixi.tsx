@@ -43,11 +43,20 @@ export interface VillageHTMLCanvasProps {
 type BuildingNode = {
   c: Container;
   sprite: Sprite;
+  baseScale: number; // escala base (object-contain), para aplicar el 1.08x de selección encima
   ring: Graphics;
   nameLabel: Text;
   timerLabel: Text;
   completesAt: string | null;
 };
+
+/** Escala un sprite respetando aspect ratio (equivalente a object-contain). */
+function fitSprite(sprite: Sprite, maxW: number, maxH: number) {
+  const tex = sprite.texture;
+  if (!tex.width || !tex.height) { sprite.width = maxW; sprite.height = maxH; return; }
+  const s = Math.min(maxW / tex.width, maxH / tex.height);
+  sprite.scale.set(s);
+}
 
 function formatCountdown(secs: number): string {
   if (secs < 60) return `${secs}s`;
@@ -143,8 +152,8 @@ export const VillageHTMLCanvas = memo(function VillagePixi({
         sprite.tint = 0x556655;
       }
       sprite.anchor.set(0.5);
-      sprite.width = frame.width;
-      sprite.height = frame.height;
+      fitSprite(sprite, frame.width, frame.height);
+      const baseScale = sprite.scale.x;
       c.addChild(sprite);
 
       // Selection ring
@@ -182,7 +191,7 @@ export const VillageHTMLCanvas = memo(function VillagePixi({
 
       const queue = queueMapRef.current.get(b.id);
       nodeMapRef.current.set(b.id, {
-        c, sprite, ring, nameLabel, timerLabel,
+        c, sprite, baseScale, ring, nameLabel, timerLabel,
         completesAt: queue?.completesAt ?? null,
       });
       buildingsC.addChild(c);
@@ -356,8 +365,8 @@ export const VillageHTMLCanvas = memo(function VillagePixi({
           node.c.x = frame.left + frame.width / 2;
           node.c.y = frame.top + frame.height / 2;
           node.c.zIndex = frame.zIndex;
-          node.sprite.width = frame.width;
-          node.sprite.height = frame.height;
+          fitSprite(node.sprite, frame.width, frame.height);
+          node.baseScale = node.sprite.scale.x;
           node.ring.clear().circle(0, 0, Math.max(frame.width, frame.height) / 2 + 6)
             .stroke({ color: 0xf59e0b, width: 2, alpha: 0.9 });
           node.nameLabel.y = -(frame.height / 2) - 4;
@@ -390,7 +399,7 @@ export const VillageHTMLCanvas = memo(function VillagePixi({
     for (const [id, node] of nodeMapRef.current) {
       const sel = id === selectedBuildingId;
       node.ring.visible = sel;
-      node.sprite.scale.set(sel ? 1.08 : 1);
+      node.sprite.scale.set(sel ? node.baseScale * 1.08 : node.baseScale);
     }
   }, [selectedBuildingId]);
 
