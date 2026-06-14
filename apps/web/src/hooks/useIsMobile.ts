@@ -6,6 +6,12 @@ import { useEffect, useState } from "react";
 // lo detectamos por puntero táctil + pantalla baja.
 const MOBILE_QUERY = "(max-width: 767px), ((pointer: coarse) and (max-height: 500px))";
 
+/** Leer el estado mobile sincrónicamente (seguro sólo en cliente). */
+export function getIsMobileNow(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia(MOBILE_QUERY).matches;
+}
+
 // Single source of truth for the mobile/desktop HUD split. Returns null until
 // mounted so SSR markup doesn't commit to either layout.
 export function useIsMobile(): boolean | null {

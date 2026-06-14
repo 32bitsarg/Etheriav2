@@ -22,31 +22,44 @@ export const changelogReleases: ChangelogRelease[] = [
     date: "2026-06-12",
     sections: [
       {
-        heading: "Added",
+        heading: "Novedades",
         itemKeys: [
-          "changelog.items.v0_6_0.added.0",
-          "changelog.items.v0_6_0.added.1",
-          "changelog.items.v0_6_0.added.2",
-          "changelog.items.v0_6_0.added.3",
-          "changelog.items.v0_6_0.added.4",
-          "changelog.items.v0_6_0.added.5",
+          "changelog.items.v0_6_0.novedades.0",
+          "changelog.items.v0_6_0.novedades.1",
+          "changelog.items.v0_6_0.novedades.2",
+          "changelog.items.v0_6_0.novedades.3",
+          "changelog.items.v0_6_0.novedades.4"
         ],
       },
       {
-        heading: "Changed",
+        heading: "Mejoras",
         itemKeys: [
-          "changelog.items.v0_6_0.changed.0",
-          "changelog.items.v0_6_0.changed.1",
-          "changelog.items.v0_6_0.changed.2",
+          "changelog.items.v0_6_0.mejoras.0",
+          "changelog.items.v0_6_0.mejoras.1"
+        ],
+      }
+    ],
+  },
+  {
+    version: "0.5.9",
+    nameKey: "changelog.releases.v0_5_9",
+    date: "2026-06-12",
+    sections: [
+      {
+        heading: "Novedades",
+        itemKeys: [
+          "changelog.items.v0_5_9.novedades.0",
+          "changelog.items.v0_5_9.novedades.1",
+          "changelog.items.v0_5_9.novedades.2",
+          "changelog.items.v0_5_9.novedades.3"
         ],
       },
       {
-        heading: "Fixed",
+        heading: "Mejoras",
         itemKeys: [
-          "changelog.items.v0_6_0.fixed.0",
-          "changelog.items.v0_6_0.fixed.1",
+          "changelog.items.v0_5_9.mejoras.0"
         ],
-      },
+      }
     ],
   },
   {
@@ -55,27 +68,15 @@ export const changelogReleases: ChangelogRelease[] = [
     date: "2026-06-11",
     sections: [
       {
-        heading: "Performance",
+        heading: "Mejoras",
         itemKeys: [
-          "changelog.items.v0_5_8.performance.0",
-          "changelog.items.v0_5_8.performance.1",
-          "changelog.items.v0_5_8.performance.2",
-          "changelog.items.v0_5_8.performance.3",
-          "changelog.items.v0_5_8.performance.4",
-          "changelog.items.v0_5_8.performance.5",
-          "changelog.items.v0_5_8.performance.6",
-          "changelog.items.v0_5_8.performance.7",
-          "changelog.items.v0_5_8.performance.8",
-          "changelog.items.v0_5_8.performance.9"
-        ],
-        internalItemKeys: [
-          "changelog.items.v0_5_8.performance.9"
-        ],
-      },
-      {
-        heading: "Changed",
-        itemKeys: [
-          "changelog.items.v0_5_8.changed.0"
+          "changelog.items.v0_5_8.mejoras.0",
+          "changelog.items.v0_5_8.mejoras.1",
+          "changelog.items.v0_5_8.mejoras.2",
+          "changelog.items.v0_5_8.mejoras.3",
+          "changelog.items.v0_5_8.mejoras.4",
+          "changelog.items.v0_5_8.mejoras.5",
+          "changelog.items.v0_5_8.mejoras.6"
         ],
       }
     ],

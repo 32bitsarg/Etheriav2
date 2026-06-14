@@ -508,7 +508,7 @@ worldRouter.get('/terrain-image', async (c) => {
       // Fallback: render in main thread
       const { default: sharp } = await import('sharp');
       const { raw, imgW, imgH } = renderOverviewRaw(src, variant);
-      const targetSize = variant === 'mobile' ? 1600 : 2600;
+      const targetSize = variant === 'mobile' ? 1600 : 3600;
       const blurAmount = variant === 'mobile' ? 0.3 : 0.2;
       const quality = variant === 'mobile' ? 72 : 80;
       buf = await sharp(raw, { raw: { width: imgW, height: imgH, channels: 3 } })
@@ -624,7 +624,7 @@ export async function prewarmTiles(worldId = 'local'): Promise<void> {
     }
   }
 
-  const PREWARM_ZMAX = 6;
+  const PREWARM_ZMAX = 8;
   const CONCURRENCY = 2;
 
   for (let z = 0; z <= PREWARM_ZMAX; z++) {

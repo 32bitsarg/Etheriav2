@@ -6,10 +6,13 @@ import { useToastStore, type ToastType } from "@/stores/toastStore";
 import { useAudioStore } from "@/stores/audioStore";
 import { BUILDING_INFO, BUILDING_NAMES, BUILDING_SIZES, MAX_BUILDING_LEVEL, getUpgradeCost, getUpgradeTimeSeconds, UNIT_INFO, UNIT_IMAGE_PATHS, UNIT_TRAINING_COST, UNIT_STATS, applyTrainingCostReduction, getTrainingCost, getTrainingTimeSeconds, TECH_INFO, getTechCost, getTechTimeSeconds, getTechIconPath, formatTime, formatNumber, getBuildingDescriptionKey } from "@/lib/constants";
 import { BuildingSprite } from "@/components/village/BuildingIcon";
-import { VillageHTMLCanvas } from "@/components/village/VillageHTMLCanvas";
+import { VillageHTMLCanvas } from "@/components/village/VillagePixi";
 import { ResourceIconSVG } from "@/components/village/ResourceIconSVG";
 import { useAcceptMarketOffer, useActiveBattles, useAllCities, useAllianceMembership, useAttackCity, useBarbarianAttackAlerts, useBattleReports, useBreakTreaty, useCancelBuildQueue, useCancelResearchQueue, useCancelTrainingQueue, useCityRanking, useClaimQuest, useContributeAllianceObjective, useCreateAlliance, useCreateMarketOffer, useDisbandAlliance, useGameReports, useJoinAlliance, useKickAllianceMember, useLeaveAlliance, useMailMessages, useMarkGameReportRead, useMarkMailRead, useMarkMapOpened, useMarkReportRead, useMarketOffers, usePlayerQuests, useProposePeace, useRenameCity, useResearchTech, useScoutTarget, useSendMailMessage, useTechs, useTrainUnits, useTransferAllianceLeadership, useUpdateAlliance, useUpdateAllianceMemberRole, useUpgradeBuilding, useVillageLayout, useWorldMap, useWorldMovements, useWorldSeason, useTutorialStep, useConquestStatus } from "@/hooks/useCity";
-import { WorldMapHTMLCanvas } from "@/components/worldmap/WorldMapHTMLCanvas";
+const WorldMapPixi = dynamic(
+  () => import("@/components/worldmap/WorldMapPixi").then(m => ({ default: m.WorldMapPixi })),
+  { ssr: false }
+);
 import { BarbarianAttackAlertBanner } from "@/components/barbarians/BarbarianAttackAlertBanner";
 import { WinterPressureBanner } from "@/components/barbarians/WinterPressureBanner";
 import { ModalBase } from "@/components/ui/ModalBase";
@@ -795,7 +798,7 @@ const MapaView = memo(function MapaView({ cityName, allianceData, movements, wor
     <div className="relative h-full overflow-hidden">
       {isEntering && <div className="etheria-map-enter-zoom pointer-events-none absolute inset-0 z-50" />}
       <div className="absolute inset-0">
-        <WorldMapHTMLCanvas
+        <WorldMapPixi
           cities={citiesWithRelation}
           mapConfig={worldMap?.map ?? null}
           myCityId={myCityId}
