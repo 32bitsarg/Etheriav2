@@ -9,7 +9,10 @@ import { BuildingSprite } from "@/components/village/BuildingIcon";
 import { VillageHTMLCanvas } from "@/components/village/VillageHTMLCanvas";
 import { ResourceIconSVG } from "@/components/village/ResourceIconSVG";
 import { useAcceptMarketOffer, useActiveBattles, useAllCities, useAllianceMembership, useAttackCity, useBarbarianAttackAlerts, useBattleReports, useBreakTreaty, useCancelBuildQueue, useCancelResearchQueue, useCancelTrainingQueue, useCityRanking, useClaimQuest, useContributeAllianceObjective, useCreateAlliance, useCreateMarketOffer, useDisbandAlliance, useGameReports, useJoinAlliance, useKickAllianceMember, useLeaveAlliance, useMailMessages, useMarkGameReportRead, useMarkMailRead, useMarkMapOpened, useMarkReportRead, useMarketOffers, usePlayerQuests, useProposePeace, useRenameCity, useResearchTech, useScoutTarget, useSendMailMessage, useTechs, useTrainUnits, useTransferAllianceLeadership, useUpdateAlliance, useUpdateAllianceMemberRole, useUpgradeBuilding, useVillageLayout, useWorldMap, useWorldMovements, useWorldSeason, useTutorialStep, useConquestStatus } from "@/hooks/useCity";
-import { WorldMapHTMLCanvas } from "@/components/worldmap/WorldMapHTMLCanvas";
+const WorldMapHTMLCanvas = dynamic(
+  () => import("@/components/worldmap/WorldMapPixi").then(m => ({ default: m.WorldMapPixi })),
+  { ssr: false }
+);
 import { BarbarianAttackAlertBanner } from "@/components/barbarians/BarbarianAttackAlertBanner";
 import { WinterPressureBanner } from "@/components/barbarians/WinterPressureBanner";
 import { ModalBase } from "@/components/ui/ModalBase";

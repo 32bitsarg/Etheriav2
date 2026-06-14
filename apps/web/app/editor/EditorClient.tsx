@@ -4,7 +4,11 @@ import { type BuildingType } from "@etheria/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BuildingSprite } from "@/components/village/BuildingIcon";
 import { VillageHTMLCanvas } from "@/components/village/VillageHTMLCanvas";
-import { WorldMapHTMLCanvas } from "@/components/worldmap/WorldMapHTMLCanvas";
+import dynamic from "next/dynamic";
+const WorldMapHTMLCanvas = dynamic(
+  () => import("@/components/worldmap/WorldMapPixi").then(m => ({ default: m.WorldMapPixi })),
+  { ssr: false }
+);
 import { GameInitializer } from "@/components/game/GameInitializer";
 import { useGameStore } from "@/stores/gameStore";
 import { BUILDING_NAMES } from "@/lib/constants";
