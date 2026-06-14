@@ -130,6 +130,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   const [size, setSize] = useState({ w: 900, h: 620 });
 
   const cam = useRef({ x: 0, y: 0, zoom: 1 });
+  const camPrev = useRef({ x: 0, y: 0 });
   // Camera/fog only repaint when something actually changed — the rAF loop
   // checks this flag instead of redrawing the full fog canvas every frame.
   const camDirty = useRef(true);
@@ -456,11 +457,18 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     const br = screenToWorld(vw, vh);
     const minWX = Math.min(tl.x, br.x), maxWX = Math.max(tl.x, br.x);
     const minWY = Math.min(tl.y, br.y), maxWY = Math.max(tl.y, br.y);
-    const PREFETCH = isMobile ? 1 : 2;
-    const x0 = Math.max(0, Math.floor((minWX + halfW) / tileWorld) - PREFETCH);
-    const x1 = Math.min(span - 1, Math.floor((maxWX + halfW) / tileWorld) + PREFETCH);
-    const y0 = Math.max(0, Math.floor((minWY + halfH) / tileWorld) - PREFETCH);
-    const y1 = Math.min(span - 1, Math.floor((maxWY + halfH) / tileWorld) + PREFETCH);
+    const PREFETCH = isMobile ? 2 : 3;
+    // Directional prefetch: extend 2 extra tiles in the direction of panning
+    const velX = cam.current.x - camPrev.current.x;
+    const velY = cam.current.y - camPrev.current.y;
+    camPrev.current = { x: cam.current.x, y: cam.current.y };
+    const VPAN = tileWorld * 0.3;
+    const dxL = velX < -VPAN ? 2 : 0, dxR = velX > VPAN ? 2 : 0;
+    const dyU = velY < -VPAN ? 2 : 0, dyD = velY > VPAN ? 2 : 0;
+    const x0 = Math.max(0, Math.floor((minWX + halfW) / tileWorld) - PREFETCH - dxL);
+    const x1 = Math.min(span - 1, Math.floor((maxWX + halfW) / tileWorld) + PREFETCH + dxR);
+    const y0 = Math.max(0, Math.floor((minWY + halfH) / tileWorld) - PREFETCH - dyU);
+    const y1 = Math.min(span - 1, Math.floor((maxWY + halfH) / tileWorld) + PREFETCH + dyD);
 
     // Signature — include whether the current z is "complete" so pruning is stable
     const wantedKeys = new Set<string>();
@@ -490,7 +498,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     //    (the current level now fully covers the viewport → cross-fade done).
     //  - Always remove tiles of the current level outside the ±4 retention margin
     //    to cap DOM node count when panning long distances.
-    const RETAIN = isMobile ? 2 : 4;
+    const RETAIN = isMobile ? 3 : 6;
     const rx0 = Math.max(0, x0 - RETAIN), rx1 = Math.min(span - 1, x1 + RETAIN);
     const ry0 = Math.max(0, y0 - RETAIN), ry1 = Math.min(span - 1, y1 + RETAIN);
 
@@ -503,7 +511,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     }
 
     setVisibleTiles([...map.values()]);
-  }, [size.w, size.h, worldW, halfW, halfH, screenToWorld, isMobile]);
+  }, [size.w, size.h, worldW, halfW, halfH, screenToWorld, isMobile, camPrev]);
 
   // ─── rAF loop ────────────────────────────────────────────────────────────
 

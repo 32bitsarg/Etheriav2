@@ -20,6 +20,9 @@ import { ScoutTargetRequestSchema } from '@etheria/shared';
 import { requireMatecitoAuth } from '../infrastructure/authMiddleware.js';
 import { calculatePathSpeedMultiplier } from '../domain/worldTerrainConfigData.js';
 import { ensureWorldTerrain, invalidateWorldTerrain } from '../domain/worldTerrainRuntime.js';
+import { renderTileRaw, renderOverviewRaw, KIND_CODE, CODE_KIND, type TerrainSource } from '../domain/terrainRender.js';
+import { initTileStore, tileStoreVersion, readTile, writeTile, readOverview, writeOverview, pruneOldVersions } from '../domain/terrainTileStore.js';
+import * as pool from '../domain/tileRenderPool.js';
 import { repairWorldEntityPlacements } from '../domain/worldTerrainRepair.js';
 import { getUnitStats } from '../domain/units.js';
 import { calculateTechBonuses } from '../domain/techs.js';
@@ -446,375 +449,234 @@ worldRouter.get('/terrain', async (c) => {
   return c.json(result);
 });
 
-// ─── GET /world/terrain-image — Pre-rendered terrain PNG (mobile-friendly) ───
-// Renders terrain server-side with sharp, caches result in memory.
-// Invalidated by /admin/ops/reset-world. Set long cache on CDN.
+// ─── Terrain source cache (decoded cells + heights as Uint8Arrays) ────────────
 
 const terrainImageCache = new Map<string, Buffer>();
+const terrainTileCache = new Map<string, Buffer>(); // LRU memory cache
+const TILE_CACHE_MAX = 1200;
+const TILE_PX = 256;
+const TILE_ZMAX = 9;
 
-function tileHash(col: number, row: number): number {
-  const n = (col * 1619 + row * 31337) | 0;
-  return ((n ^ (n << 13)) ^ n) >>> 0;
-}
+const decodedTerrainCache = new Map<string, TerrainSource>();
 
-function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
-
-// Smooth value noise for procedural biome texture (decorations baked into the map).
-function vhash(x: number, y: number, s: number): number {
-  let n = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 982451653)) | 0;
-  n = Math.imul(n ^ (n >>> 13), 1274126177);
-  n ^= n >>> 16;
-  return (n >>> 0) / 4294967296;
-}
-function vnoise(x: number, y: number, s: number): number {
-  const ix = Math.floor(x), iy = Math.floor(y);
-  const fx = x - ix, fy = y - iy;
-  const ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
-  return vhash(ix, iy, s) * (1 - ux) * (1 - uy) + vhash(ix + 1, iy, s) * ux * (1 - uy)
-    + vhash(ix, iy + 1, s) * (1 - ux) * uy + vhash(ix + 1, iy + 1, s) * ux * uy;
-}
-
-// Per-biome texture multiplier applied to the base color. Sampled in CELL-SPACE
-// (continuous float cell coordinates), NOT render-pixel space, so the same world
-// point yields the same texture at every LOD → no popping between tile zoom levels.
-// Frequencies are the old render-pixel frequencies × 5 (the previous SCALE) so the
-// visual density is unchanged. FOREST uses layered canopy noise (tree tops from above).
-function biomeTexture(kind: string, cx: number, cy: number): number {
-  switch (kind) {
-    case "FOREST": {
-      const canopy  = vnoise(cx * 1.4, cy * 1.4, 7);
-      const lightNW = vnoise(cx * 3.0 - 0.28, cy * 3.0 - 0.28, 9);
-      const micro   = vnoise(cx * 6.5, cy * 6.5, 13);
-      if (canopy > 0.52) {
-        const edgeFade = Math.min(1, (canopy - 0.52) / 0.20);
-        return 0.84 + lightNW * 0.32 * edgeFade + micro * 0.06;
-      }
-      if (canopy > 0.41) return 0.66 + micro * 0.10;
-      return 0.80 + micro * 0.14;
-    }
-    case "JUNGLE": {
-      // Dense layered canopy — darker inside, bright edges
-      const canopy = vnoise(cx * 1.8, cy * 1.8, 23);
-      const under  = vnoise(cx * 4.0, cy * 4.0, 29);
-      const micro  = vnoise(cx * 8.0, cy * 8.0, 31);
-      if (canopy > 0.55) return 0.72 + under * 0.20 + micro * 0.05;
-      if (canopy > 0.40) return 0.58 + micro * 0.12;
-      return 0.78 + micro * 0.10;
-    }
-    case "SAVANNA": {
-      // Dry grassland with scattered tree clumps
-      const grass = vnoise(cx * 1.2, cy * 1.2, 37);
-      const tree  = vnoise(cx * 3.5, cy * 3.5, 41);
-      if (tree > 0.82) return 0.72 + grass * 0.12; // tree clump darker
-      return 0.92 + grass * 0.18;
-    }
-    case "TAIGA": {
-      // Conifer texture — alternating dark/light bands
-      const conifer = vnoise(cx * 2.2, cy * 2.2, 43);
-      const snow    = vnoise(cx * 5.0, cy * 5.0, 47);
-      if (conifer > 0.60) return 0.68 + snow * 0.18;
-      return 0.88 + snow * 0.10;
-    }
-    case "DESERT":
-      return 1 + Math.sin(cx * 1.7 + cy * 0.5 + vnoise(cx * 0.25, cy * 0.25, 3) * 7) * 0.055
-        // Rare oasis hint
-        + (vnoise(cx * 0.8, cy * 0.8, 53) > 0.92 ? -0.12 : 0);
-    case "MOUNTAIN": {
-      // Enhanced ridges: stronger hillshade contrast + rock mottes
-      const ridge  = vnoise(cx * 2.1, cy * 2.1, 5);
-      const rock   = vnoise(cx * 5.0, cy * 5.0, 59);
-      const mote   = rock > 0.78 ? 0.14 : (rock < 0.22 ? -0.10 : 0);
-      return 1 + (ridge - 0.5) * 0.42 + mote;
-    }
-    case "HILLS": {
-      // Rolling hills with scattered rock mottes
-      const roll = vnoise(cx * 1.7, cy * 1.7, 15);
-      const rock = vnoise(cx * 4.5, cy * 4.5, 61);
-      const mote = rock > 0.80 ? 0.10 : 0;
-      return 1 + (roll - 0.5) * 0.32 + mote;
-    }
-    case "SWAMP": {
-      let t = 1 + (vnoise(cx * 1.1, cy * 1.1, 11) - 0.5) * 0.30;
-      if (vnoise(cx * 2.5, cy * 2.5, 17) > 0.85) t *= 1.12;
-      return t;
-    }
-    case "PLAINS": {
-      // Loose tree clumps scattered over grassland
-      const grass = vnoise(cx * 0.9, cy * 0.9, 13);
-      const grove = vnoise(cx * 3.0, cy * 3.0, 67);
-      if (grove > 0.85) return 0.80 + grass * 0.08; // tree cluster
-      return 1 + (grass - 0.5) * 0.16;
-    }
-    case "TUNDRA":
-      return 1 + (vnoise(cx * 1.0, cy * 1.0, 19) - 0.5) * 0.14;
-    default:
-      return 1;
-  }
-}
-
-function biomeColor(kind: string, hN: number, tc: number, tr: number): [number, number, number] {
-  // Gentle per-tile jitter (reduced) to avoid the speckled / blocky look.
-  const j = ((tileHash(tc, tr) & 15) - 7) * 0.42;
-  switch (kind) {
-    case "WATER": {
-      const t = Math.max(0, Math.min(1, hN / 0.19));
-      return [Math.round(lerp(10, 42, t) + j), Math.round(lerp(30, 88, t) + j), Math.round(lerp(72, 140, t) + j)];
-    }
-    case "COAST":
-      return [Math.round(198 + j), Math.round(180 + j), Math.round(126 + j)];
-    case "PLAINS": {
-      const t = Math.max(0, Math.min(1, (hN - 0.24) / 0.48));
-      return [Math.round(lerp(78, 96, t) + j), Math.round(lerp(120, 140, t) + j), Math.round(lerp(48, 60, t) + j)];
-    }
-    case "FOREST": {
-      const t = Math.max(0, Math.min(1, (hN - 0.24) / 0.48));
-      return [Math.round(lerp(30, 50, t) + j), Math.round(lerp(74, 96, t) + j), Math.round(lerp(24, 38, t) + j)];
-    }
-    case "MOUNTAIN": {
-      // Brown rock at the base → grey crag → snow only on the very high peaks.
-      const t = Math.max(0, Math.min(1, (hN - 0.72) / 0.28));
-      if (t < 0.72) {
-        const u = t / 0.72;
-        return [Math.round(lerp(102, 144, u) + j), Math.round(lerp(90, 138, u) + j), Math.round(lerp(76, 130, u) + j)];
-      }
-      const u = (t - 0.72) / 0.28;
-      return [Math.round(lerp(144, 232, u) + j), Math.round(lerp(138, 236, u) + j), Math.round(lerp(130, 240, u) + j)];
-    }
-    case "HILLS": {
-      const t = Math.max(0, Math.min(1, (hN - 0.50) / 0.30));
-      // olive-brown rising to rocky tan
-      return [Math.round(lerp(104, 150, t) + j), Math.round(lerp(116, 138, t) + j), Math.round(lerp(64, 88, t) + j)];
-    }
-    case "DESERT":
-      // warm sand with subtle variation
-      return [Math.round(212 + j), Math.round(190 + j), Math.round(134 + j)];
-    case "SWAMP":
-      // murky green-brown
-      return [Math.round(78 + j), Math.round(92 + j), Math.round(58 + j)];
-    case "TUNDRA": {
-      const t = Math.max(0, Math.min(1, (hN - 0.20) / 0.45));
-      return [Math.round(lerp(158, 196, t) + j), Math.round(lerp(164, 202, t) + j), Math.round(lerp(150, 196, t) + j)];
-    }
-    case "JUNGLE": {
-      // Deep saturated green, darker than forest
-      const t = Math.max(0, Math.min(1, (hN - 0.24) / 0.40));
-      return [Math.round(lerp(18, 36, t) + j), Math.round(lerp(68, 90, t) + j), Math.round(lerp(24, 42, t) + j)];
-    }
-    case "SAVANNA": {
-      // Warm dry gold-green
-      const t = Math.max(0, Math.min(1, (hN - 0.24) / 0.40));
-      return [Math.round(lerp(168, 186, t) + j), Math.round(lerp(154, 172, t) + j), Math.round(lerp(60, 78, t) + j)];
-    }
-    case "TAIGA": {
-      // Cold blue-green conifer
-      const t = Math.max(0, Math.min(1, (hN - 0.22) / 0.42));
-      return [Math.round(lerp(42, 60, t) + j), Math.round(lerp(74, 98, t) + j), Math.round(lerp(62, 78, t) + j)];
-    }
-    default:
-      return [80, 80, 80];
-  }
-}
-
-// Bilinear height sampler in cell-space (clamped at edges).
-function heightAt(heights: Buffer, cols: number, rows: number, c: number, r: number): number {
-  const cc = c < 0 ? 0 : c >= cols ? cols - 1 : c;
-  const rr = r < 0 ? 0 : r >= rows ? rows - 1 : r;
-  return heights[rr * cols + cc];
-}
-function sampleHeight(heights: Buffer, cols: number, rows: number, fx: number, fy: number): number {
-  const x0 = Math.floor(fx), y0 = Math.floor(fy);
-  const tx = fx - x0, ty = fy - y0;
-  const h00 = heightAt(heights, cols, rows, x0, y0);
-  const h10 = heightAt(heights, cols, rows, x0 + 1, y0);
-  const h01 = heightAt(heights, cols, rows, x0, y0 + 1);
-  const h11 = heightAt(heights, cols, rows, x0 + 1, y0 + 1);
-  return h00 * (1 - tx) * (1 - ty) + h10 * tx * (1 - ty) + h01 * (1 - tx) * ty + h11 * tx * ty;
-}
-
-// Shared per-pixel terrain shading. Inputs are continuous CELL-SPACE coordinates so
-// the result is identical for a given world point at every LOD (no tile popping).
-// Returns [r,g,b] in 0..255. Used by both the overview image and the tile renderer.
-function terrainPixelRGB(cells: string[], heights: Buffer, cols: number, rows: number, cellXf: number, cellYf: number): [number, number, number] {
-  const col = cellXf < 0 ? 0 : cellXf >= cols ? cols - 1 : Math.floor(cellXf);
-  const row = cellYf < 0 ? 0 : cellYf >= rows ? rows - 1 : Math.floor(cellYf);
-  const kind = cells[row * cols + col] ?? 'PLAINS';
-
-  const hVal = sampleHeight(heights, cols, rows, cellXf, cellYf);
-  // Smooth hillshade: gradient of bilinear height over ±0.5 cell (NW light).
-  const hL = sampleHeight(heights, cols, rows, cellXf - 0.5, cellYf);
-  const hR = sampleHeight(heights, cols, rows, cellXf + 0.5, cellYf);
-  const hU = sampleHeight(heights, cols, rows, cellXf, cellYf - 0.5);
-  const hD = sampleHeight(heights, cols, rows, cellXf, cellYf + 0.5);
-  let shade = Math.min(1.34, Math.max(0.68, 1 + ((hR - hL) - (hD - hU)) * 0.020));
-  // Valley occlusion: darken pits (surrounded by higher terrain) for readable relief.
-  const occ = (hL + hR + hU + hD) / 4 - hVal;
-  if (occ > 0) shade *= 1 - Math.min(0.12, occ * 0.012);
-
-  const mod = shade * biomeTexture(kind, cellXf, cellYf);
-  let [r, g, b] = biomeColor(kind, hVal / 100, col, row);
-  r *= mod; g *= mod; b *= mod;
-
-  // Saturation boost (1.18×) + mild S-curve contrast.
-  const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-  r = gray + (r - gray) * 1.18; g = gray + (g - gray) * 1.18; b = gray + (b - gray) * 1.18;
-  const sc = (v: number) => { const t = Math.max(0, Math.min(1, v / 255)); return (t * t * (3 - 2 * t) * 0.25 + t * 0.75) * 255; };
-  r = sc(r); g = sc(g); b = sc(b);
-
-  // Vignette from normalized world position (continuous across tiles).
-  const nx = 2 * cellXf / cols - 1, ny = 2 * cellYf / rows - 1;
-  const dist = Math.sqrt(nx * nx + ny * ny) / Math.SQRT2;
-  const t = Math.max(0, (dist - 0.25) / 0.75);
-  const darkness = t * t * 0.38;
-  r *= 1 - darkness; g *= 1 - darkness; b *= 1 - darkness;
-
-  return [
-    r < 0 ? 0 : r > 255 ? 255 : Math.round(r),
-    g < 0 ? 0 : g > 255 ? 255 : Math.round(g),
-    b < 0 ? 0 : b > 255 ? 255 : Math.round(b),
-  ];
-}
-
-// Decode terrain RLE+elev into flat cells[] + heights Buffer (memoized per world).
-const decodedTerrainCache = new Map<string, { cells: string[]; heights: Buffer; cols: number; rows: number }>();
-async function getDecodedTerrain(worldId: string) {
-  const key = worldId;
-  let dec = decodedTerrainCache.get(key);
-  if (!dec) {
+async function getTerrainSource(worldId: string): Promise<TerrainSource> {
+  let src = decodedTerrainCache.get(worldId);
+  if (!src) {
     const terrain = await ensureWorldTerrain(worldId === 'local' ? undefined : worldId);
-    const cells: string[] = [];
+    const cellsArr: number[] = [];
     for (const [kind, count] of terrain.rle) {
-      for (let i = 0; i < count; i++) cells.push(kind);
+      const code = KIND_CODE[kind] ?? 0;
+      for (let i = 0; i < count; i++) cellsArr.push(code);
     }
-    dec = { cells, heights: Buffer.from(terrain.elev, 'base64'), cols: terrain.cols, rows: terrain.rows };
-    decodedTerrainCache.set(key, dec);
+    const cellsCode = new Uint8Array(cellsArr);
+    const heightsBuf = Buffer.from(terrain.elev, 'base64');
+    const heights = new Uint8Array(heightsBuf);
+    const m = terrain as any;
+    const seed = m.seed ?? m.terrainSeed ?? 0;
+    const version = tileStoreVersion(seed, terrain.cols, terrain.rows, m.width ?? terrain.cols, m.height ?? terrain.rows);
+    src = { cellsCode, heights, cols: terrain.cols, rows: terrain.rows, version };
+    decodedTerrainCache.set(worldId, src);
   }
-  return dec;
+  return src;
 }
+
+// ─── GET /world/terrain-image ────────────────────────────────────────────────
 
 worldRouter.get('/terrain-image', async (c) => {
   const worldId = c.req.query('worldId') ?? 'local';
-  const variant = c.req.query('variant') ?? 'default'; // 'default' | 'mobile'
-  const cacheKey = `${worldId}:${variant}`;
+  const variant = c.req.query('variant') ?? 'default';
+  const memKey = `${worldId}:${variant}`;
 
-  if (!terrainImageCache.has(cacheKey)) {
-    const { default: sharp } = await import('sharp');
-    const { cells, heights, cols, rows } = await getDecodedTerrain(worldId);
-
-    // Adaptive scale: cap render size so we don't blow memory at large grids.
-    // At 2200 cols SCALE=1 → 2200² render (4.8M px), previously fixed at 3 (6600²=43M).
-    const SCALE = Math.max(1, Math.round(2600 / cols));
-    const imgW = cols * SCALE;
-    const imgH = rows * SCALE;
-    const raw = Buffer.alloc(imgW * imgH * 3);
-
-    for (let py = 0; py < imgH; py++) {
-      const cellYf = py / SCALE;
-      for (let px = 0; px < imgW; px++) {
-        const [r, g, b] = terrainPixelRGB(cells, heights, cols, rows, px / SCALE, cellYf);
-        const idx = (py * imgW + px) * 3;
-        raw[idx] = r; raw[idx + 1] = g; raw[idx + 2] = b;
-      }
-    }
-
-    const targetSize = variant === 'mobile' ? 1600 : 2600;
-    const blurAmount = variant === 'mobile' ? 0.3 : 0.2;
-    const quality = variant === 'mobile' ? 72 : 80;
-
-    const webpBuf = await sharp(raw, { raw: { width: imgW, height: imgH, channels: 3 } })
-      .resize(targetSize, targetSize, { kernel: 'lanczos3' })
-      .blur(blurAmount)
-      .webp({ quality, effort: 4 })
-      .toBuffer();
-
-    terrainImageCache.set(cacheKey, webpBuf);
+  if (terrainImageCache.has(memKey)) {
+    const buf = terrainImageCache.get(memKey)!;
+    return new Response(buf.buffer as ArrayBuffer, {
+      headers: { 'Content-Type': 'image/webp', 'Cache-Control': 'public, max-age=31536000, immutable', 'Content-Length': String(buf.length) },
+    });
   }
 
-  const buf = terrainImageCache.get(cacheKey)!;
+  await initTileStore();
+  const src = await getTerrainSource(worldId);
+  pool.ensurePool(src);
+
+  // Disk cache check
+  let buf = await readOverview(src.version, variant);
+
+  if (!buf) {
+    try {
+      buf = await pool.renderOverview(variant);
+    } catch (err) {
+      // Fallback: render in main thread
+      const { default: sharp } = await import('sharp');
+      const { raw, imgW, imgH } = renderOverviewRaw(src, variant);
+      const targetSize = variant === 'mobile' ? 1600 : 2600;
+      const blurAmount = variant === 'mobile' ? 0.3 : 0.2;
+      const quality = variant === 'mobile' ? 72 : 80;
+      buf = await sharp(raw, { raw: { width: imgW, height: imgH, channels: 3 } })
+        .resize(targetSize, targetSize, { kernel: 'lanczos3' })
+        .blur(blurAmount)
+        .webp({ quality, effort: 2 })
+        .toBuffer();
+    }
+    writeOverview(src.version, variant, buf).catch(() => {});
+  }
+
+  terrainImageCache.set(memKey, buf);
   return new Response(buf.buffer as ArrayBuffer, {
-    headers: {
-      'Content-Type': 'image/webp',
-      'Cache-Control': 'public, max-age=31536000, immutable',
-      'Content-Length': String(buf.length),
-    },
+    headers: { 'Content-Type': 'image/webp', 'Cache-Control': 'public, max-age=31536000, immutable', 'Content-Length': String(buf.length) },
   });
 });
 
-// ─── GET /world/terrain-tile/:z/:x/:y — LOD tile (slippy-map) ───
-// World is square; at level z it is split into 2^z × 2^z tiles, each TILE_PX wide.
-// Rendered on-demand at 2× supersample, downscaled with lanczos3, cached LRU.
-
-const TILE_PX = 256;
-const TILE_ZMAX = 9;
-const TILE_SS = 2; // supersample factor
-const TILE_CACHE_MAX = 1200;
-const terrainTileCache = new Map<string, Buffer>(); // insertion-ordered → LRU
+// ─── GET /world/terrain-tile/:z/:x/:y ────────────────────────────────────────
 
 worldRouter.get('/terrain-tile/:z/:x/:y', async (c) => {
   const worldId = c.req.query('worldId') ?? 'local';
   const z = Number(c.req.param('z'));
   const tx = Number(c.req.param('x'));
   const ty = Number(c.req.param('y').replace(/\.webp$/, ''));
-  const span = 1 << z; // 2^z
+  const span = 1 << z;
   if (!Number.isInteger(z) || z < 0 || z > TILE_ZMAX
     || !Number.isInteger(tx) || tx < 0 || tx >= span
     || !Number.isInteger(ty) || ty < 0 || ty >= span) {
     return c.json({ error: 'bad tile coords' }, 400);
   }
 
-  const cacheKey = `${worldId}:${z}:${tx}:${ty}`;
-  let buf = terrainTileCache.get(cacheKey);
+  const memKey = `${worldId}:${z}:${tx}:${ty}`;
+  let buf = terrainTileCache.get(memKey);
   if (buf) {
-    // LRU bump
-    terrainTileCache.delete(cacheKey);
-    terrainTileCache.set(cacheKey, buf);
-  } else {
-    const { default: sharp } = await import('sharp');
-    const { cells, heights, cols, rows } = await getDecodedTerrain(worldId);
+    terrainTileCache.delete(memKey);
+    terrainTileCache.set(memKey, buf);
+    return new Response(buf.buffer as ArrayBuffer, {
+      headers: { 'Content-Type': 'image/webp', 'Cache-Control': 'public, max-age=31536000, immutable', 'Content-Length': String(buf.length) },
+    });
+  }
 
-    // Tile covers cell-space range [tx,tx+1)*cols/span on each axis.
-    const cellsPerTile = cols / span; // cols === rows (square world)
-    const cell0X = tx * cellsPerTile;
-    const cell0Y = ty * cellsPerTile;
-    const dim = TILE_PX * TILE_SS;
-    const raw = Buffer.alloc(dim * dim * 3);
-    const step = cellsPerTile / dim; // cell-space units per output pixel
+  await initTileStore();
+  const src = await getTerrainSource(worldId);
+  pool.ensurePool(src);
 
-    for (let py = 0; py < dim; py++) {
-      const cellYf = cell0Y + (py + 0.5) * step;
-      for (let px = 0; px < dim; px++) {
-        const cellXf = cell0X + (px + 0.5) * step;
-        const [r, g, b] = terrainPixelRGB(cells, heights, cols, rows, cellXf, cellYf);
-        const idx = (py * dim + px) * 3;
-        raw[idx] = r; raw[idx + 1] = g; raw[idx + 2] = b;
-      }
+  buf = await readTile(src.version, z, tx, ty) ?? undefined;
+
+  if (!buf) {
+    try {
+      buf = await pool.renderTile(z, tx, ty);
+    } catch {
+      // Fallback: render in main thread
+      const { default: sharp } = await import('sharp');
+      const dim = TILE_PX * 2;
+      const raw = renderTileRaw(src, z, tx, ty);
+      buf = await sharp(raw, { raw: { width: dim, height: dim, channels: 3 } })
+        .resize(TILE_PX, TILE_PX, { kernel: 'lanczos3' })
+        .webp({ quality: 82, effort: 2 })
+        .toBuffer();
     }
+    writeTile(src.version, z, tx, ty, buf).catch(() => {});
+  }
 
-    buf = await sharp(raw, { raw: { width: dim, height: dim, channels: 3 } })
-      .resize(TILE_PX, TILE_PX, { kernel: 'lanczos3' })
-      .webp({ quality: 82, effort: 4 })
-      .toBuffer();
-
-    terrainTileCache.set(cacheKey, buf);
-    // Evict oldest if over budget.
-    while (terrainTileCache.size > TILE_CACHE_MAX) {
-      const oldest = terrainTileCache.keys().next().value;
-      if (oldest === undefined) break;
-      terrainTileCache.delete(oldest);
-    }
+  terrainTileCache.set(memKey, buf);
+  while (terrainTileCache.size > TILE_CACHE_MAX) {
+    const oldest = terrainTileCache.keys().next().value;
+    if (oldest === undefined) break;
+    terrainTileCache.delete(oldest);
   }
 
   return new Response(buf.buffer as ArrayBuffer, {
-    headers: {
-      'Content-Type': 'image/webp',
-      'Cache-Control': 'public, max-age=31536000, immutable',
-      'Content-Length': String(buf.length),
-    },
+    headers: { 'Content-Type': 'image/webp', 'Cache-Control': 'public, max-age=31536000, immutable', 'Content-Length': String(buf.length) },
   });
 });
 
+// ─── Pre-warm tiles in background ────────────────────────────────────────────
+
+const WATER_CODE = KIND_CODE['WATER'] ?? 0;
+
+function isAllWater(src: TerrainSource, z: number, tx: number, ty: number): boolean {
+  const { cellsCode, cols, rows } = src;
+  const span = 1 << z;
+  const cellsPerTile = cols / span;
+  const cell0X = tx * cellsPerTile;
+  const cell0Y = ty * cellsPerTile;
+  const probeStep = cellsPerTile / 8;
+  for (let py = 0; py < 8; py++) {
+    for (let px = 0; px < 8; px++) {
+      const col = Math.floor(cell0X + px * probeStep);
+      const row = Math.floor(cell0Y + py * probeStep);
+      if (cellsCode[Math.max(0, Math.min(rows - 1, row)) * cols + Math.max(0, Math.min(cols - 1, col))] !== WATER_CODE) return false;
+    }
+  }
+  return true;
+}
+
+export async function prewarmTiles(worldId = 'local'): Promise<void> {
+  await initTileStore();
+  const src = await getTerrainSource(worldId);
+  pool.ensurePool(src);
+
+  // Overviews first
+  for (const variant of ['default', 'mobile']) {
+    const existing = await readOverview(src.version, variant);
+    if (!existing) {
+      try {
+        const buf = await pool.renderOverview(variant);
+        await writeOverview(src.version, variant, buf);
+        terrainImageCache.set(`${worldId}:${variant}`, buf);
+      } catch {}
+    } else {
+      terrainImageCache.set(`${worldId}:${variant}`, existing);
+    }
+  }
+
+  const PREWARM_ZMAX = 6;
+  const CONCURRENCY = 2;
+
+  for (let z = 0; z <= PREWARM_ZMAX; z++) {
+    const span = 1 << z;
+    const tasks: Array<() => Promise<void>> = [];
+
+    for (let ty = 0; ty < span; ty++) {
+      for (let tx = 0; tx < span; tx++) {
+        const _tx = tx, _ty = ty;
+        tasks.push(async () => {
+          const memKey = `${worldId}:${z}:${_tx}:${_ty}`;
+          if (terrainTileCache.has(memKey)) return;
+          const existing = await readTile(src.version, z, _tx, _ty);
+          if (existing) {
+            terrainTileCache.set(memKey, existing);
+            while (terrainTileCache.size > TILE_CACHE_MAX) {
+              const oldest = terrainTileCache.keys().next().value;
+              if (oldest === undefined) break;
+              terrainTileCache.delete(oldest);
+            }
+            return;
+          }
+          if (isAllWater(src, z, _tx, _ty)) return;
+          try {
+            const buf = await pool.renderTile(z, _tx, _ty);
+            await writeTile(src.version, z, _tx, _ty, buf);
+            terrainTileCache.set(memKey, buf);
+            while (terrainTileCache.size > TILE_CACHE_MAX) {
+              const oldest = terrainTileCache.keys().next().value;
+              if (oldest === undefined) break;
+              terrainTileCache.delete(oldest);
+            }
+          } catch {}
+        });
+      }
+    }
+
+    // Run in batches of CONCURRENCY
+    for (let i = 0; i < tasks.length; i += CONCURRENCY) {
+      await Promise.all(tasks.slice(i, i + CONCURRENCY).map(t => t()));
+    }
+    console.log(`[prewarm] z=${z} done (${tasks.length} tiles)`);
+  }
+
+  console.log('[prewarm] complete');
+  pruneOldVersions(2).catch(() => {});
+}
+
 export function invalidateTerrainImageCache(worldId?: string) {
   if (worldId) {
-    terrainImageCache.delete(worldId);
+    terrainImageCache.delete(`${worldId}:default`);
+    terrainImageCache.delete(`${worldId}:mobile`);
     decodedTerrainCache.delete(worldId);
     for (const k of [...terrainTileCache.keys()]) {
       if (k.startsWith(`${worldId}:`)) terrainTileCache.delete(k);
@@ -824,4 +686,6 @@ export function invalidateTerrainImageCache(worldId?: string) {
     decodedTerrainCache.clear();
     terrainTileCache.clear();
   }
+  pool.disposePool().catch(() => {});
+  pruneOldVersions(1).catch(() => {});
 }

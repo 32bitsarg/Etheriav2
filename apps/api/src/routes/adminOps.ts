@@ -9,7 +9,7 @@ import { prisma } from "@etheria/database";
 import { LOCAL_WORLD_CONFIG } from "../domain/worldConfigData.js";
 import { ensureBotPopulation } from "../domain/botService.js";
 import { invalidateWorldTerrain, ensureWorldTerrain } from "../domain/worldTerrainRuntime.js";
-import { invalidateTerrainImageCache } from "./world.js";
+import { invalidateTerrainImageCache, prewarmTiles } from "./world.js";
 import { repairWorldEntityPlacements } from "../domain/worldTerrainRepair.js";
 
 const execFileAsync = promisify(execFile);
@@ -167,6 +167,7 @@ adminOpsRouter.post("/reset-world", async (c) => {
     invalidateWorldTerrain();
     invalidateTerrainImageCache();
     log.push("Invalidated terrain cache");
+    setImmediate(() => prewarmTiles().catch(err => console.error('[prewarm] reset error:', err)));
 
     // 3. Wipe all Prisma game entities (order matters for FK constraints)
     const prismaDeletes = await Promise.allSettled([

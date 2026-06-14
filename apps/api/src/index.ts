@@ -10,10 +10,12 @@ import { startSeasonWorker } from './workers/seasonWorker.js';
 import { startBarbarianSpawnWorker } from './workers/barbarianSpawnWorker.js';
 import { startBotWorker } from './workers/botWorker.js';
 import { ensureWorldTerrain } from './domain/worldTerrainRuntime.js';
+import { prewarmTiles } from './routes/world.js';
 
 async function bootstrap() {
   await ensureGameConfigsLoaded();
   await ensureWorldTerrain().catch(err => console.error('Terrain preload failed:', err));
+  setImmediate(() => prewarmTiles().catch(err => console.error('[prewarm] error:', err)));
 
   startQueueWorker();
   startSeasonWorker();
