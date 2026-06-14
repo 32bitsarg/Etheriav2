@@ -846,8 +846,11 @@ cityRouter.get("/world-map", async (c) => {
     allianceId: mapAllianceByUser.get(city.userId) ?? null,
   }));
 
+  const m = config.map;
+  const terrainVersion = `${config.updatedAt ?? ""}-${m.terrainSeed}-${m.terrainCols}-${m.terrainRows}-${m.width}-${m.height}`;
+
   return c.json({
-    map: config.map,
+    map: { ...config.map, terrainVersion },
     spawn: config.spawn,
     cities: publicCities,
     barbarianCamps: camps.data ?? [],

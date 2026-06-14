@@ -512,7 +512,7 @@ export const VillageHTMLCanvas = memo(function VillageHTMLCanvas({
         <img
           src={normalizedLayout.backgroundAssetPath}
           alt=""
-          className="absolute inset-0 h-full w-full object-cover pointer-events-none"
+          className="absolute inset-0 h-full w-full object-fill pointer-events-none"
           draggable={false}
           loading="eager"
           fetchPriority="high"

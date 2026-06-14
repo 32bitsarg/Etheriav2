@@ -36,6 +36,7 @@ type MapConfig = {
   cameraMaxZoom: number;
   cameraInitialZoom: number;
   backgroundAssetPath: string;
+  terrainVersion?: string;
 };
 
 const ARCHETYPE_COLORS: Record<string, string> = {
@@ -816,6 +817,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   }
 
   const bgPath = mapConfig.backgroundAssetPath;
+  const vParam = mapConfig.terrainVersion ? `&v=${encodeURIComponent(mapConfig.terrainVersion)}` : "";
 
   return (
     <div className="relative h-full w-full">
@@ -847,20 +849,23 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
             top: -halfH,
             width: worldW,
             height: worldH,
+            background: "#247fc0",
           }}
         >
-          {/* Static fallback background (ultimate base) */}
-          <img
-            src={bgPath}
-            alt=""
-            className="absolute inset-0 h-full w-full pointer-events-none"
-            draggable={false}
-            style={{ zIndex: 0 }}
-          />
+          {/* Static fallback background — only used in editor mode as a mask reference */}
+          {editorMode && (
+            <img
+              src={bgPath}
+              alt=""
+              className="absolute inset-0 h-full w-full pointer-events-none"
+              draggable={false}
+              style={{ zIndex: 0 }}
+            />
+          )}
           {/* Overview terrain — low-res base layer always behind the LOD tiles so
               there are never blank gaps while tiles load. */}
           <img
-            src={`/api/world/terrain-image${isMobile ? '?variant=mobile' : ''}`}
+            src={`/api/world/terrain-image?${isMobile ? 'variant=mobile' : 'variant=default'}${vParam}`}
             alt=""
             className="absolute inset-0 pointer-events-none"
             draggable={false}
@@ -878,7 +883,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
               return (
                 <img
                   key={key}
-                  src={`/api/world/terrain-tile/${tile.z}/${tile.x}/${tile.y}`}
+                  src={`/api/world/terrain-tile/${tile.z}/${tile.x}/${tile.y}${mapConfig.terrainVersion ? `?v=${encodeURIComponent(mapConfig.terrainVersion)}` : ''}`}
                   alt=""
                   draggable={false}
                   className="absolute pointer-events-none"
@@ -932,7 +937,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
               <span
                 style={{
                   display: "block",
-                  fontSize: `calc(18px * clamp(0.7, var(--inv-zoom, 1), 3.2))`,
+                  fontSize: `calc(14px * clamp(1, var(--inv-zoom, 1), 24))`,
                   fontFamily: "Georgia, serif",
                   fontWeight: 700,
                   color: "rgba(240,225,195,0.82)",
@@ -963,7 +968,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
             >
               <span style={{
                 display: "block",
-                fontSize: `calc(12px * clamp(0.6, var(--inv-zoom, 1), 2.8))`,
+                fontSize: `calc(12px * clamp(1, var(--inv-zoom, 1), 24))`,
                 fontFamily: "Georgia, serif",
                 fontStyle: "italic",
                 fontWeight: 400,

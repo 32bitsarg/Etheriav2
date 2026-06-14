@@ -503,6 +503,7 @@ export interface WorldMapConfig {
   decorDensity: number;
   decorSafeRadius: number;
   terrainOverlayEnabled?: boolean;
+  terrainVersion?: string;
 }
 
 export interface WorldSpawnConfig {
