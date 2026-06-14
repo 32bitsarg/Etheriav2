@@ -140,6 +140,8 @@ export function WorldMapPixi({
       const cfg = mapConfigRef.current;
       const worldW = cfg?.width ?? 80000;
       const worldH = cfg?.height ?? 80000;
+      const halfW = worldW / 2;
+      const halfH = worldH / 2;
 
       const viewport = new Viewport({
         screenWidth: el.clientWidth,
@@ -153,7 +155,8 @@ export function WorldMapPixi({
         .pinch()
         .wheel({ smooth: 5 })
         .decelerate({ friction: 0.92 })
-        .clamp({ direction: "all" })
+        // Contenido centrado en origen (-halfW,-halfH)→(halfW,halfH) — clamp explícito
+        .clamp({ left: -halfW, right: halfW, top: -halfH, bottom: halfH })
         .clampZoom({
           minScale: cfg?.cameraMinZoom ?? 0.01,
           maxScale: cfg?.cameraMaxZoom ?? 2.2,
