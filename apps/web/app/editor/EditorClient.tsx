@@ -3,7 +3,7 @@
 import { type BuildingType } from "@etheria/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BuildingSprite } from "@/components/village/BuildingIcon";
-import { VillageHTMLCanvas } from "@/components/village/VillageHTMLCanvas";
+import { VillageHTMLCanvas } from "@/components/village/VillagePixi";
 import dynamic from "next/dynamic";
 const WorldMapPixi = dynamic(
   () => import("@/components/worldmap/WorldMapPixi").then(m => ({ default: m.WorldMapPixi })),
