@@ -863,15 +863,29 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
             />
           )}
           {/* Overview terrain — low-res base layer always behind the LOD tiles so
-              there are never blank gaps while tiles load. */}
-          <img
-            src={`/api/world/terrain-image?${isMobile ? 'variant=mobile' : 'variant=default'}${vParam}`}
-            alt=""
-            className="absolute inset-0 pointer-events-none"
-            draggable={false}
-            style={{ width: worldW, height: worldH, zIndex: 1, opacity: terrainImageLoaded ? 1 : 0, transition: "opacity 0.4s" }}
-            onLoad={() => setTerrainImageLoaded(true)}
-          />
+              there are never blank gaps while tiles load.
+              Sized at the WebP native px and scaled via transform so the GPU texture
+              stays small (2600² / 1600² mobile) instead of 80000² CSS. */}
+          {(() => {
+            const nativeSize = isMobile ? 1600 : 2600;
+            return (
+              <img
+                src={`/api/world/terrain-image?${isMobile ? 'variant=mobile' : 'variant=default'}${vParam}`}
+                alt=""
+                className="absolute pointer-events-none"
+                draggable={false}
+                style={{
+                  width: nativeSize, height: nativeSize,
+                  transformOrigin: "0 0",
+                  transform: `scale(${worldW / nativeSize})`,
+                  zIndex: 1,
+                  opacity: terrainImageLoaded ? 1 : 0,
+                  transition: "opacity 0.4s",
+                }}
+                onLoad={() => setTerrainImageLoaded(true)}
+              />
+            );
+          })()}
           {/* LOD terrain tiles — multi-level retention: tiles of multiple z-levels
               can coexist; old level stays visible below until new level is complete. */}
           {(() => {

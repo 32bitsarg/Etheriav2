@@ -228,7 +228,7 @@ export function generateTerrainData(seed: number, cols: number, rows: number): T
   // shoreline (20). The old iterative ±3 loop under-converged on large grids
   // (1400² came out 95% land); this guarantees the same ratio at any resolution.
   {
-    const TARGET_WATER = 0.17; // ~83% land, leaves room for seas, coasts and islands
+    const TARGET_WATER = 0.12; // ~88% land — less open ocean, no fringe seas
     const sorted = Float32Array.from(hg.h).sort();
     const seaLevel = sorted[Math.floor(TARGET_WATER * (N - 1))];
     const shift = 20 - seaLevel;
@@ -298,91 +298,6 @@ export function generateTerrainData(seed: number, cols: number, rows: number): T
           }
         }
         existingLakeCenters.push([lc, lr]);
-      }
-    }
-  }
-
-  // ── Step 2c: Intentional islands in the ocean ────────────────────────────
-  // After land/water balance we seed 4–7 island groups in deep ocean, far from
-  // the main coastline. Each group contains 1–4 small blobs raised to land height
-  // so the coast pass (Step 6b) auto-creates shores around them.
-  {
-    const MIN_DIST_FROM_LAND = Math.floor(Math.min(cols, rows) * 0.06); // ~6% of grid
-    const TARGET_GROUPS = 5;
-    const border = Math.floor(Math.min(cols, rows) * 0.05);
-
-    // Build a land-distance map (BFS from all land cells) to find deep ocean
-    const landDist = new Int16Array(N).fill(-1);
-    const distQ: number[] = [];
-    for (let i = 0; i < N; i++) {
-      if (hg.h[i] >= 20) { landDist[i] = 0; distQ.push(i); }
-    }
-    let dhead = 0;
-    while (dhead < distQ.length) {
-      const ci = distQ[dhead++];
-      const cc = ci % cols, cr = Math.floor(ci / cols);
-      const d = landDist[ci];
-      if (d >= MIN_DIST_FROM_LAND) continue;
-      for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]] as const) {
-        const nc = cc + dc, nr = cr + dr;
-        if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
-        const ni = nr * cols + nc;
-        if (landDist[ni] === -1) { landDist[ni] = d + 1; distQ.push(ni); }
-      }
-    }
-
-    // Collect deep-ocean candidate cells
-    const deepOcean: number[] = [];
-    for (let i = 0; i < N; i++) {
-      if (landDist[i] < MIN_DIST_FROM_LAND) continue; // too close to land (or is land)
-      const cc = i % cols, cr = Math.floor(i / cols);
-      if (cc < border || cr < border || cc >= cols - border || cr >= rows - border) continue;
-      if (hg.h[i] < 20) deepOcean.push(i); // water cell far from land
-    }
-
-    if (deepOcean.length > 0) {
-      const groupCenters: Array<[number, number]> = [];
-      const MIN_GROUP_SEP = Math.floor(Math.min(cols, rows) * 0.12);
-
-      for (let attempt = 0; attempt < TARGET_GROUPS * 80 && groupCenters.length < TARGET_GROUPS; attempt++) {
-        const pick = deepOcean[Math.floor(rng() * deepOcean.length)];
-        const pc = pick % cols, pr = Math.floor(pick / cols);
-        const tooClose = groupCenters.some(([gc, gr]) =>
-          Math.abs(gc - pc) < MIN_GROUP_SEP && Math.abs(gr - pr) < MIN_GROUP_SEP
-        );
-        if (tooClose) continue;
-
-        // Each group has 1–3 island blobs
-        const numBlobs = 1 + Math.floor(rng() * 3);
-        groupCenters.push([pc, pr]);
-
-        for (let b = 0; b < numBlobs; b++) {
-          // Blob center: jitter from group center
-          const jitter = Math.floor(Math.min(cols, rows) * 0.03);
-          const bc = Math.max(border, Math.min(cols - border - 1, pc + Math.floor((rng() - 0.5) * 2 * jitter)));
-          const br = Math.max(border, Math.min(rows - border - 1, pr + Math.floor((rng() - 0.5) * 2 * jitter)));
-
-          // Only place if still in ocean
-          if (hg.h[br * cols + bc] >= 20) continue;
-
-          const targetH = 25 + Math.floor(rng() * 20); // 25–44 (low island)
-          const blobSize = 8 + Math.floor(rng() * 20); // 8–27 cells
-          const blobQ = [br * cols + bc];
-          const seen = new Set<number>(blobQ);
-          let carved = 0;
-          while (blobQ.length && carved < blobSize) {
-            const ci = blobQ.shift()!;
-            hg.h[ci] = Math.max(hg.h[ci], targetH - carved * 0.3); // taper toward edges
-            carved++;
-            const cc2 = ci % cols, cr2 = Math.floor(ci / cols);
-            for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]] as const) {
-              const nc = cc2 + dc, nr = cr2 + dr;
-              if (nc <= 0 || nr <= 0 || nc >= cols - 1 || nr >= rows - 1) continue;
-              const ni = nr * cols + nc;
-              if (!seen.has(ni)) { seen.add(ni); blobQ.push(ni); }
-            }
-          }
-        }
       }
     }
   }
@@ -599,7 +514,7 @@ export function generateTerrainData(seed: number, cols: number, rows: number): T
       for (const [bk, bc] of Object.entries(neighborCounts)) {
         if (bc > bestCount) { bestCount = bc; bestBiome = bk as typeof kind; }
       }
-      if (bestCount === 0) continue; // island surrounded by water — leave as is
+      if (bestCount === 0) { for (const ci of component) cells[ci] = "WATER"; continue; } // island → sink to water
       for (const ci of component) cells[ci] = bestBiome;
     }
   }
