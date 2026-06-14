@@ -1,4 +1,26 @@
 import { Container, Graphics, Text } from "pixi.js";
+
+function catmullRomDensify(
+  pts: { x: number; y: number }[],
+  segmentsPerSpan = 6
+): { x: number; y: number }[] {
+  if (pts.length < 2) return pts;
+  const ext = [pts[0], ...pts, pts[pts.length - 1]];
+  const out: { x: number; y: number }[] = [];
+  for (let i = 1; i < ext.length - 2; i++) {
+    const p0 = ext[i - 1], p1 = ext[i], p2 = ext[i + 1], p3 = ext[i + 2];
+    for (let s = 0; s < segmentsPerSpan; s++) {
+      const t = s / segmentsPerSpan;
+      const t2 = t * t, t3 = t2 * t;
+      out.push({
+        x: 0.5 * ((2*p1.x) + (-p0.x+p2.x)*t + (2*p0.x-5*p1.x+4*p2.x-p3.x)*t2 + (-p0.x+3*p1.x-3*p2.x+p3.x)*t3),
+        y: 0.5 * ((2*p1.y) + (-p0.y+p2.y)*t + (2*p0.y-5*p1.y+4*p2.y-p3.y)*t2 + (-p0.y+3*p1.y-3*p2.y+p3.y)*t3),
+      });
+    }
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
+}
 import type { Viewport } from "pixi-viewport";
 import type { WorldMovement } from "@etheria/shared";
 
@@ -54,7 +76,7 @@ export class MovementsLayer extends Container {
     const haloW = 4 / scale;
 
     for (const m of this.movements) {
-      const pts = this.pathPoints(m);
+      const pts = catmullRomDensify(this.pathPoints(m));
       if (pts.length < 2) continue;
       const color = this.colorFor(m);
       const isHov = m.id === this.hoveredId;
@@ -209,7 +231,7 @@ export class MovementsLayer extends Container {
         progress = 0.08 + ((now + (hash % cycleMs)) % cycleMs) / cycleMs * 0.84;
       }
 
-      const pts = this.pathPoints(m);
+      const pts = catmullRomDensify(this.pathPoints(m));
       const pos = this.pointAlongPath(pts, progress);
       c.x = pos.x;
       c.y = pos.y;

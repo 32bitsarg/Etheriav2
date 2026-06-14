@@ -6,7 +6,7 @@ import { resolveBattle } from './battles.js';
 import { generateBarbarianArmy } from './barbarians.js';
 import { findValidSpawnPosition } from './barbarians.js';
 
-const BARBARIAN_SPEED_PX_PER_SEC = 250; // world units per second
+const BARBARIAN_SPEED_PX_PER_SEC = 22; // world units per second (~3-12 min por relocalización)
 
 // ─── Archetype relationships ──────────────────────────────────────────────────
 
@@ -44,7 +44,7 @@ function dist(ax: number, ay: number, bx: number, by: number) {
 }
 
 function travelSecs(d: number) {
-  return Math.max(30, Math.floor(d / BARBARIAN_SPEED_PX_PER_SEC));
+  return Math.max(120, Math.floor(d / BARBARIAN_SPEED_PX_PER_SEC));
 }
 
 // ─── BARBARIAN MOVE ───────────────────────────────────────────────────────────

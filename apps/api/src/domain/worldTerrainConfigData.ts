@@ -142,8 +142,8 @@ export function isBuildableTerrain(x: number, y: number, width: number, height: 
 }
 
 function getPathGrid(width: number, height: number) {
-  const cols = 72;
-  const rows = 48;
+  const cols = 144;
+  const rows = 96;
   const cellW = width / cols;
   const cellH = height / rows;
   return { cols, rows, cellW, cellH };
@@ -275,7 +275,7 @@ export function calculateWalkablePath(
   rawPath.push({ x: toX, y: toY });
 
   // Douglas-Peucker simplification to ≤12 points
-  const simplified = douglasPeucker(rawPath, Math.min(grid.cellW, grid.cellH) * 0.8);
+  const simplified = douglasPeucker(rawPath, Math.min(grid.cellW, grid.cellH) * 0.3);
   pathCache.set(cacheKey, simplified);
   return simplified;
 }
