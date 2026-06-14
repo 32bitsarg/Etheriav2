@@ -167,12 +167,12 @@ export function VillageImmersiveDock() {
         ))}
       </aside>
 
-      {/* Mobile: compact vertical stack bottom-left — readable rows, no crushing */}
+      {/* Mobile: compact vertical stack bottom-left — max 3 items to avoid overlap with dock */}
       <div
-        className="dock-mobile pointer-events-auto absolute left-2 z-40 flex w-[min(64vw,270px)] flex-col gap-1 md:hidden"
-        style={{ bottom: "calc(68px + env(safe-area-inset-bottom, 0px))" }}
+        className="dock-mobile pointer-events-auto absolute left-2 z-40 flex w-[min(62vw,260px)] flex-col gap-1 md:hidden"
+        style={{ bottom: "calc(var(--dock-h, 56px) + env(safe-area-inset-bottom, 0px))" }}
       >
-        {allItems.slice(0, 4).map((item) => (
+        {allItems.slice(0, 3).map((item) => (
           <QueueSlot
             key={item.id}
             item={item}
@@ -181,8 +181,10 @@ export function VillageImmersiveDock() {
             cancelLabel={t("play.dock.cancel")}
           />
         ))}
-        {allItems.length > 4 && (
-          <span className="pl-1 text-[10px] font-semibold text-white/50">+{allItems.length - 4}</span>
+        {allItems.length > 3 && (
+          <span className="pl-1 text-[11px] font-bold text-white/50 border border-white/15 rounded-md px-2 py-0.5 bg-black/40 w-fit">
+            +{allItems.length - 3}
+          </span>
         )}
       </div>
     </>

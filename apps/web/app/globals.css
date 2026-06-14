@@ -426,6 +426,37 @@ h1, h2, h3, h4, .font-display, .font-serif {
   }
 }
 
+/* Tablet (md-only 768-1023px): sidebar collapses to icon-only, expands on hover */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .grepolis-sidebar {
+    width: 52px;
+    transition: width 200ms ease;
+    overflow: hidden;
+  }
+  .grepolis-sidebar:hover {
+    width: 160px;
+  }
+  .grepolis-sidebar__group-label {
+    opacity: 0;
+    transition: opacity 150ms ease;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .grepolis-sidebar:hover .grepolis-sidebar__group-label {
+    opacity: 1;
+  }
+  .grepolis-nav-item__label {
+    display: none;
+  }
+  .grepolis-sidebar:hover .grepolis-nav-item__label {
+    display: inline;
+  }
+  /* City plaque shifts right with collapsed sidebar */
+  .desktop-city-cluster {
+    left: 68px !important;
+  }
+}
+
 .village-topbar {
   position: relative;
   overflow: hidden;
