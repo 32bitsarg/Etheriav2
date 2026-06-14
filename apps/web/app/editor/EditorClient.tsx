@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BuildingSprite } from "@/components/village/BuildingIcon";
 import { VillageHTMLCanvas } from "@/components/village/VillageHTMLCanvas";
 import dynamic from "next/dynamic";
-const WorldMapHTMLCanvas = dynamic(
+const WorldMapPixi = dynamic(
   () => import("@/components/worldmap/WorldMapPixi").then(m => ({ default: m.WorldMapPixi })),
   { ssr: false }
 );
@@ -501,7 +501,7 @@ function VillageLayoutEditorContent() {
             </div>
           ) : (
             <div className="relative h-full w-full touch-none overflow-hidden">
-              <WorldMapHTMLCanvas
+              <WorldMapPixi
                 cities={[]}
                 mapConfig={worldMap?.map ?? {
                   width: 2400,

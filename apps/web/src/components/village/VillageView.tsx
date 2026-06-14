@@ -9,7 +9,7 @@ import { BuildingSprite } from "@/components/village/BuildingIcon";
 import { VillageHTMLCanvas } from "@/components/village/VillageHTMLCanvas";
 import { ResourceIconSVG } from "@/components/village/ResourceIconSVG";
 import { useAcceptMarketOffer, useActiveBattles, useAllCities, useAllianceMembership, useAttackCity, useBarbarianAttackAlerts, useBattleReports, useBreakTreaty, useCancelBuildQueue, useCancelResearchQueue, useCancelTrainingQueue, useCityRanking, useClaimQuest, useContributeAllianceObjective, useCreateAlliance, useCreateMarketOffer, useDisbandAlliance, useGameReports, useJoinAlliance, useKickAllianceMember, useLeaveAlliance, useMailMessages, useMarkGameReportRead, useMarkMailRead, useMarkMapOpened, useMarkReportRead, useMarketOffers, usePlayerQuests, useProposePeace, useRenameCity, useResearchTech, useScoutTarget, useSendMailMessage, useTechs, useTrainUnits, useTransferAllianceLeadership, useUpdateAlliance, useUpdateAllianceMemberRole, useUpgradeBuilding, useVillageLayout, useWorldMap, useWorldMovements, useWorldSeason, useTutorialStep, useConquestStatus } from "@/hooks/useCity";
-const WorldMapHTMLCanvas = dynamic(
+const WorldMapPixi = dynamic(
   () => import("@/components/worldmap/WorldMapPixi").then(m => ({ default: m.WorldMapPixi })),
   { ssr: false }
 );
@@ -798,7 +798,7 @@ const MapaView = memo(function MapaView({ cityName, allianceData, movements, wor
     <div className="relative h-full overflow-hidden">
       {isEntering && <div className="etheria-map-enter-zoom pointer-events-none absolute inset-0 z-50" />}
       <div className="absolute inset-0">
-        <WorldMapHTMLCanvas
+        <WorldMapPixi
           cities={citiesWithRelation}
           mapConfig={worldMap?.map ?? null}
           myCityId={myCityId}
