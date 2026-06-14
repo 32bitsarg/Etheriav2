@@ -120,6 +120,7 @@ export function WorldMapPixi({
     (async () => {
       // Bug 1 fix: leer mobile sincrónicamente — useIsMobile() llega null en el primer render
       const isMobileNow = getIsMobileNow();
+      try {
 
       const app = new Application();
       await app.init({
@@ -131,7 +132,9 @@ export function WorldMapPixi({
         autoDensity: true,
       });
       if (destroyed) { app.destroy(true); return; }
-      el.appendChild(app.canvas as HTMLCanvasElement);
+      const cvs = app.canvas as HTMLCanvasElement;
+      cvs.style.display = "block";
+      el.appendChild(cvs);
       appRef.current = app;
 
       const cfg = mapConfigRef.current;
@@ -304,6 +307,9 @@ export function WorldMapPixi({
         () => canvas.removeEventListener("pointerup", handlePointerUp),
         () => canvas.removeEventListener("pointercancel", handlePointerUp),
       );
+      } catch (err) {
+        console.error("[WorldMapPixi] init failed:", err);
+      }
     })();
 
     return () => {
@@ -338,6 +344,20 @@ export function WorldMapPixi({
   useEffect(() => {
     overlayRef.current?.applyWeather(seasonState);
   }, [seasonState]);
+
+  // Re-center camera when mapConfig arrives (init may have run before data loaded)
+  const didCenterRef = useRef(false);
+  useEffect(() => {
+    if (!mapConfig || didCenterRef.current) return;
+    const vp = viewportRef.current;
+    if (!vp) return;
+    didCenterRef.current = true;
+    const firstCity = cities.find(c => c.id === myCityId) ?? cities[0];
+    vp.setZoom(mapConfig.cameraInitialZoom, true);
+    if (firstCity) vp.moveCenter(firstCity.posX, firstCity.posY);
+    else vp.moveCenter(0, 0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapConfig]);
 
   useEffect(() => {
     const ed = editorRef.current;
