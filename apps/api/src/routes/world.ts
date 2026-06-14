@@ -182,6 +182,22 @@ worldRouter.get('/config', async (c) => {
   });
 });
 
+// ─── GET /world/regions ───
+
+worldRouter.get('/regions', async (c) => {
+  const worldId = c.req.query('worldId');
+  const terrain = await ensureWorldTerrain(worldId);
+  return c.json({ regions: terrain.regions });
+});
+
+// ─── GET /world/points-of-interest ───
+
+worldRouter.get('/points-of-interest', async (c) => {
+  const worldId = c.req.query('worldId');
+  const terrain = await ensureWorldTerrain(worldId);
+  return c.json({ pois: terrain.pois });
+});
+
 // ─── GET /world/barbarians ───
 
 worldRouter.get('/barbarians', async (c) => {

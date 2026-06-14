@@ -513,6 +513,30 @@ export const WorldMovementSchema = z.object({
 
 export type WorldMovement = z.infer<typeof WorldMovementSchema>;
 
+// ─── World Regions ───
+export const WorldRegionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  centroidX: z.number(),
+  centroidY: z.number(),
+});
+
+export type WorldRegion = z.infer<typeof WorldRegionSchema>;
+
+// ─── World POIs ───
+export const WorldPOITypeSchema = z.enum(["RUINS", "PEAK", "RESOURCE", "HARBOR"]);
+export type WorldPOIType = z.infer<typeof WorldPOITypeSchema>;
+
+export const WorldPOISchema = z.object({
+  id: z.string(),
+  type: WorldPOITypeSchema,
+  name: z.string(),
+  x: z.number(),
+  y: z.number(),
+});
+
+export type WorldPOI = z.infer<typeof WorldPOISchema>;
+
 // Tech / Research re-exports
 export * from "./tech";
 

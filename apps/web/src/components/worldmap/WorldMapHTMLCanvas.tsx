@@ -3,7 +3,7 @@
 import React, {
   useRef, useEffect, useState, useCallback, memo,
 } from "react";
-import type { WorldMovement } from "@etheria/shared";
+import type { WorldMovement, WorldRegion, WorldPOI } from "@etheria/shared";
 import { useI18n } from "@/i18n";
 import { TERRAIN_COLOR_HEX, type TerrainKind, type WorldTerrainMaskData } from "@/lib/worldTerrainMask";
 
@@ -43,6 +43,20 @@ const ARCHETYPE_COLORS: Record<string, string> = {
   MARAUDERS: "#ff6b35",
   WARHOST: "#9b59b6",
   NOMADS: "#f39c12",
+};
+
+const POI_ICONS: Record<string, string> = {
+  RUINS:    "🏚",
+  PEAK:     "⛰",
+  RESOURCE: "💎",
+  HARBOR:   "⚓",
+};
+
+const POI_COLORS: Record<string, string> = {
+  RUINS:    "#c8a96e",
+  PEAK:     "#b0c4de",
+  RESOURCE: "#66dda0",
+  HARBOR:   "#5bc8f5",
 };
 
 const ZOOM_STEP = 0.06;
@@ -135,6 +149,10 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   // LOD terrain tiles: visible set recomputed (throttled) from the rAF loop.
   const [visibleTiles, setVisibleTiles] = useState<TileDesc[]>([]);
   const tileSigRef = useRef<string>("");
+  // World regions + POIs fetched once on mount
+  const [regions, setRegions] = useState<WorldRegion[]>([]);
+  const [pois, setPois] = useState<WorldPOI[]>([]);
+  const [hoveredPOIId, setHoveredPOIId] = useState<string | null>(null);
 
   const worldW = mapConfig?.width ?? 3600;
   const worldH = mapConfig?.height ?? 2400;
@@ -501,6 +519,19 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     return () => ro.disconnect();
   }, []);
 
+  // ─── Fetch world regions + POIs ─────────────────────────────────────────
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/world/regions").then(r => r.json()).then(d => {
+      if (!cancelled && Array.isArray(d.regions)) setRegions(d.regions);
+    }).catch(() => {});
+    fetch("/api/world/points-of-interest").then(r => r.json()).then(d => {
+      if (!cancelled && Array.isArray(d.pois)) setPois(d.pois);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   // ─── Initial camera center ───────────────────────────────────────────────
 
   useEffect(() => {
@@ -774,6 +805,76 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
               onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
             />
           ))}
+
+          {/* Region labels — visible when zoomed out, fade away when zoomed in */}
+          {regions.map((region) => (
+            <div
+              key={region.id}
+              className="absolute pointer-events-none select-none"
+              style={{
+                left: region.centroidX + halfW,
+                top: region.centroidY + halfH,
+                transform: "translate(-50%, -50%)",
+                zIndex: 3,
+                // Counter-scale so text stays a fixed ~12px on screen regardless of zoom,
+                // but vanish at high zoom (> ~0.4) where city names take over.
+                // opacity controlled by CSS: fade out as inv-zoom shrinks (high zoom)
+                opacity: "calc(clamp(0, calc(var(--inv-zoom, 1) * 1.5 - 0.5), 1))",
+                transition: "opacity 0.3s",
+              }}
+            >
+              <span
+                style={{
+                  display: "block",
+                  fontSize: `calc(11px * clamp(0.6, var(--inv-zoom, 1), 2.5))`,
+                  fontFamily: "Georgia, serif",
+                  fontWeight: 600,
+                  color: "rgba(230,215,185,0.75)",
+                  textShadow: "0 1px 4px rgba(0,0,0,0.9), 0 0 12px rgba(0,0,0,0.6)",
+                  letterSpacing: "0.08em",
+                  whiteSpace: "nowrap",
+                  textTransform: "uppercase",
+                }}
+              >
+                {region.name}
+              </span>
+            </div>
+          ))}
+
+          {/* POI markers — counter-scaled like camps, with tooltip on hover */}
+          {pois.map((poi) => {
+            const color = POI_COLORS[poi.type] ?? "#c8a96e";
+            const icon  = POI_ICONS[poi.type]  ?? "📍";
+            const isHov = hoveredPOIId === poi.id;
+            return (
+              <div
+                key={poi.id}
+                className="absolute flex flex-col items-center cursor-pointer pointer-events-auto"
+                style={{
+                  left: poi.x + halfW,
+                  top: poi.y + halfH,
+                  transform: "translate(-50%, -90%) scale(min(1, var(--inv-zoom, 1)))",
+                  transformOrigin: "50% 90%",
+                  zIndex: isHov ? 6 : 4,
+                  willChange: "transform",
+                }}
+                onPointerEnter={() => setHoveredPOIId(poi.id)}
+                onPointerLeave={() => setHoveredPOIId((id) => (id === poi.id ? null : id))}
+              >
+                <span style={{ fontSize: 18, lineHeight: 1, filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.8))" }}>
+                  {icon}
+                </span>
+                {isHov && (
+                  <div
+                    className="absolute bottom-full mb-1 whitespace-nowrap rounded-md border px-2 py-1 text-[9px] leading-snug pointer-events-none"
+                    style={{ backgroundColor: "rgba(5,7,7,0.92)", borderColor: `${color}66`, color: "#e9e2cf" }}
+                  >
+                    <span style={{ color, fontWeight: 600 }}>{poi.name}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           {/* Cities */}
           {cities.map((city) => (

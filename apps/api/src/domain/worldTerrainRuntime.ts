@@ -3,12 +3,17 @@ import { generateTerrainData } from "./worldTerrainGenerator.js";
 import { rleEncode } from "./worldTerrainGenerator.js";
 import { setActiveProceduralTerrain } from "./worldTerrainConfigData.js";
 import type { TerrainKind } from "./worldTerrainConfigData.js";
+import type { WorldRegion, WorldPOI } from "@etheria/shared";
+import { generateRegions } from "./worldRegions.js";
+import { generatePOIs } from "./worldPOIs.js";
 
 type TerrainCache = {
   rle: Array<[TerrainKind, number]>;
   elev: string; // base64-encoded Uint8Array heights 0–100
   cols: number;
   rows: number;
+  regions: WorldRegion[];
+  pois: WorldPOI[];
 };
 
 const cache = new Map<string, TerrainCache>();
@@ -22,6 +27,8 @@ export async function ensureWorldTerrain(worldId?: string): Promise<TerrainCache
   const cols: number = mapCfg.terrainCols ?? 200;
   const rows: number = mapCfg.terrainRows ?? 200;
   const seed: number = mapCfg.terrainSeed ?? 1337;
+  const worldWidth: number = mapCfg.width ?? 20000;
+  const worldHeight: number = mapCfg.height ?? 20000;
 
   const { cells, heights } = generateTerrainData(seed, cols, rows);
   const rle = rleEncode(cells);
@@ -30,7 +37,10 @@ export async function ensureWorldTerrain(worldId?: string): Promise<TerrainCache
   // Register with terrain config so resolveTerrainAt uses the real map
   setActiveProceduralTerrain({ cols, rows, cells });
 
-  const entry: TerrainCache = { rle, elev, cols, rows };
+  const regions = generateRegions(cells, cols, rows, worldWidth, worldHeight, seed);
+  const pois = generatePOIs(cells, heights, cols, rows, worldWidth, worldHeight, seed);
+
+  const entry: TerrainCache = { rle, elev, cols, rows, regions, pois };
   cache.set(key, entry);
   return entry;
 }
