@@ -119,9 +119,18 @@ export class TileLayer extends Container {
   private async loadTile(key: TileKey, z: number, tx: number, ty: number, left: number, top: number, size: number) {
     const url = this.tileUrl(z, tx, ty);
     try {
-      const tex: Texture = await Assets.load({ src: url, data: { mipmap: "on" } });
-      tex.source.autoGenerateMipmaps = true;
+      // API tile URLs have no file extension — use HTMLImageElement to guarantee image decoding
+      const img = new Image();
+      img.crossOrigin = "";
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error(`tile load failed: ${url}`));
+        img.src = url;
+      });
+      await img.decode();
       if (this.tiles.has(key)) return;
+      const tex = Texture.from(img);
+      tex.source.autoGenerateMipmaps = true;
       const sprite = new Sprite(tex);
       sprite.x = left;
       sprite.y = top;
@@ -131,7 +140,6 @@ export class TileLayer extends Container {
       this.addChild(sprite);
       this.tiles.set(key, { sprite, url });
       this.loaded.add(key);
-      // Fade in
       const fade = () => {
         if (!sprite.destroyed) {
           sprite.alpha = Math.min(1, sprite.alpha + 0.08);
@@ -140,7 +148,7 @@ export class TileLayer extends Container {
       };
       requestAnimationFrame(fade);
     } catch {
-      // Tile load failed — underlying water/ocean base layer visible below
+      // Tile load failed — overview layer visible below
     }
   }
 }

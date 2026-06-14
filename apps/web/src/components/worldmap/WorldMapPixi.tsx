@@ -190,7 +190,7 @@ export function WorldMapPixi({
       viewport.sortableChildren = true;
 
       // ── Load async resources ─────────────────────────────────────────────
-      overlay.loadWater(isMobileNow);
+      overlay.loadWater();
       overlay.loadOverview(isMobileNow, cfg?.terrainVersion ?? "");
       overlay.loadRegionBorders();
       markers.loadTextures();

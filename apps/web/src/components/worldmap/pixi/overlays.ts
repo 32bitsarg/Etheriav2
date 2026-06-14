@@ -1,4 +1,4 @@
-import { Assets, Container, Graphics, Sprite, Texture, Text, TilingSprite } from "pixi.js";
+import { Assets, Container, Graphics, Sprite, Texture, Text } from "pixi.js";
 import type { Viewport } from "pixi-viewport";
 import type { WorldRegion, WorldPOI } from "@etheria/shared";
 
@@ -45,21 +45,11 @@ export class OverlayLayer extends Container {
     this.addChild(this.waterBg, this.regionLabels, this.geoLabels, this.poiMarkers);
   }
 
-  async loadWater(isMobile: boolean) {
-    try {
-      const tex: Texture = await Assets.load("/assets/map/water-tile.png");
-      const ts = new TilingSprite({ texture: tex, width: this.worldW, height: this.worldH });
-      ts.x = -this.halfW;
-      ts.y = -this.halfH;
-      // Scale the tile to look right (adjust tileScale for the texture size vs world size)
-      ts.tileScale.set(isMobile ? 0.5 : 1);
-      this.waterBg.addChild(ts);
-    } catch {
-      // Fallback solid ocean color if texture missing
-      const g = new Graphics();
-      g.rect(-this.halfW, -this.halfH, this.worldW, this.worldH).fill({ color: 0x247fc0 });
-      this.waterBg.addChild(g);
-    }
+  loadWater() {
+    // Solid ocean base — the terrain overview image shows oceans correctly once loaded
+    const g = new Graphics();
+    g.rect(-this.halfW, -this.halfH, this.worldW, this.worldH).fill({ color: 0x1a6fa3 });
+    this.waterBg.addChild(g);
   }
 
   async loadOverview(isMobile: boolean, terrainVersion: string) {
@@ -67,8 +57,17 @@ export class OverlayLayer extends Container {
     const variant = isMobile ? "mobile" : "default";
     const url = `/api/world/terrain-image?variant=${variant}${vParam}`;
     try {
-      const tex: Texture = await Assets.load(url);
-      tex.source.autoGenerateMipmaps = true;
+      // Assets.load detects parser by URL extension — API URLs have no extension,
+      // so we load via HTMLImageElement to guarantee image decoding.
+      const img = new Image();
+      img.crossOrigin = "";
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error(`terrain-image load failed: ${url}`));
+        img.src = url;
+      });
+      await img.decode();
+      const tex = Texture.from(img);
       const sprite = new Sprite(tex);
       sprite.x = -this.halfW;
       sprite.y = -this.halfH;
@@ -76,9 +75,7 @@ export class OverlayLayer extends Container {
       sprite.height = this.worldH;
       sprite.alpha = 0;
       this.overviewSprite = sprite;
-      // Insert just after waterBg
       this.addChildAt(sprite, 1);
-      // Fade in
       const fade = () => {
         if (!sprite.destroyed) {
           sprite.alpha = Math.min(1, sprite.alpha + 0.06);
@@ -86,7 +83,9 @@ export class OverlayLayer extends Container {
         }
       };
       requestAnimationFrame(fade);
-    } catch {}
+    } catch (err) {
+      console.error("[WorldMap] terrain overview failed:", err);
+    }
   }
 
   async loadRegionBorders() {
