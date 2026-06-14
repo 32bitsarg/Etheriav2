@@ -49,6 +49,14 @@ const ZOOM_STEP = 0.06;
 const PAN_THRESHOLD = 6;
 const FOG_RADIUS = 140;
 
+// ─── Terrain LOD tiles ───
+// The world is square; at level z it is split into 2^z × 2^z tiles, each TILE_PX wide.
+// The client mounts only the tiles visible at the LOD matching the current zoom; the
+// overview image stays behind as a base layer so there are never blank gaps.
+const TILE_PX = 256;
+const TILE_ZMAX = 8;
+type TileDesc = { z: number; x: number; y: number; left: number; top: number; size: number };
+
 const MOVEMENT_RELATION_COLORS: Record<string, string> = {
   own: "#e8c468",
   ally: "#49f0c5",
@@ -124,6 +132,9 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   terrainMaskRef.current = terrainMask;
   const [brushCursor, setBrushCursor] = useState<{ x: number; y: number } | null>(null);
   const movementEls = useRef(new Map<string, HTMLDivElement>());
+  // LOD terrain tiles: visible set recomputed (throttled) from the rAF loop.
+  const [visibleTiles, setVisibleTiles] = useState<TileDesc[]>([]);
+  const tileSigRef = useRef<string>("");
 
   const worldW = mapConfig?.width ?? 3600;
   const worldH = mapConfig?.height ?? 2400;
@@ -394,6 +405,40 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     }
   }, [movements, worldToLocal, cities, myCityId]);
 
+  // ─── LOD tile selection ──────────────────────────────────────────────────
+
+  const updateTiles = useCallback(() => {
+    const { zoom } = cam.current;
+    const vw = outerRef.current?.clientWidth ?? size.w;
+    const vh = outerRef.current?.clientHeight ?? size.h;
+    // Pick the LOD whose tile image resolution ≈ the on-screen resolution.
+    const z = Math.max(0, Math.min(TILE_ZMAX, Math.round(Math.log2((worldW * zoom) / TILE_PX))));
+    const span = 1 << z;
+    const tileWorld = worldW / span; // square world → same on both axes
+
+    // Visible world rect from the viewport corners (+1 tile margin).
+    const tl = screenToWorld(0, 0);
+    const br = screenToWorld(vw, vh);
+    const minWX = Math.min(tl.x, br.x), maxWX = Math.max(tl.x, br.x);
+    const minWY = Math.min(tl.y, br.y), maxWY = Math.max(tl.y, br.y);
+    const x0 = Math.max(0, Math.floor((minWX + halfW) / tileWorld) - 1);
+    const x1 = Math.min(span - 1, Math.floor((maxWX + halfW) / tileWorld) + 1);
+    const y0 = Math.max(0, Math.floor((minWY + halfH) / tileWorld) - 1);
+    const y1 = Math.min(span - 1, Math.floor((maxWY + halfH) / tileWorld) + 1);
+
+    const sig = `${z}:${x0},${y0},${x1},${y1}`;
+    if (sig === tileSigRef.current) return; // tile set unchanged → skip setState
+    tileSigRef.current = sig;
+
+    const tiles: TileDesc[] = [];
+    for (let ty = y0; ty <= y1; ty++) {
+      for (let tx = x0; tx <= x1; tx++) {
+        tiles.push({ z, x: tx, y: ty, left: tx * tileWorld, top: ty * tileWorld, size: tileWorld });
+      }
+    }
+    setVisibleTiles(tiles);
+  }, [size.w, size.h, worldW, halfW, halfH, screenToWorld]);
+
   // ─── rAF loop ────────────────────────────────────────────────────────────
 
   const applyCameraRef = useRef(applyCamera);
@@ -402,6 +447,8 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   drawFogRef.current = drawFog;
   const updateMovementsRef = useRef(updateMovements);
   updateMovementsRef.current = updateMovements;
+  const updateTilesRef = useRef(updateTiles);
+  updateTilesRef.current = updateTiles;
   const movementsRef = useRef(movements);
   movementsRef.current = movements;
 
@@ -413,6 +460,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   useEffect(() => {
     let raf = 0;
     let lastMovementTick = 0;
+    let lastTileTick = 0;
     const loop = (now: number) => {
       if (camDirty.current) {
         camDirty.current = false;
@@ -424,6 +472,12 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
       if (movementsRef.current.length > 0 && now - lastMovementTick > 140) {
         lastMovementTick = now;
         updateMovementsRef.current();
+      }
+      // Recompute visible LOD tiles ~8fps; updateTiles early-returns when the set
+      // is unchanged, so this is cheap while idle and responsive during pan/zoom.
+      if (now - lastTileTick > 120) {
+        lastTileTick = now;
+        updateTilesRef.current();
       }
       raf = requestAnimationFrame(loop);
     };
@@ -685,16 +739,16 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
             height: worldH,
           }}
         >
-          {/* Terrain image pre-rendered server-side — loaded as a single WebP, zero client JS */}
-          {!terrainImageLoaded && (
-            <img
-              src={bgPath}
-              alt=""
-              className="absolute inset-0 h-full w-full pointer-events-none"
-              draggable={false}
-              style={{ zIndex: 0 }}
-            />
-          )}
+          {/* Static fallback background (ultimate base) */}
+          <img
+            src={bgPath}
+            alt=""
+            className="absolute inset-0 h-full w-full pointer-events-none"
+            draggable={false}
+            style={{ zIndex: 0 }}
+          />
+          {/* Overview terrain — low-res base layer always behind the LOD tiles so
+              there are never blank gaps while tiles load. */}
           <img
             src="/api/world/terrain-image"
             alt=""
@@ -703,6 +757,23 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
             style={{ width: worldW, height: worldH, zIndex: 1, opacity: terrainImageLoaded ? 1 : 0, transition: "opacity 0.4s" }}
             onLoad={() => setTerrainImageLoaded(true)}
           />
+          {/* LOD terrain tiles — only the visible set at the zoom-matched level. Each
+              fades in on load; the overview shows through underneath meanwhile. */}
+          {visibleTiles.map((tile) => (
+            <img
+              key={`${tile.z}:${tile.x}:${tile.y}`}
+              src={`/api/world/terrain-tile/${tile.z}/${tile.x}/${tile.y}`}
+              alt=""
+              draggable={false}
+              className="absolute pointer-events-none"
+              style={{
+                left: tile.left, top: tile.top, width: tile.size, height: tile.size,
+                zIndex: 2, opacity: 0, transition: "opacity 0.25s",
+              }}
+              onLoad={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "1"; }}
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
+            />
+          ))}
 
           {/* Cities */}
           {cities.map((city) => (

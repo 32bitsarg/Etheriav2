@@ -450,42 +450,41 @@ function vnoise(x: number, y: number, s: number): number {
     + vhash(ix, iy + 1, s) * (1 - ux) * uy + vhash(ix + 1, iy + 1, s) * ux * uy;
 }
 
-// Per-biome texture multiplier applied to the base color. Sampled in render-pixel space.
-// FOREST uses layered canopy noise to simulate tree tops viewed from above.
-function biomeTexture(kind: string, px: number, py: number): number {
+// Per-biome texture multiplier applied to the base color. Sampled in CELL-SPACE
+// (continuous float cell coordinates), NOT render-pixel space, so the same world
+// point yields the same texture at every LOD → no popping between tile zoom levels.
+// Frequencies are the old render-pixel frequencies × 5 (the previous SCALE) so the
+// visual density is unchanged. FOREST uses layered canopy noise (tree tops from above).
+function biomeTexture(kind: string, cx: number, cy: number): number {
   switch (kind) {
     case "FOREST": {
-      // Three noise layers: large canopy patches, directional NW highlight, micro-detail.
-      const canopy  = vnoise(px * 0.28, py * 0.28, 7);   // blob frequency → ~1.5 trees/tile
-      const lightNW = vnoise(px * 0.60 - 1.4, py * 0.60 - 1.4, 9); // shifted NW for sunlight
-      const micro   = vnoise(px * 1.30, py * 1.30, 13);
+      const canopy  = vnoise(cx * 1.4, cy * 1.4, 7);            // large canopy patches
+      const lightNW = vnoise(cx * 3.0 - 0.28, cy * 3.0 - 0.28, 9); // NW-shifted sunlight
+      const micro   = vnoise(cx * 6.5, cy * 6.5, 13);
       if (canopy > 0.52) {
-        // Inside canopy dome: brighter towards centre, NW-lit highlight
         const edgeFade = Math.min(1, (canopy - 0.52) / 0.20);
         return 0.84 + lightNW * 0.32 * edgeFade + micro * 0.06;
       }
       if (canopy > 0.41) {
-        // Shadow gap between canopies
         return 0.66 + micro * 0.10;
       }
-      // Ground/understory
       return 0.80 + micro * 0.14;
     }
     case "DESERT":
-      return 1 + Math.sin(px * 0.34 + py * 0.10 + vnoise(px * 0.05, py * 0.05, 3) * 7) * 0.055;
+      return 1 + Math.sin(cx * 1.7 + cy * 0.5 + vnoise(cx * 0.25, cy * 0.25, 3) * 7) * 0.055;
     case "MOUNTAIN":
-      return 1 + (vnoise(px * 0.42, py * 0.42, 5) - 0.5) * 0.34;
+      return 1 + (vnoise(cx * 2.1, cy * 2.1, 5) - 0.5) * 0.34;
     case "HILLS":
-      return 1 + (vnoise(px * 0.34, py * 0.34, 15) - 0.5) * 0.28;
+      return 1 + (vnoise(cx * 1.7, cy * 1.7, 15) - 0.5) * 0.28;
     case "SWAMP": {
-      let t = 1 + (vnoise(px * 0.22, py * 0.22, 11) - 0.5) * 0.30;
-      if (vnoise(px * 0.5, py * 0.5, 17) > 0.85) t *= 1.12;
+      let t = 1 + (vnoise(cx * 1.1, cy * 1.1, 11) - 0.5) * 0.30;
+      if (vnoise(cx * 2.5, cy * 2.5, 17) > 0.85) t *= 1.12;
       return t;
     }
     case "PLAINS":
-      return 1 + (vnoise(px * 0.18, py * 0.18, 13) - 0.5) * 0.16;
+      return 1 + (vnoise(cx * 0.9, cy * 0.9, 13) - 0.5) * 0.16;
     case "TUNDRA":
-      return 1 + (vnoise(px * 0.20, py * 0.20, 19) - 0.5) * 0.14;
+      return 1 + (vnoise(cx * 1.0, cy * 1.0, 19) - 0.5) * 0.14;
     default:
       return 1;
   }
@@ -540,97 +539,110 @@ function biomeColor(kind: string, hN: number, tc: number, tr: number): [number, 
   }
 }
 
+// Bilinear height sampler in cell-space (clamped at edges).
+function heightAt(heights: Buffer, cols: number, rows: number, c: number, r: number): number {
+  const cc = c < 0 ? 0 : c >= cols ? cols - 1 : c;
+  const rr = r < 0 ? 0 : r >= rows ? rows - 1 : r;
+  return heights[rr * cols + cc];
+}
+function sampleHeight(heights: Buffer, cols: number, rows: number, fx: number, fy: number): number {
+  const x0 = Math.floor(fx), y0 = Math.floor(fy);
+  const tx = fx - x0, ty = fy - y0;
+  const h00 = heightAt(heights, cols, rows, x0, y0);
+  const h10 = heightAt(heights, cols, rows, x0 + 1, y0);
+  const h01 = heightAt(heights, cols, rows, x0, y0 + 1);
+  const h11 = heightAt(heights, cols, rows, x0 + 1, y0 + 1);
+  return h00 * (1 - tx) * (1 - ty) + h10 * tx * (1 - ty) + h01 * (1 - tx) * ty + h11 * tx * ty;
+}
+
+// Shared per-pixel terrain shading. Inputs are continuous CELL-SPACE coordinates so
+// the result is identical for a given world point at every LOD (no tile popping).
+// Returns [r,g,b] in 0..255. Used by both the overview image and the tile renderer.
+function terrainPixelRGB(cells: string[], heights: Buffer, cols: number, rows: number, cellXf: number, cellYf: number): [number, number, number] {
+  const col = cellXf < 0 ? 0 : cellXf >= cols ? cols - 1 : Math.floor(cellXf);
+  const row = cellYf < 0 ? 0 : cellYf >= rows ? rows - 1 : Math.floor(cellYf);
+  const kind = cells[row * cols + col] ?? 'PLAINS';
+
+  const hVal = sampleHeight(heights, cols, rows, cellXf, cellYf);
+  // Smooth hillshade: gradient of bilinear height over ±0.5 cell (NW light).
+  const hL = sampleHeight(heights, cols, rows, cellXf - 0.5, cellYf);
+  const hR = sampleHeight(heights, cols, rows, cellXf + 0.5, cellYf);
+  const hU = sampleHeight(heights, cols, rows, cellXf, cellYf - 0.5);
+  const hD = sampleHeight(heights, cols, rows, cellXf, cellYf + 0.5);
+  let shade = Math.min(1.34, Math.max(0.68, 1 + ((hR - hL) - (hD - hU)) * 0.020));
+  // Valley occlusion: darken pits (surrounded by higher terrain) for readable relief.
+  const occ = (hL + hR + hU + hD) / 4 - hVal;
+  if (occ > 0) shade *= 1 - Math.min(0.12, occ * 0.012);
+
+  const mod = shade * biomeTexture(kind, cellXf, cellYf);
+  let [r, g, b] = biomeColor(kind, hVal / 100, col, row);
+  r *= mod; g *= mod; b *= mod;
+
+  // Saturation boost (1.18×) + mild S-curve contrast.
+  const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+  r = gray + (r - gray) * 1.18; g = gray + (g - gray) * 1.18; b = gray + (b - gray) * 1.18;
+  const sc = (v: number) => { const t = Math.max(0, Math.min(1, v / 255)); return (t * t * (3 - 2 * t) * 0.25 + t * 0.75) * 255; };
+  r = sc(r); g = sc(g); b = sc(b);
+
+  // Vignette from normalized world position (continuous across tiles).
+  const nx = 2 * cellXf / cols - 1, ny = 2 * cellYf / rows - 1;
+  const dist = Math.sqrt(nx * nx + ny * ny) / Math.SQRT2;
+  const t = Math.max(0, (dist - 0.25) / 0.75);
+  const darkness = t * t * 0.38;
+  r *= 1 - darkness; g *= 1 - darkness; b *= 1 - darkness;
+
+  return [
+    r < 0 ? 0 : r > 255 ? 255 : Math.round(r),
+    g < 0 ? 0 : g > 255 ? 255 : Math.round(g),
+    b < 0 ? 0 : b > 255 ? 255 : Math.round(b),
+  ];
+}
+
+// Decode terrain RLE+elev into flat cells[] + heights Buffer (memoized per world).
+const decodedTerrainCache = new Map<string, { cells: string[]; heights: Buffer; cols: number; rows: number }>();
+async function getDecodedTerrain(worldId: string) {
+  const key = worldId;
+  let dec = decodedTerrainCache.get(key);
+  if (!dec) {
+    const terrain = await ensureWorldTerrain(worldId === 'local' ? undefined : worldId);
+    const cells: string[] = [];
+    for (const [kind, count] of terrain.rle) {
+      for (let i = 0; i < count; i++) cells.push(kind);
+    }
+    dec = { cells, heights: Buffer.from(terrain.elev, 'base64'), cols: terrain.cols, rows: terrain.rows };
+    decodedTerrainCache.set(key, dec);
+  }
+  return dec;
+}
+
 worldRouter.get('/terrain-image', async (c) => {
   const worldId = c.req.query('worldId') ?? 'local';
   const cacheKey = worldId;
 
   if (!terrainImageCache.has(cacheKey)) {
     const { default: sharp } = await import('sharp');
-    const terrain = await ensureWorldTerrain(worldId === 'local' ? undefined : worldId);
+    const { cells, heights, cols, rows } = await getDecodedTerrain(worldId);
 
-    // Decode cells from RLE
-    const cells: string[] = [];
-    for (const [kind, count] of terrain.rle) {
-      for (let i = 0; i < count; i++) cells.push(kind);
-    }
-    const heights = Buffer.from(terrain.elev, 'base64');
-    const { cols, rows } = terrain;
-
-    // Render at 5× tile resolution, then downsample to 2100px via lanczos3 for AA.
-    const SCALE = 5;
+    // Overview: render at 3× cell resolution then downsample to 2100 for AA. Used as
+    // the always-present base layer behind the LOD tiles (fast initial load).
+    const SCALE = 3;
     const imgW = cols * SCALE;
     const imgH = rows * SCALE;
     const raw = Buffer.alloc(imgW * imgH * 3);
 
-    function getH(c: number, r: number): number {
-      return heights[Math.max(0, Math.min(rows - 1, r)) * cols + Math.max(0, Math.min(cols - 1, c))];
-    }
-
     for (let py = 0; py < imgH; py++) {
-      const tileRow = Math.floor(py / SCALE);
-      const fy = (py % SCALE) / SCALE;
+      const cellYf = py / SCALE;
       for (let px = 0; px < imgW; px++) {
-        const tileCol = Math.floor(px / SCALE);
-        const fx = (px % SCALE) / SCALE;
-        const kind = cells[tileRow * cols + tileCol] ?? 'PLAINS';
-
-        // Bilinear height interp
-        const h00 = getH(tileCol, tileRow);
-        const h10 = getH(tileCol + 1, tileRow);
-        const h01 = getH(tileCol, tileRow + 1);
-        const h11 = getH(tileCol + 1, tileRow + 1);
-        const hVal = h00 * (1 - fx) * (1 - fy) + h10 * fx * (1 - fy) + h01 * (1 - fx) * fy + h11 * fx * fy;
-
-        // Hillshading: NW light, slightly stronger contrast range than before.
-        const dx = (getH(tileCol + 1, tileRow) - getH(tileCol - 1, tileRow)) * 0.5;
-        const dy = (getH(tileCol, tileRow + 1) - getH(tileCol, tileRow - 1)) * 0.5;
-        const shade = Math.min(1.34, Math.max(0.68, 1 + (dx - dy) * 0.020));
-
-        const tex = biomeTexture(kind, px, py);
-        const mod = shade * tex;
-        let [r, g, b] = biomeColor(kind, hVal / 100, tileCol, tileRow);
-        r = Math.min(255, Math.max(0, Math.round(r * mod)));
-        g = Math.min(255, Math.max(0, Math.round(g * mod)));
-        b = Math.min(255, Math.max(0, Math.round(b * mod)));
-
+        const [r, g, b] = terrainPixelRGB(cells, heights, cols, rows, px / SCALE, cellYf);
         const idx = (py * imgW + px) * 3;
         raw[idx] = r; raw[idx + 1] = g; raw[idx + 2] = b;
       }
     }
 
-    // Saturation + gentle S-curve contrast pass (before vignette).
-    for (let i = 0; i < raw.length; i += 3) {
-      let r = raw[i], g = raw[i + 1], b = raw[i + 2];
-      // Saturation boost (1.18×)
-      const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-      r = Math.min(255, Math.max(0, gray + (r - gray) * 1.18));
-      g = Math.min(255, Math.max(0, gray + (g - gray) * 1.18));
-      b = Math.min(255, Math.max(0, gray + (b - gray) * 1.18));
-      // Mild S-curve contrast (blend 25% smoothstep with 75% linear)
-      const sc = (v: number) => { const t = v / 255; return (t * t * (3 - 2 * t) * 0.25 + t * 0.75) * 255; };
-      raw[i] = Math.round(sc(r)); raw[i + 1] = Math.round(sc(g)); raw[i + 2] = Math.round(sc(b));
-    }
-
-    // Vignette pass
-    const cx = imgW / 2, cy = imgH / 2;
-    const maxR = Math.sqrt(cx * cx + cy * cy);
-    for (let py = 0; py < imgH; py++) {
-      for (let px = 0; px < imgW; px++) {
-        const dist = Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
-        const t = Math.max(0, (dist / maxR - 0.25) / 0.75);
-        const darkness = t * t * 0.38;
-        const idx = (py * imgW + px) * 3;
-        raw[idx]     = Math.round(raw[idx]     * (1 - darkness));
-        raw[idx + 1] = Math.round(raw[idx + 1] * (1 - darkness));
-        raw[idx + 2] = Math.round(raw[idx + 2] * (1 - darkness));
-      }
-    }
-
-    // Downsample 3500→2100 with lanczos3 for AA, then gentle blur to remove residual speckle.
     const webpBuf = await sharp(raw, { raw: { width: imgW, height: imgH, channels: 3 } })
       .resize(2100, 2100, { kernel: 'lanczos3' })
       .blur(0.4)
-      .webp({ quality: 82, effort: 4 })
+      .webp({ quality: 80, effort: 4 })
       .toBuffer();
 
     terrainImageCache.set(cacheKey, webpBuf);
@@ -646,7 +658,89 @@ worldRouter.get('/terrain-image', async (c) => {
   });
 });
 
+// ─── GET /world/terrain-tile/:z/:x/:y — LOD tile (slippy-map) ───
+// World is square; at level z it is split into 2^z × 2^z tiles, each TILE_PX wide.
+// Rendered on-demand at 2× supersample, downscaled with lanczos3, cached LRU.
+
+const TILE_PX = 256;
+const TILE_ZMAX = 8;
+const TILE_SS = 2; // supersample factor
+const TILE_CACHE_MAX = 1200;
+const terrainTileCache = new Map<string, Buffer>(); // insertion-ordered → LRU
+
+worldRouter.get('/terrain-tile/:z/:x/:y', async (c) => {
+  const worldId = c.req.query('worldId') ?? 'local';
+  const z = Number(c.req.param('z'));
+  const tx = Number(c.req.param('x'));
+  const ty = Number(c.req.param('y').replace(/\.webp$/, ''));
+  const span = 1 << z; // 2^z
+  if (!Number.isInteger(z) || z < 0 || z > TILE_ZMAX
+    || !Number.isInteger(tx) || tx < 0 || tx >= span
+    || !Number.isInteger(ty) || ty < 0 || ty >= span) {
+    return c.json({ error: 'bad tile coords' }, 400);
+  }
+
+  const cacheKey = `${worldId}:${z}:${tx}:${ty}`;
+  let buf = terrainTileCache.get(cacheKey);
+  if (buf) {
+    // LRU bump
+    terrainTileCache.delete(cacheKey);
+    terrainTileCache.set(cacheKey, buf);
+  } else {
+    const { default: sharp } = await import('sharp');
+    const { cells, heights, cols, rows } = await getDecodedTerrain(worldId);
+
+    // Tile covers cell-space range [tx,tx+1)*cols/span on each axis.
+    const cellsPerTile = cols / span; // cols === rows (square world)
+    const cell0X = tx * cellsPerTile;
+    const cell0Y = ty * cellsPerTile;
+    const dim = TILE_PX * TILE_SS;
+    const raw = Buffer.alloc(dim * dim * 3);
+    const step = cellsPerTile / dim; // cell-space units per output pixel
+
+    for (let py = 0; py < dim; py++) {
+      const cellYf = cell0Y + (py + 0.5) * step;
+      for (let px = 0; px < dim; px++) {
+        const cellXf = cell0X + (px + 0.5) * step;
+        const [r, g, b] = terrainPixelRGB(cells, heights, cols, rows, cellXf, cellYf);
+        const idx = (py * dim + px) * 3;
+        raw[idx] = r; raw[idx + 1] = g; raw[idx + 2] = b;
+      }
+    }
+
+    buf = await sharp(raw, { raw: { width: dim, height: dim, channels: 3 } })
+      .resize(TILE_PX, TILE_PX, { kernel: 'lanczos3' })
+      .webp({ quality: 82, effort: 4 })
+      .toBuffer();
+
+    terrainTileCache.set(cacheKey, buf);
+    // Evict oldest if over budget.
+    while (terrainTileCache.size > TILE_CACHE_MAX) {
+      const oldest = terrainTileCache.keys().next().value;
+      if (oldest === undefined) break;
+      terrainTileCache.delete(oldest);
+    }
+  }
+
+  return new Response(buf.buffer as ArrayBuffer, {
+    headers: {
+      'Content-Type': 'image/webp',
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'Content-Length': String(buf.length),
+    },
+  });
+});
+
 export function invalidateTerrainImageCache(worldId?: string) {
-  if (worldId) terrainImageCache.delete(worldId);
-  else terrainImageCache.clear();
+  if (worldId) {
+    terrainImageCache.delete(worldId);
+    decodedTerrainCache.delete(worldId);
+    for (const k of [...terrainTileCache.keys()]) {
+      if (k.startsWith(`${worldId}:`)) terrainTileCache.delete(k);
+    }
+  } else {
+    terrainImageCache.clear();
+    decodedTerrainCache.clear();
+    terrainTileCache.clear();
+  }
 }
