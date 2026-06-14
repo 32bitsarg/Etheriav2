@@ -17,7 +17,6 @@
     "@tanstack/react-query": "^5.66.0",
     "matecitodb": "^4.0.2",
     "next": "^15.1.0",
-    "phaser": "^3.85.0",
     "pixi-viewport": "^6.0.3",
     "pixi.js": "^8.19.0",
     "react": "^19.0.0",

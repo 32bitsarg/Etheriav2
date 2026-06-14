@@ -127,9 +127,6 @@ importers:
       next:
         specifier: ^15.1.0
         version: 15.5.15(@babel/core@7.29.7)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      phaser:
-        specifier: ^3.85.0
-        version: 3.90.0
       pixi-viewport:
         specifier: ^6.0.3
         version: 6.0.3(pixi.js@8.19.0)
@@ -2761,9 +2758,6 @@ packages:
 
   perfect-debounce@1.0.0:
     resolution: {integrity: sha512-xCy9V055GLEqoFaHoC1SoLIaLmWctgCUaBaWxDZ7/Zx4CTyX7cJQLJOok/orfjZAh9kEYpjJa4d0KcJmCbctZA==}
-
-  phaser@3.90.0:
-    resolution: {integrity: sha512-/cziz/5ZIn02uDkC9RzN8VF9x3Gs3XdFFf9nkiMEQT3p7hQlWuyjy4QWosU802qqno2YSLn2BfqwOKLv/sSVfQ==}
 
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
@@ -6175,10 +6169,6 @@ snapshots:
   pend@1.2.0: {}
 
   perfect-debounce@1.0.0: {}
-
-  phaser@3.90.0:
-    dependencies:
-      eventemitter3: 5.0.4
 
   picocolors@1.1.1: {}
 
