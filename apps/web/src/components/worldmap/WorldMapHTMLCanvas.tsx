@@ -146,9 +146,14 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   terrainMaskRef.current = terrainMask;
   const [brushCursor, setBrushCursor] = useState<{ x: number; y: number } | null>(null);
   const movementEls = useRef(new Map<string, HTMLDivElement>());
-  // LOD terrain tiles: visible set recomputed (throttled) from the rAF loop.
+  // LOD terrain tiles — multi-level retention manager.
+  // tilesMapRef holds ALL mounted tiles (keys = "z:x:y"); entries persist across
+  // pan and LOD changes until explicitly pruned. loadedRef tracks which tiles the
+  // browser already has decoded so we can skip the fade animation on revisit.
   const [visibleTiles, setVisibleTiles] = useState<TileDesc[]>([]);
-  const tileSigRef = useRef<string>("");
+  const tilesMapRef = useRef<Map<string, TileDesc>>(new Map());
+  const loadedRef   = useRef<Set<string>>(new Set());
+  const tileSigRef  = useRef<string>("");
   // World regions + POIs fetched once on mount
   const [regions, setRegions] = useState<WorldRegion[]>([]);
   const [pois, setPois] = useState<WorldPOI[]>([]);
@@ -423,38 +428,74 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     }
   }, [movements, worldToLocal, cities, myCityId]);
 
-  // ─── LOD tile selection ──────────────────────────────────────────────────
+  // ─── LOD tile selection (retention manager) ─────────────────────────────
+  // Keeps tiles of the PREVIOUS LOD level alive in the DOM until all tiles of
+  // the NEW level have loaded. This prevents the "nítido → borroso → nítido"
+  // flash when crossing a zoom threshold. During pan, a ±2 prefetch margin and
+  // permanent retention within ±4 of the current view mean revisited tiles never
+  // re-animate from opacity:0 (loadedRef prevents the fade).
 
   const updateTiles = useCallback(() => {
     const { zoom } = cam.current;
     const vw = outerRef.current?.clientWidth ?? size.w;
     const vh = outerRef.current?.clientHeight ?? size.h;
-    // Pick the LOD whose tile image resolution ≈ the on-screen resolution.
+
     const z = Math.max(0, Math.min(TILE_ZMAX, Math.round(Math.log2((worldW * zoom) / TILE_PX))));
     const span = 1 << z;
-    const tileWorld = worldW / span; // square world → same on both axes
+    const tileWorld = worldW / span;
 
-    // Visible world rect from the viewport corners (+1 tile margin).
+    // Visible rect + ±2 prefetch margin
     const tl = screenToWorld(0, 0);
     const br = screenToWorld(vw, vh);
     const minWX = Math.min(tl.x, br.x), maxWX = Math.max(tl.x, br.x);
     const minWY = Math.min(tl.y, br.y), maxWY = Math.max(tl.y, br.y);
-    const x0 = Math.max(0, Math.floor((minWX + halfW) / tileWorld) - 1);
-    const x1 = Math.min(span - 1, Math.floor((maxWX + halfW) / tileWorld) + 1);
-    const y0 = Math.max(0, Math.floor((minWY + halfH) / tileWorld) - 1);
-    const y1 = Math.min(span - 1, Math.floor((maxWY + halfH) / tileWorld) + 1);
+    const PREFETCH = 2;
+    const x0 = Math.max(0, Math.floor((minWX + halfW) / tileWorld) - PREFETCH);
+    const x1 = Math.min(span - 1, Math.floor((maxWX + halfW) / tileWorld) + PREFETCH);
+    const y0 = Math.max(0, Math.floor((minWY + halfH) / tileWorld) - PREFETCH);
+    const y1 = Math.min(span - 1, Math.floor((maxWY + halfH) / tileWorld) + PREFETCH);
 
-    const sig = `${z}:${x0},${y0},${x1},${y1}`;
-    if (sig === tileSigRef.current) return; // tile set unchanged → skip setState
+    // Signature — include whether the current z is "complete" so pruning is stable
+    const wantedKeys = new Set<string>();
+    for (let ty = y0; ty <= y1; ty++)
+      for (let tx = x0; tx <= x1; tx++)
+        wantedKeys.add(`${z}:${tx}:${ty}`);
+
+    const currentLevelComplete = [...wantedKeys].every(k => loadedRef.current.has(k));
+    const sig = `${z}:${x0},${y0},${x1},${y1}:${currentLevelComplete}`;
+    if (sig === tileSigRef.current) return;
     tileSigRef.current = sig;
 
-    const tiles: TileDesc[] = [];
+    const map = tilesMapRef.current;
+
+    // Add new wanted tiles to the map
     for (let ty = y0; ty <= y1; ty++) {
       for (let tx = x0; tx <= x1; tx++) {
-        tiles.push({ z, x: tx, y: ty, left: tx * tileWorld, top: ty * tileWorld, size: tileWorld });
+        const key = `${z}:${tx}:${ty}`;
+        if (!map.has(key)) {
+          map.set(key, { z, x: tx, y: ty, left: tx * tileWorld, top: ty * tileWorld, size: tileWorld });
+        }
       }
     }
-    setVisibleTiles(tiles);
+
+    // Prune stale tiles:
+    //  - If the current z-level is complete, remove ALL tiles of OTHER levels
+    //    (the current level now fully covers the viewport → cross-fade done).
+    //  - Always remove tiles of the current level outside the ±4 retention margin
+    //    to cap DOM node count when panning long distances.
+    const RETAIN = 4;
+    const rx0 = Math.max(0, x0 - RETAIN), rx1 = Math.min(span - 1, x1 + RETAIN);
+    const ry0 = Math.max(0, y0 - RETAIN), ry1 = Math.min(span - 1, y1 + RETAIN);
+
+    for (const [key, td] of map) {
+      if (td.z !== z) {
+        if (currentLevelComplete) map.delete(key); // old level no longer needed
+      } else {
+        if (td.x < rx0 || td.x > rx1 || td.y < ry0 || td.y > ry1) map.delete(key);
+      }
+    }
+
+    setVisibleTiles([...map.values()]);
   }, [size.w, size.h, worldW, halfW, halfH, screenToWorld]);
 
   // ─── rAF loop ────────────────────────────────────────────────────────────
@@ -788,23 +829,39 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
             style={{ width: worldW, height: worldH, zIndex: 1, opacity: terrainImageLoaded ? 1 : 0, transition: "opacity 0.4s" }}
             onLoad={() => setTerrainImageLoaded(true)}
           />
-          {/* LOD terrain tiles — only the visible set at the zoom-matched level. Each
-              fades in on load; the overview shows through underneath meanwhile. */}
-          {visibleTiles.map((tile) => (
-            <img
-              key={`${tile.z}:${tile.x}:${tile.y}`}
-              src={`/api/world/terrain-tile/${tile.z}/${tile.x}/${tile.y}`}
-              alt=""
-              draggable={false}
-              className="absolute pointer-events-none"
-              style={{
-                left: tile.left, top: tile.top, width: tile.size, height: tile.size,
-                zIndex: 2, opacity: 0, transition: "opacity 0.25s",
-              }}
-              onLoad={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "1"; }}
-              onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
-            />
-          ))}
+          {/* LOD terrain tiles — multi-level retention: tiles of multiple z-levels
+              can coexist; old level stays visible below until new level is complete. */}
+          {(() => {
+            const zValues = visibleTiles.map(t => t.z);
+            const minZ = zValues.length ? Math.min(...zValues) : 0;
+            return visibleTiles.map((tile) => {
+              const key = `${tile.z}:${tile.x}:${tile.y}`;
+              const alreadyLoaded = loadedRef.current.has(key);
+              return (
+                <img
+                  key={key}
+                  src={`/api/world/terrain-tile/${tile.z}/${tile.x}/${tile.y}`}
+                  alt=""
+                  draggable={false}
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: tile.left, top: tile.top, width: tile.size, height: tile.size,
+                    // Higher z-level (finer detail) paints above coarser levels.
+                    zIndex: 2 + (tile.z - minZ),
+                    // Skip fade for tiles the browser already has cached.
+                    opacity: alreadyLoaded ? 1 : 0,
+                    transition: alreadyLoaded ? "none" : "opacity 0.25s",
+                  }}
+                  onLoad={(e) => {
+                    loadedRef.current.add(key);
+                    (e.currentTarget as HTMLImageElement).style.opacity = "1";
+                    (e.currentTarget as HTMLImageElement).style.transition = "none";
+                  }}
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
+                />
+              );
+            });
+          })()}
 
           {/* Region labels — visible when zoomed out, fade away when zoomed in */}
           {regions.map((region) => (
@@ -826,12 +883,12 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
               <span
                 style={{
                   display: "block",
-                  fontSize: `calc(11px * clamp(0.6, var(--inv-zoom, 1), 2.5))`,
+                  fontSize: `calc(18px * clamp(0.7, var(--inv-zoom, 1), 3.2))`,
                   fontFamily: "Georgia, serif",
-                  fontWeight: 600,
-                  color: "rgba(230,215,185,0.75)",
-                  textShadow: "0 1px 4px rgba(0,0,0,0.9), 0 0 12px rgba(0,0,0,0.6)",
-                  letterSpacing: "0.08em",
+                  fontWeight: 700,
+                  color: "rgba(240,225,195,0.82)",
+                  textShadow: "0 1px 6px rgba(0,0,0,0.95), 0 0 20px rgba(0,0,0,0.7), 0 2px 2px rgba(0,0,0,0.8)",
+                  letterSpacing: "0.10em",
                   whiteSpace: "nowrap",
                   textTransform: "uppercase",
                 }}
