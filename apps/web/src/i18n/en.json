@@ -717,7 +717,14 @@
       "mountain": "Mountain",
       "water": "Water",
       "road": "Road",
-      "coast": "Coast"
+      "coast": "Coast",
+      "desert": "Desert",
+      "swamp": "Swamp",
+      "tundra": "Tundra",
+      "hills": "Hills",
+      "jungle": "Jungle",
+      "savanna": "Savanna",
+      "taiga": "Taiga"
     }
   },
   "play": {

@@ -190,6 +190,14 @@ worldRouter.get('/regions', async (c) => {
   return c.json({ regions: terrain.regions });
 });
 
+// ─── GET /world/region-map ───
+
+worldRouter.get('/region-map', async (c) => {
+  const worldId = c.req.query('worldId');
+  const terrain = await ensureWorldTerrain(worldId);
+  return c.json(terrain.regionMap);
+});
+
 // ─── GET /world/points-of-interest ───
 
 worldRouter.get('/points-of-interest', async (c) => {
@@ -474,31 +482,69 @@ function vnoise(x: number, y: number, s: number): number {
 function biomeTexture(kind: string, cx: number, cy: number): number {
   switch (kind) {
     case "FOREST": {
-      const canopy  = vnoise(cx * 1.4, cy * 1.4, 7);            // large canopy patches
-      const lightNW = vnoise(cx * 3.0 - 0.28, cy * 3.0 - 0.28, 9); // NW-shifted sunlight
+      const canopy  = vnoise(cx * 1.4, cy * 1.4, 7);
+      const lightNW = vnoise(cx * 3.0 - 0.28, cy * 3.0 - 0.28, 9);
       const micro   = vnoise(cx * 6.5, cy * 6.5, 13);
       if (canopy > 0.52) {
         const edgeFade = Math.min(1, (canopy - 0.52) / 0.20);
         return 0.84 + lightNW * 0.32 * edgeFade + micro * 0.06;
       }
-      if (canopy > 0.41) {
-        return 0.66 + micro * 0.10;
-      }
+      if (canopy > 0.41) return 0.66 + micro * 0.10;
       return 0.80 + micro * 0.14;
     }
+    case "JUNGLE": {
+      // Dense layered canopy — darker inside, bright edges
+      const canopy = vnoise(cx * 1.8, cy * 1.8, 23);
+      const under  = vnoise(cx * 4.0, cy * 4.0, 29);
+      const micro  = vnoise(cx * 8.0, cy * 8.0, 31);
+      if (canopy > 0.55) return 0.72 + under * 0.20 + micro * 0.05;
+      if (canopy > 0.40) return 0.58 + micro * 0.12;
+      return 0.78 + micro * 0.10;
+    }
+    case "SAVANNA": {
+      // Dry grassland with scattered tree clumps
+      const grass = vnoise(cx * 1.2, cy * 1.2, 37);
+      const tree  = vnoise(cx * 3.5, cy * 3.5, 41);
+      if (tree > 0.82) return 0.72 + grass * 0.12; // tree clump darker
+      return 0.92 + grass * 0.18;
+    }
+    case "TAIGA": {
+      // Conifer texture — alternating dark/light bands
+      const conifer = vnoise(cx * 2.2, cy * 2.2, 43);
+      const snow    = vnoise(cx * 5.0, cy * 5.0, 47);
+      if (conifer > 0.60) return 0.68 + snow * 0.18;
+      return 0.88 + snow * 0.10;
+    }
     case "DESERT":
-      return 1 + Math.sin(cx * 1.7 + cy * 0.5 + vnoise(cx * 0.25, cy * 0.25, 3) * 7) * 0.055;
-    case "MOUNTAIN":
-      return 1 + (vnoise(cx * 2.1, cy * 2.1, 5) - 0.5) * 0.34;
-    case "HILLS":
-      return 1 + (vnoise(cx * 1.7, cy * 1.7, 15) - 0.5) * 0.28;
+      return 1 + Math.sin(cx * 1.7 + cy * 0.5 + vnoise(cx * 0.25, cy * 0.25, 3) * 7) * 0.055
+        // Rare oasis hint
+        + (vnoise(cx * 0.8, cy * 0.8, 53) > 0.92 ? -0.12 : 0);
+    case "MOUNTAIN": {
+      // Enhanced ridges: stronger hillshade contrast + rock mottes
+      const ridge  = vnoise(cx * 2.1, cy * 2.1, 5);
+      const rock   = vnoise(cx * 5.0, cy * 5.0, 59);
+      const mote   = rock > 0.78 ? 0.14 : (rock < 0.22 ? -0.10 : 0);
+      return 1 + (ridge - 0.5) * 0.42 + mote;
+    }
+    case "HILLS": {
+      // Rolling hills with scattered rock mottes
+      const roll = vnoise(cx * 1.7, cy * 1.7, 15);
+      const rock = vnoise(cx * 4.5, cy * 4.5, 61);
+      const mote = rock > 0.80 ? 0.10 : 0;
+      return 1 + (roll - 0.5) * 0.32 + mote;
+    }
     case "SWAMP": {
       let t = 1 + (vnoise(cx * 1.1, cy * 1.1, 11) - 0.5) * 0.30;
       if (vnoise(cx * 2.5, cy * 2.5, 17) > 0.85) t *= 1.12;
       return t;
     }
-    case "PLAINS":
-      return 1 + (vnoise(cx * 0.9, cy * 0.9, 13) - 0.5) * 0.16;
+    case "PLAINS": {
+      // Loose tree clumps scattered over grassland
+      const grass = vnoise(cx * 0.9, cy * 0.9, 13);
+      const grove = vnoise(cx * 3.0, cy * 3.0, 67);
+      if (grove > 0.85) return 0.80 + grass * 0.08; // tree cluster
+      return 1 + (grass - 0.5) * 0.16;
+    }
     case "TUNDRA":
       return 1 + (vnoise(cx * 1.0, cy * 1.0, 19) - 0.5) * 0.14;
     default:
@@ -546,9 +592,23 @@ function biomeColor(kind: string, hN: number, tc: number, tr: number): [number, 
       // murky green-brown
       return [Math.round(78 + j), Math.round(92 + j), Math.round(58 + j)];
     case "TUNDRA": {
-      // muted tan-grey at the warm edge → pale frost up high (not pure white)
       const t = Math.max(0, Math.min(1, (hN - 0.20) / 0.45));
       return [Math.round(lerp(158, 196, t) + j), Math.round(lerp(164, 202, t) + j), Math.round(lerp(150, 196, t) + j)];
+    }
+    case "JUNGLE": {
+      // Deep saturated green, darker than forest
+      const t = Math.max(0, Math.min(1, (hN - 0.24) / 0.40));
+      return [Math.round(lerp(18, 36, t) + j), Math.round(lerp(68, 90, t) + j), Math.round(lerp(24, 42, t) + j)];
+    }
+    case "SAVANNA": {
+      // Warm dry gold-green
+      const t = Math.max(0, Math.min(1, (hN - 0.24) / 0.40));
+      return [Math.round(lerp(168, 186, t) + j), Math.round(lerp(154, 172, t) + j), Math.round(lerp(60, 78, t) + j)];
+    }
+    case "TAIGA": {
+      // Cold blue-green conifer
+      const t = Math.max(0, Math.min(1, (hN - 0.22) / 0.42));
+      return [Math.round(lerp(42, 60, t) + j), Math.round(lerp(74, 98, t) + j), Math.round(lerp(62, 78, t) + j)];
     }
     default:
       return [80, 80, 80];

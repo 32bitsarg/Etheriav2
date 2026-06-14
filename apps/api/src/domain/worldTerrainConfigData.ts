@@ -3,7 +3,7 @@ import path from "node:path";
 
 export type TerrainKind =
   | "PLAINS" | "FOREST" | "MOUNTAIN" | "WATER" | "ROAD" | "COAST"
-  | "DESERT" | "SWAMP" | "TUNDRA" | "HILLS";
+  | "DESERT" | "SWAMP" | "TUNDRA" | "HILLS" | "JUNGLE" | "SAVANNA" | "TAIGA";
 
 export type TerrainArea =
   | { id: string; kind: TerrainKind; shape: "rect"; x: number; y: number; w: number; h: number }
@@ -34,6 +34,9 @@ export const TERRAIN_RULES: Record<TerrainKind, TerrainRule> = {
   SWAMP: { kind: "SWAMP", label: "Swamp", buildable: true, walkable: true, speedMultiplier: 0.70 },
   TUNDRA: { kind: "TUNDRA", label: "Tundra", buildable: true, walkable: true, speedMultiplier: 0.80 },
   HILLS: { kind: "HILLS", label: "Hills", buildable: true, walkable: true, speedMultiplier: 0.80 },
+  JUNGLE: { kind: "JUNGLE", label: "Jungle", buildable: true, walkable: true, speedMultiplier: 0.70 },
+  SAVANNA: { kind: "SAVANNA", label: "Savanna", buildable: true, walkable: true, speedMultiplier: 0.95 },
+  TAIGA: { kind: "TAIGA", label: "Taiga", buildable: true, walkable: true, speedMultiplier: 0.80 },
 };
 
 export const LOCAL_TERRAIN_AREAS: TerrainArea[] = [
@@ -52,7 +55,7 @@ export const LOCAL_TERRAIN_AREAS: TerrainArea[] = [
   { id: "coast-east", kind: "COAST", shape: "rect", x: 0.76, y: 0.16, w: 0.08, h: 0.72 },
 ];
 
-const TERRAIN_KINDS: TerrainKind[] = ["PLAINS", "FOREST", "MOUNTAIN", "WATER", "ROAD", "COAST", "DESERT", "SWAMP", "TUNDRA", "HILLS"];
+const TERRAIN_KINDS: TerrainKind[] = ["PLAINS", "FOREST", "MOUNTAIN", "WATER", "ROAD", "COAST", "DESERT", "SWAMP", "TUNDRA", "HILLS", "JUNGLE", "SAVANNA", "TAIGA"];
 let cachedMask: { mtimeMs: number; data: WorldTerrainMaskData | null } | null = null;
 
 // ── Active procedural terrain ─────────────────────────────────────────────────

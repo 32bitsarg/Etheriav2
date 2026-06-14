@@ -4,7 +4,7 @@ import { rleEncode } from "./worldTerrainGenerator.js";
 import { setActiveProceduralTerrain } from "./worldTerrainConfigData.js";
 import type { TerrainKind } from "./worldTerrainConfigData.js";
 import type { WorldRegion, WorldPOI } from "@etheria/shared";
-import { generateRegions } from "./worldRegions.js";
+import { generateRegions, type RegionMapData } from "./worldRegions.js";
 import { generatePOIs } from "./worldPOIs.js";
 
 type TerrainCache = {
@@ -14,6 +14,7 @@ type TerrainCache = {
   rows: number;
   regions: WorldRegion[];
   pois: WorldPOI[];
+  regionMap: RegionMapData;
 };
 
 const cache = new Map<string, TerrainCache>();
@@ -37,10 +38,10 @@ export async function ensureWorldTerrain(worldId?: string): Promise<TerrainCache
   // Register with terrain config so resolveTerrainAt uses the real map
   setActiveProceduralTerrain({ cols, rows, cells });
 
-  const regions = generateRegions(cells, cols, rows, worldWidth, worldHeight, seed);
+  const { regions, regionMap } = generateRegions(cells, cols, rows, worldWidth, worldHeight, seed);
   const pois = generatePOIs(cells, heights, cols, rows, worldWidth, worldHeight, seed);
 
-  const entry: TerrainCache = { rle, elev, cols, rows, regions, pois };
+  const entry: TerrainCache = { rle, elev, cols, rows, regions, pois, regionMap };
   cache.set(key, entry);
   return entry;
 }

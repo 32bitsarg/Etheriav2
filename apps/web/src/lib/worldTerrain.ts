@@ -1,6 +1,6 @@
 export type TerrainKind =
   | "PLAINS" | "FOREST" | "MOUNTAIN" | "WATER" | "ROAD" | "COAST"
-  | "DESERT" | "SWAMP" | "TUNDRA" | "HILLS";
+  | "DESERT" | "SWAMP" | "TUNDRA" | "HILLS" | "JUNGLE" | "SAVANNA" | "TAIGA";
 
 export type TerrainArea =
   | { id: string; kind: TerrainKind; shape: "rect"; x: number; y: number; w: number; h: number }
@@ -17,6 +17,9 @@ export const TERRAIN_COLORS: Record<TerrainKind, number> = {
   SWAMP: 0x4a5636,
   TUNDRA: 0xb0b8b2,
   HILLS: 0x8a8a4f,
+  JUNGLE: 0x1c5a2e,
+  SAVANNA: 0xc2b257,
+  TAIGA: 0x3a5a4a,
 };
 
 export const WORLD_TERRAIN_AREAS: TerrainArea[] = [

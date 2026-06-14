@@ -59,6 +59,8 @@ const POI_COLORS: Record<string, string> = {
   HARBOR:   "#5bc8f5",
 };
 
+const GEO_FEATURE_TYPES = new Set(["LAKE", "RANGE", "CAPE", "BAY"]);
+
 const ZOOM_STEP = 0.06;
 const PAN_THRESHOLD = 6;
 const FOG_RADIUS = 140;
@@ -158,6 +160,8 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
   const [regions, setRegions] = useState<WorldRegion[]>([]);
   const [pois, setPois] = useState<WorldPOI[]>([]);
   const [hoveredPOIId, setHoveredPOIId] = useState<string | null>(null);
+  // Region border overlay: rendered to an offscreen canvas → data URL
+  const [regionBorderUrl, setRegionBorderUrl] = useState<string | null>(null);
 
   const worldW = mapConfig?.width ?? 3600;
   const worldH = mapConfig?.height ?? 2400;
@@ -570,6 +574,38 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
     fetch("/api/world/points-of-interest").then(r => r.json()).then(d => {
       if (!cancelled && Array.isArray(d.pois)) setPois(d.pois);
     }).catch(() => {});
+    fetch("/api/world/region-map").then(r => r.json()).then((d: { cols: number; rows: number; ids: string }) => {
+      if (cancelled || !d.ids) return;
+      // Decode base64 → Uint8Array of region IDs
+      const bin = atob(d.ids);
+      const ids = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) ids[i] = bin.charCodeAt(i);
+
+      // Draw borders to an offscreen canvas
+      const oc = document.createElement("canvas");
+      oc.width = d.cols;
+      oc.height = d.rows;
+      const ctx = oc.getContext("2d");
+      if (!ctx) return;
+      ctx.clearRect(0, 0, d.cols, d.rows);
+      ctx.strokeStyle = "rgba(240,220,160,0.22)";
+      ctx.lineWidth = 1;
+      for (let row = 0; row < d.rows - 1; row++) {
+        for (let col = 0; col < d.cols - 1; col++) {
+          const id = ids[row * d.cols + col];
+          if (id === 255) continue;
+          const idR = ids[row * d.cols + col + 1];
+          const idD = ids[(row + 1) * d.cols + col];
+          if (idR !== id && idR !== 255) {
+            ctx.beginPath(); ctx.moveTo(col + 1, row); ctx.lineTo(col + 1, row + 1); ctx.stroke();
+          }
+          if (idD !== id && idD !== 255) {
+            ctx.beginPath(); ctx.moveTo(col, row + 1); ctx.lineTo(col + 1, row + 1); ctx.stroke();
+          }
+        }
+      }
+      if (!cancelled) setRegionBorderUrl(oc.toDataURL("image/png"));
+    }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
@@ -863,6 +899,17 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
             });
           })()}
 
+          {/* Region border overlay */}
+          {regionBorderUrl && (
+            <img
+              src={regionBorderUrl}
+              alt=""
+              draggable={false}
+              className="absolute inset-0 pointer-events-none"
+              style={{ width: worldW, height: worldH, zIndex: 3, opacity: 0.6 }}
+            />
+          )}
+
           {/* Region labels — visible when zoomed out, fade away when zoomed in */}
           {regions.map((region) => (
             <div
@@ -898,8 +945,38 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
             </div>
           ))}
 
-          {/* POI markers — counter-scaled like camps, with tooltip on hover */}
-          {pois.map((poi) => {
+          {/* Geographic feature labels (LAKE/RANGE/CAPE/BAY) — italic, no icon */}
+          {pois.filter(p => GEO_FEATURE_TYPES.has(p.type)).map((poi) => (
+            <div
+              key={poi.id}
+              className="absolute pointer-events-none select-none"
+              style={{
+                left: poi.x + halfW,
+                top: poi.y + halfH,
+                transform: "translate(-50%, -50%)",
+                zIndex: 3,
+                opacity: "calc(clamp(0, calc(var(--inv-zoom, 1) * 1.8 - 0.4), 1))",
+                transition: "opacity 0.3s",
+              }}
+            >
+              <span style={{
+                display: "block",
+                fontSize: `calc(12px * clamp(0.6, var(--inv-zoom, 1), 2.8))`,
+                fontFamily: "Georgia, serif",
+                fontStyle: "italic",
+                fontWeight: 400,
+                color: "rgba(200,230,255,0.70)",
+                textShadow: "0 1px 4px rgba(0,0,0,0.9), 0 0 12px rgba(0,0,0,0.6)",
+                letterSpacing: "0.06em",
+                whiteSpace: "nowrap",
+              }}>
+                {poi.name}
+              </span>
+            </div>
+          ))}
+
+          {/* POI markers (RUINS/PEAK/RESOURCE/HARBOR) — counter-scaled, with tooltip on hover */}
+          {pois.filter(p => !GEO_FEATURE_TYPES.has(p.type)).map((poi) => {
             const color = POI_COLORS[poi.type] ?? "#c8a96e";
             const icon  = POI_ICONS[poi.type]  ?? "📍";
             const isHov = hoveredPOIId === poi.id;

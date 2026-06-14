@@ -127,18 +127,56 @@ function traceFluxRivers(
   }
 
   // MIN_FLUX threshold — percent of max flux so rivers scale correctly regardless of grid size.
-  // Use top 1.5% of land-flux cells as rivers; widest 0.3% become WATER.
+  // Top 2% of land-flux cells are rivers (tributaries); top 0.4% are wide river/WATER.
   const landFluxValues = landCells.map(i => flux[i]).filter(f => f > 0);
   landFluxValues.sort((a, b) => a - b);
-  const pct985 = landFluxValues[Math.floor(landFluxValues.length * 0.985)] ?? 999999;
-  const pct997 = landFluxValues[Math.floor(landFluxValues.length * 0.997)] ?? 999999;
+  const pct980 = landFluxValues[Math.floor(landFluxValues.length * 0.980)] ?? 999999;
+  const pct996 = landFluxValues[Math.floor(landFluxValues.length * 0.996)] ?? 999999;
 
   for (let i = 0; i < N; i++) {
     if (h[i] < 20 || h[i] >= 72) continue;
-    if (flux[i] >= pct997) {
-      cells[i] = "WATER"; // wide river mouths
-    } else if (flux[i] >= pct985) {
-      cells[i] = "COAST"; // narrow tributaries shown as coastal color
+    if (flux[i] >= pct996) {
+      cells[i] = "WATER"; // wide river (dilated below)
+    } else if (flux[i] >= pct980) {
+      cells[i] = "COAST"; // narrow tributaries
+    }
+  }
+
+  // Dilate wide-river WATER cells by 1 neighbor to make them 2-3px wide.
+  const riverWater = new Uint8Array(N);
+  for (let i = 0; i < N; i++) {
+    if (cells[i] === "WATER" && h[i] >= 20 && h[i] < 72) riverWater[i] = 1;
+  }
+  for (let i = 0; i < N; i++) {
+    if (!riverWater[i]) continue;
+    const col = i % cols, row = Math.floor(i / cols);
+    for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]] as const) {
+      const nc = col + dc, nr = row + dr;
+      if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+      const ni = nr * cols + nc;
+      if (h[ni] >= 20 && h[ni] < 72 && cells[ni] !== "WATER") cells[ni] = "WATER";
+    }
+  }
+
+  // Delta fans: river WATER cells that border ocean WATER get extra spread.
+  for (let i = 0; i < N; i++) {
+    if (!riverWater[i]) continue;
+    const col = i % cols, row = Math.floor(i / cols);
+    let nearOcean = false;
+    for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]] as const) {
+      const nc = col + dc, nr = row + dr;
+      if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+      if (h[nr * cols + nc] < 20) { nearOcean = true; break; }
+    }
+    if (!nearOcean) continue;
+    // Spread 2 cells in cardinal directions into ocean
+    for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]] as const) {
+      for (let step = 1; step <= 2; step++) {
+        const nc = col + dc * step, nr = row + dr * step;
+        if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+        const ni = nr * cols + nc;
+        if (h[ni] < 20) cells[ni] = "WATER"; // already ocean, keeps same color but marks as delta
+      }
     }
   }
 }
@@ -479,7 +517,10 @@ export function generateTerrainData(seed: number, cols: number, rows: number): T
 
     // Lowland Whittaker matrix.
     if (h < 34 && m > 0.70 && temp > 0.42) { cells[i] = "SWAMP"; continue; }    // warm wet lowland
-    if (temp < 0.22) { cells[i] = m > 0.55 ? "FOREST" : "TUNDRA"; continue; }    // cold (smaller niche)
+    if (temp < 0.22) { cells[i] = m > 0.55 ? "TAIGA" : "TUNDRA"; continue; }   // cold: taiga or tundra
+    if (temp >= 0.22 && temp < 0.40 && m > 0.52) { cells[i] = "TAIGA"; continue; } // cold-temperate wet → taiga
+    if (temp > 0.74 && m > 0.74) { cells[i] = "JUNGLE"; continue; }            // hot + very wet → jungle
+    if (temp > 0.60 && m > 0.30 && m < 0.52) { cells[i] = "SAVANNA"; continue; } // hot + semi-dry → savanna
     if (temp > 0.66 && m < 0.30) { cells[i] = "DESERT"; continue; }             // hot + dry
     if (m > 0.58) { cells[i] = "FOREST"; continue; }                            // wet temperate/warm
     cells[i] = "PLAINS";                                                         // default grassland

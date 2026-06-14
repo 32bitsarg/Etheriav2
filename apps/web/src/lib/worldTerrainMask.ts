@@ -1,6 +1,6 @@
 export type TerrainKind =
   | "PLAINS" | "FOREST" | "MOUNTAIN" | "WATER" | "ROAD" | "COAST"
-  | "DESERT" | "SWAMP" | "TUNDRA" | "HILLS";
+  | "DESERT" | "SWAMP" | "TUNDRA" | "HILLS" | "JUNGLE" | "SAVANNA" | "TAIGA";
 
 export type WorldTerrainMaskData = {
   version: number;
@@ -27,6 +27,9 @@ export const TERRAIN_RULES: Record<TerrainKind, TerrainRule> = {
   SWAMP: { buildable: true, walkable: true, speedMultiplier: 0.70 },
   TUNDRA: { buildable: true, walkable: true, speedMultiplier: 0.80 },
   HILLS: { buildable: true, walkable: true, speedMultiplier: 0.80 },
+  JUNGLE: { buildable: true, walkable: true, speedMultiplier: 0.70 },
+  SAVANNA: { buildable: true, walkable: true, speedMultiplier: 0.95 },
+  TAIGA: { buildable: true, walkable: true, speedMultiplier: 0.80 },
 };
 
 export const TERRAIN_COLOR_HEX: Record<TerrainKind, string> = {
@@ -40,6 +43,9 @@ export const TERRAIN_COLOR_HEX: Record<TerrainKind, string> = {
   SWAMP: "#4a5636",
   TUNDRA: "#b0b8b2",
   HILLS: "#8a8a4f",
+  JUNGLE: "#1c5a2e",
+  SAVANNA: "#c2b257",
+  TAIGA: "#3a5a4a",
 };
 
 export const TERRAIN_LABELS: Record<TerrainKind, string> = {
@@ -53,9 +59,12 @@ export const TERRAIN_LABELS: Record<TerrainKind, string> = {
   SWAMP: "Swamp",
   TUNDRA: "Tundra",
   HILLS: "Hills",
+  JUNGLE: "Jungle",
+  SAVANNA: "Savanna",
+  TAIGA: "Taiga",
 };
 
-export const TERRAIN_KINDS: TerrainKind[] = ["PLAINS", "FOREST", "MOUNTAIN", "WATER", "ROAD", "COAST", "DESERT", "SWAMP", "TUNDRA", "HILLS"];
+export const TERRAIN_KINDS: TerrainKind[] = ["PLAINS", "FOREST", "MOUNTAIN", "WATER", "ROAD", "COAST", "DESERT", "SWAMP", "TUNDRA", "HILLS", "JUNGLE", "SAVANNA", "TAIGA"];
 
 export const DEFAULT_WORLD_TERRAIN_MASK: WorldTerrainMaskData = {
   version: 1,

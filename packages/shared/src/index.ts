@@ -524,7 +524,7 @@ export const WorldRegionSchema = z.object({
 export type WorldRegion = z.infer<typeof WorldRegionSchema>;
 
 // ─── World POIs ───
-export const WorldPOITypeSchema = z.enum(["RUINS", "PEAK", "RESOURCE", "HARBOR"]);
+export const WorldPOITypeSchema = z.enum(["RUINS", "PEAK", "RESOURCE", "HARBOR", "LAKE", "RANGE", "CAPE", "BAY"]);
 export type WorldPOIType = z.infer<typeof WorldPOITypeSchema>;
 
 export const WorldPOISchema = z.object({
