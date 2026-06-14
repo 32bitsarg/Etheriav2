@@ -185,14 +185,18 @@ export function generateTerrainData(seed: number, cols: number, rows: number): T
   }
 
   // ── Step 2: Balance land/water ratio ──────────────────────────────────────
-  // Target: 82–92% land (continent map).
-  for (let attempt = 0; attempt < 20; attempt++) {
-    let landCount = 0;
-    for (let i = 0; i < N; i++) if (hg.h[i] >= 20) landCount++;
-    const ratio = landCount / N;
-    if (ratio >= 0.82 && ratio <= 0.92) break;
-    const delta = ratio < 0.82 ? 3 : -3;
-    for (let i = 0; i < N; i++) hg.h[i] = Math.min(100, Math.max(0, hg.h[i] + delta));
+  // Resolution-independent sea level: find the height at the target water
+  // percentile and shift the whole map so that value lands exactly on the
+  // shoreline (20). The old iterative ±3 loop under-converged on large grids
+  // (1400² came out 95% land); this guarantees the same ratio at any resolution.
+  {
+    const TARGET_WATER = 0.17; // ~83% land, leaves room for seas, coasts and islands
+    const sorted = Float32Array.from(hg.h).sort();
+    const seaLevel = sorted[Math.floor(TARGET_WATER * (N - 1))];
+    const shift = 20 - seaLevel;
+    if (Math.abs(shift) > 0.01) {
+      for (let i = 0; i < N; i++) hg.h[i] = Math.min(100, Math.max(0, hg.h[i] + shift));
+    }
   }
 
   // ── Step 2b: Guarantee inland lakes ──────────────────────────────────────
