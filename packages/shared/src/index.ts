@@ -488,7 +488,7 @@ export type ContributeAllianceObjectiveRequest = z.infer<typeof ContributeAllian
 
 export const WorldMovementSchema = z.object({
   id: z.string(),
-  type: z.enum(["ATTACK", "BARBARIAN_ATTACK", "BARBARIAN_RAID", "TRADE"]),
+  type: z.enum(["ATTACK", "BARBARIAN_ATTACK", "BARBARIAN_RAID", "TRADE", "BARBARIAN_MOVE", "BARBARIAN_VS_BARBARIAN", "BARBARIAN_TRADE"]),
   status: z.enum(["MARCHING", "RETURNING"]),
   from: z.object({
     x: z.number(),

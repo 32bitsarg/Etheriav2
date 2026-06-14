@@ -18,11 +18,14 @@ export async function getActiveMovements(): Promise<WorldMovement[]> {
 }
 
 async function computeActiveMovements(): Promise<WorldMovement[]> {
-  const [battles, barbarianBattles, barbarianAttacks, caravans] = await Promise.all([
+  const [battles, barbarianBattles, barbarianAttacks, caravans, barbarianMoves, duels, campTrades] = await Promise.all([
     prisma.battle.findMany({ where: { status: { in: ["MARCHING", "RETURNING"] as any } } }),
     prisma.barbarianBattle.findMany({ where: { status: { in: ["MARCHING", "RETURNING"] as any } } }),
     prisma.barbarianAttack.findMany({ where: { status: { in: ["MARCHING", "RETURNING"] as any } } }),
     prisma.tradeCaravan.findMany({ where: { status: { in: ["MARCHING", "RETURNING"] as any } } }),
+    prisma.barbarianMove.findMany({ where: { status: 'MARCHING' } }),
+    prisma.barbarianDuel.findMany({ where: { status: 'MARCHING' } }),
+    prisma.barbarianCampTrade.findMany({ where: { status: { in: ['MARCHING', 'RETURNING'] } } }),
   ]);
 
   const cityIds = new Set<string>();
@@ -43,6 +46,9 @@ async function computeActiveMovements(): Promise<WorldMovement[]> {
     cityIds.add(caravan.senderCityId);
     cityIds.add(caravan.recipientCityId);
   }
+  for (const m of barbarianMoves) campIds.add(m.campId);
+  for (const d of duels) { campIds.add(d.attackerCampId); campIds.add(d.defenderCampId); }
+  for (const t of campTrades) { campIds.add(t.fromCampId); campIds.add(t.toCampId); }
 
   const [cities, camps] = await Promise.all([
     cityIds.size > 0
@@ -166,6 +172,59 @@ async function computeActiveMovements(): Promise<WorldMovement[]> {
       returnsAt: undefined,
       path: getPath(sender.posX, sender.posY, recipient.posX, recipient.posY),
       ...ownerInfo(caravan.senderCityId),
+    });
+  }
+
+  // Barbarian moves (relocation)
+  for (const m of barbarianMoves) {
+    const camp = campMap.get(m.campId);
+    if (!camp) continue;
+    movements.push({
+      id: m.id,
+      type: "BARBARIAN_MOVE",
+      status: "MARCHING",
+      from: { x: m.fromX, y: m.fromY, name: camp.name },
+      to: { x: m.toX, y: m.toY, name: camp.name },
+      startedAt: m.startedAt.toISOString(),
+      arrivesAt: m.arrivesAt.toISOString(),
+      path: getPath(m.fromX, m.fromY, m.toX, m.toY),
+    });
+  }
+
+  // Barbarian vs Barbarian duels
+  for (const d of duels) {
+    const attacker = campMap.get(d.attackerCampId);
+    const defender = campMap.get(d.defenderCampId);
+    if (!attacker || !defender) continue;
+    const midX = Math.round((attacker.posX + defender.posX) / 2);
+    const midY = Math.round((attacker.posY + defender.posY) / 2);
+    movements.push({
+      id: d.id,
+      type: "BARBARIAN_VS_BARBARIAN",
+      status: "MARCHING",
+      from: { x: attacker.posX, y: attacker.posY, name: attacker.name },
+      to: { x: midX, y: midY, name: `${attacker.name} vs ${defender.name}` },
+      startedAt: d.startedAt.toISOString(),
+      arrivesAt: d.arrivesAt.toISOString(),
+      path: getPath(attacker.posX, attacker.posY, midX, midY),
+    });
+  }
+
+  // Barbarian camp trades
+  for (const t of campTrades) {
+    const from = campMap.get(t.fromCampId);
+    const to = campMap.get(t.toCampId);
+    if (!from || !to) continue;
+    movements.push({
+      id: t.id,
+      type: "BARBARIAN_TRADE",
+      status: t.status as "MARCHING" | "RETURNING",
+      from: { x: from.posX, y: from.posY, name: from.name },
+      to: { x: to.posX, y: to.posY, name: to.name },
+      startedAt: t.startedAt.toISOString(),
+      arrivesAt: t.arrivesAt.toISOString(),
+      returnsAt: t.returnsAt?.toISOString(),
+      path: getPath(from.posX, from.posY, to.posX, to.posY),
     });
   }
 

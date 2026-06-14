@@ -17,6 +17,7 @@ import { getSeasonState } from '../domain/seasons.js';
 import type { BarbarianArchetype } from '@etheria/shared';
 import { calculateEstimatedReward, calculateActualReward } from '../domain/barbarianRewardConfigData.js';
 import { processBarbarianAttacks } from '../domain/barbarianAttacks.js';
+import { processBarbarianMoves, processBarbarianDuels, processBarbarianCampTrades } from '../domain/barbarianAI.js';
 import { LOCAL_BARBARIAN_ATTACK_CONFIG } from '../domain/barbarianAttackConfigData.js';
 import { resolveWorldZone } from '../domain/worldZoneConfigData.js';
 import { getWorldConfig } from '../domain/worldConfig.js';
@@ -38,6 +39,8 @@ let workerRunning = false;
 let workerTickRunning = false;
 let lastResourceTickAt = 0;
 let lastWonderDayAt = 0;
+let lastBarbarianAIAt = 0;
+const BARBARIAN_AI_INTERVAL_MS = 5 * 60_000; // every 5 minutes
 const WONDER_DAY_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const QUEUE_WORKER_INTERVAL_MS = Number(process.env.QUEUE_WORKER_INTERVAL_MS ?? 5000);
 const RESOURCE_TICK_INTERVAL_MS = Number(process.env.RESOURCE_TICK_INTERVAL_MS ?? 60000);
@@ -97,6 +100,12 @@ export async function processQueueWorkerTick() {
   await processBarbarianAttackReturns();
   await processTradeCaravans();
   await processWonderDayTick();
+  if (Date.now() - lastBarbarianAIAt >= BARBARIAN_AI_INTERVAL_MS) {
+    lastBarbarianAIAt = Date.now();
+    await processBarbarianMoves().catch(err => console.error('[barbarianAI] move error:', err));
+    await processBarbarianDuels().catch(err => console.error('[barbarianAI] duel error:', err));
+    await processBarbarianCampTrades().catch(err => console.error('[barbarianAI] trade error:', err));
+  }
 }
 
 async function processWonderDayTick() {

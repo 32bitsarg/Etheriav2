@@ -1150,12 +1150,20 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
 
           {/* Movement markers — sprite-based, counter-scaled against zoom so they stay legible at any distance */}
           {movements.map((m) => {
-            const isTrade = m.type === "TRADE";
+            const isTrade = m.type === "TRADE" || m.type === "BARBARIAN_TRADE";
             const isBarbRaid = m.type === "BARBARIAN_RAID";
             const isBarbAttack = m.type === "BARBARIAN_ATTACK";
-            const isBarb = isBarbRaid || isBarbAttack;
+            const isBarbMove = m.type === "BARBARIAN_MOVE";
+            const isBarbDuel = m.type === "BARBARIAN_VS_BARBARIAN";
+            const isBarb = isBarbRaid || isBarbAttack || isBarbMove || isBarbDuel || m.type === "BARBARIAN_TRADE";
             const l = worldToLocal(m.from.x, m.from.y);
-            const color = MOVEMENT_RELATION_COLORS[m.relation ?? "neutral"] ?? (isTrade ? "#ffe066" : "#ff8888");
+            const color = m.type === "BARBARIAN_TRADE"
+              ? "#a0e870"
+              : m.type === "BARBARIAN_MOVE"
+              ? "#c8a060"
+              : m.type === "BARBARIAN_VS_BARBARIAN"
+              ? "#e84040"
+              : MOVEMENT_RELATION_COLORS[m.relation ?? "neutral"] ?? (isTrade ? "#ffe066" : "#ff8888");
             const sprite = isTrade
               ? "/assets/map/merchant-caravan-walk.png"
               : isBarb
@@ -1209,7 +1217,7 @@ export const WorldMapHTMLCanvas = memo(function WorldMapHTMLCanvas({
                     {" → "}
                     {m.status === "RETURNING" ? m.from.name : m.to.name}
                     <div className="text-white/60">
-                      {isTrade ? t("play.map.march.trade") : t("play.map.march.attack")} · {etaMin}m {etaSec}s
+                      {m.type === "BARBARIAN_MOVE" ? "Relocation" : m.type === "BARBARIAN_VS_BARBARIAN" ? "Clash" : m.type === "BARBARIAN_TRADE" ? "Barbarian trade" : isTrade ? t("play.map.march.trade") : t("play.map.march.attack")} · {etaMin}m {etaSec}s
                     </div>
                   </div>
                   );

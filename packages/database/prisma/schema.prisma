@@ -560,12 +560,72 @@ model BarbarianCamp {
   attacks  BarbarianAttack[]
   battles  BarbarianBattle[]
   alerts   BarbarianAttackAlert[]
+  moves           BarbarianMove[]
+  duelsAsAttacker BarbarianDuel[] @relation("DuelAttacker")
+  duelsAsDefender BarbarianDuel[] @relation("DuelDefender")
+  tradesFrom      BarbarianCampTrade[] @relation("TradeFrom")
+  tradesTo        BarbarianCampTrade[] @relation("TradeTo")
 
   @@index([status])
   @@index([status, lastActionAt])
   @@index([zoneId])
   @@index([posX, posY])
   @@map("barbarian_camps")
+}
+
+model BarbarianMove {
+  id        String   @id
+  campId    String
+  fromX     Int
+  fromY     Int
+  toX       Int
+  toY       Int
+  status    String   @default("MARCHING")
+  startedAt DateTime
+  arrivesAt DateTime
+
+  camp BarbarianCamp @relation(fields: [campId], references: [id])
+
+  @@index([campId])
+  @@index([status, arrivesAt])
+  @@map("barbarian_moves")
+}
+
+model BarbarianDuel {
+  id             String   @id
+  attackerCampId String
+  defenderCampId String
+  status         String   @default("MARCHING")
+  startedAt      DateTime
+  arrivesAt      DateTime
+  resolvedAt     DateTime?
+  result         Json?
+
+  attackerCamp BarbarianCamp @relation("DuelAttacker", fields: [attackerCampId], references: [id])
+  defenderCamp BarbarianCamp @relation("DuelDefender", fields: [defenderCampId], references: [id])
+
+  @@index([attackerCampId])
+  @@index([defenderCampId])
+  @@index([status, arrivesAt])
+  @@map("barbarian_duels")
+}
+
+model BarbarianCampTrade {
+  id         String   @id
+  fromCampId String
+  toCampId   String
+  status     String   @default("MARCHING")
+  startedAt  DateTime
+  arrivesAt  DateTime
+  returnsAt  DateTime?
+
+  fromCamp BarbarianCamp @relation("TradeFrom", fields: [fromCampId], references: [id])
+  toCamp   BarbarianCamp @relation("TradeTo", fields: [toCampId], references: [id])
+
+  @@index([fromCampId])
+  @@index([toCampId])
+  @@index([status, arrivesAt])
+  @@map("barbarian_camp_trades")
 }
 
 model BarbarianArmy {
