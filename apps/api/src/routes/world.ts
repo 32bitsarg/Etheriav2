@@ -509,7 +509,7 @@ worldRouter.get('/terrain-image', async (c) => {
       const { default: sharp } = await import('sharp');
       const { raw, imgW, imgH } = renderOverviewRaw(src, variant);
       const targetSize = variant === 'mobile' ? 1600 : 3600;
-      const blurAmount = variant === 'mobile' ? 0.3 : 0.2;
+      const blurAmount = 0.5;
       const quality = variant === 'mobile' ? 72 : 80;
       buf = await sharp(raw, { raw: { width: imgW, height: imgH, channels: 3 } })
         .resize(targetSize, targetSize, { kernel: 'lanczos3' })
