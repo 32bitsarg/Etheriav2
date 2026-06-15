@@ -184,20 +184,22 @@ export class MovementsLayer extends Container {
       : isTrade ? this.t("play.map.march.trade") : this.t("play.map.march.attack");
     const text = `${m.playerName ?? m.from.name} → ${m.status === "RETURNING" ? m.from.name : m.to.name}\n${typeLabel} · ${etaMin}m ${etaSec}s`;
     const scale = 1 / this.viewport.scale.x;
-    const pad = 4 * scale;
+    const pad = 8 * scale;
     const t = new Text({
       text,
-      style: { fontSize: 9, fill: 0xe9e2cf }
+      style: { fontSize: 13, fill: 0xe9e2cf, fontFamily: "sans-serif" }
     });
     t.scale.set(scale);
     const tw = t.width + pad * 2;
     const th = t.height + pad * 2;
     const bg = new Graphics();
-    bg.rect(-pad, -pad, tw, th).fill({ color: 0x050707, alpha: 0.92 });
+    bg.rect(0, 0, tw, th).fill({ color: 0x0d1a1a, alpha: 0.93 });
     const tipC = new Container();
     tipC.addChild(bg, t);
-    tipC.x = iconC.x + 12 * scale;
-    tipC.y = iconC.y - 20 * scale;
+    t.x = pad;
+    t.y = pad;
+    tipC.x = iconC.x + 14 * scale;
+    tipC.y = iconC.y - 28 * scale;
     this.tooltipC.addChild(tipC);
   }
 
