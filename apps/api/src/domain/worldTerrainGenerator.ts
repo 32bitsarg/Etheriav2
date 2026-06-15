@@ -519,6 +519,60 @@ export function generateTerrainData(seed: number, cols: number, rows: number): T
     }
   }
 
+  // ── Step 5.7: Inland water-body cleanup (remove "lagitos") ────────────────
+  // The global sea-level cut turns every shallow local minimum in flat lowland
+  // into a tiny isolated WATER blob ("lagitos"). fillDepressions skips sub-water
+  // cells, and the biome blob cleanup skips WATER, so nothing removes them.
+  // Flood-fill each WATER component: ocean (touches border) and genuine large
+  // lakes survive; small mediterranean ponds are filled back to land.
+  {
+    const MIN_LAKE = Math.max(60, Math.round(N / 45000)); // ~107 cells at 2200²
+    const visited = new Uint8Array(N);
+    for (let start = 0; start < N; start++) {
+      if (visited[start] || cells[start] !== "WATER") continue;
+      const component: number[] = [];
+      const queue = [start];
+      visited[start] = 1;
+      let head = 0;
+      let touchesBorder = false;
+      while (head < queue.length) {
+        const ci = queue[head++];
+        component.push(ci);
+        const cc = ci % cols, cr = Math.floor(ci / cols);
+        if (cc === 0 || cr === 0 || cc === cols - 1 || cr === rows - 1) touchesBorder = true;
+        for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]] as const) {
+          const nr = cr + dr, nc = cc + dc;
+          if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+          const ni = nr * cols + nc;
+          if (!visited[ni] && cells[ni] === "WATER") { visited[ni] = 1; queue.push(ni); }
+        }
+      }
+      // Keep oceans (touch border) and lakes large enough to matter.
+      if (touchesBorder || component.length >= MIN_LAKE) continue;
+      // Fill the pond: raise height just above shore and adopt the dominant
+      // surrounding land biome so it blends into the prairie/forest around it.
+      const neighborCounts: Record<string, number> = {};
+      for (const ci of component) {
+        const cc = ci % cols, cr = Math.floor(ci / cols);
+        for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]] as const) {
+          const nr = cr + dr, nc = cc + dc;
+          if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+          const nk = cells[nr * cols + nc];
+          if (nk !== "WATER") neighborCounts[nk] = (neighborCounts[nk] || 0) + 1;
+        }
+      }
+      let bestBiome: TerrainKind = "PLAINS", bestCount = 0;
+      for (const [bk, bc] of Object.entries(neighborCounts)) {
+        if (bc > bestCount) { bestCount = bc; bestBiome = bk as TerrainKind; }
+      }
+      if (bestBiome === "COAST") bestBiome = "PLAINS"; // don't seed beaches inland
+      for (const ci of component) {
+        cells[ci] = bestBiome;
+        if (hg.h[ci] < 22) hg.h[ci] = 22; // lift above sea level for buildability
+      }
+    }
+  }
+
   // ── Step 6: Flux-based rivers (Azgaar precipitation model) ───────────────
   traceFluxRivers(hg.h, cells, cols, rows, rng);
 
