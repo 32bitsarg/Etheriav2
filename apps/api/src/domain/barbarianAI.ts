@@ -3,10 +3,10 @@
 
 import { prisma } from '@etheria/database';
 import { resolveBattle } from './battles.js';
-import { generateBarbarianArmy } from './barbarians.js';
-import { findValidSpawnPosition } from './barbarians.js';
+import { isBuildableTerrain } from './worldTerrainConfigData.js';
+import { LOCAL_WORLD_CONFIG } from './worldConfigData.js';
 
-const BARBARIAN_SPEED_PX_PER_SEC = 22; // world units per second (~3-12 min por relocalización)
+const BARBARIAN_SPEED_PX_PER_SEC = 22;
 
 // ─── Archetype relationships ──────────────────────────────────────────────────
 
@@ -26,18 +26,32 @@ const TRADES_WITH: Record<string, string[]> = {
   WARHOST:   [],
 };
 
-// How often each archetype relocates (probability per AI tick, ~5 min interval)
 const MOVE_CHANCE: Record<string, number> = {
-  NOMADS:    0.06,
-  RAIDERS:   0.025,
-  HUNTERS:   0.025,
-  MARAUDERS: 0.012,
-  WARHOST:   0.006,
+  NOMADS:    0.025,
+  RAIDERS:   0.012,
+  HUNTERS:   0.012,
+  MARAUDERS: 0.006,
+  WARHOST:   0.003,
 };
 
-const DUEL_RADIUS    = 18_000; // world units
-const TRADE_RADIUS   = 22_000;
-const MOVE_RADIUS    = 12_000; // max relocation distance
+// Cooldown hours between actions per archetype (move)
+const MOVE_COOLDOWN_HOURS: Record<string, number> = {
+  NOMADS:    2,
+  RAIDERS:   6,
+  HUNTERS:   4,
+  MARAUDERS: 8,
+  WARHOST:   12,
+};
+const DUEL_COOLDOWN_HOURS  = 8;
+const TRADE_COOLDOWN_HOURS = 5;
+
+const MAX_ACTIVE_MOVES  = 25;
+const MAX_ACTIVE_DUELS  = 12;
+const MAX_ACTIVE_TRADES = 15;
+
+const DUEL_RADIUS  = 18_000;
+const TRADE_RADIUS = 22_000;
+const MOVE_RADIUS  = 12_000;
 
 function dist(ax: number, ay: number, bx: number, by: number) {
   return Math.sqrt((ax - bx) ** 2 + (ay - by) ** 2);
@@ -45,6 +59,63 @@ function dist(ax: number, ay: number, bx: number, by: number) {
 
 function travelSecs(d: number) {
   return Math.max(120, Math.floor(d / BARBARIAN_SPEED_PX_PER_SEC));
+}
+
+// ─── Movement intelligence helpers ───────────────────────────────────────────
+
+function angleAwayFromCluster(
+  camp: { posX: number; posY: number },
+  others: { posX: number; posY: number }[]
+): number {
+  let cx = 0, cy = 0, n = 0;
+  for (const o of others) {
+    const d = Math.hypot(o.posX - camp.posX, o.posY - camp.posY);
+    if (d < 8_000 && d > 0) { cx += o.posX; cy += o.posY; n++; }
+  }
+  if (n === 0) return Math.random() * Math.PI * 2;
+  return Math.atan2(camp.posY - cy / n, camp.posX - cx / n);
+}
+
+function getBiasedDestination(
+  camp: { posX: number; posY: number; archetype: string },
+  allCamps: { posX: number; posY: number }[],
+  cities: { posX: number; posY: number; power: number }[]
+): { angle: number; minDist: number; maxDist: number } {
+  switch (camp.archetype) {
+    case 'NOMADS': {
+      const nearbyCount = allCamps.filter(
+        c => Math.hypot(c.posX - camp.posX, c.posY - camp.posY) < 8_000
+      ).length;
+      const fleeAngle = nearbyCount > 5
+        ? angleAwayFromCluster(camp, allCamps)
+        : Math.random() * Math.PI * 2;
+      return { angle: fleeAngle, minDist: 6_000, maxDist: 14_000 };
+    }
+    case 'HUNTERS':
+      return { angle: Math.random() * Math.PI * 2, minDist: 3_000, maxDist: 7_000 };
+    case 'RAIDERS': {
+      const weakCity = cities
+        .filter(c => Math.hypot(c.posX - camp.posX, c.posY - camp.posY) < 15_000 && c.power < 500)
+        .sort((a, b) => a.power - b.power)[0];
+      if (weakCity) {
+        const dx = weakCity.posX - camp.posX, dy = weakCity.posY - camp.posY;
+        return { angle: Math.atan2(dy, dx), minDist: 2_000, maxDist: 5_000 };
+      }
+      return { angle: Math.random() * Math.PI * 2, minDist: 4_000, maxDist: 10_000 };
+    }
+    case 'MARAUDERS': {
+      const richCity = cities
+        .filter(c => Math.hypot(c.posX - camp.posX, c.posY - camp.posY) < 20_000 && c.power > 200)
+        .sort((a, b) => b.power - a.power)[0];
+      if (richCity) {
+        const dx = richCity.posX - camp.posX, dy = richCity.posY - camp.posY;
+        return { angle: Math.atan2(dy, dx), minDist: 3_000, maxDist: 8_000 };
+      }
+      return { angle: Math.random() * Math.PI * 2, minDist: 4_000, maxDist: 12_000 };
+    }
+    default:
+      return { angle: Math.random() * Math.PI * 2, minDist: 5_000, maxDist: 16_000 };
+  }
 }
 
 // ─── BARBARIAN MOVE ───────────────────────────────────────────────────────────
@@ -71,38 +142,80 @@ export async function processBarbarianMoves(): Promise<void> {
     where: { status: 'ARRIVED', arrivesAt: { lte: new Date(Date.now() - 2 * 3600_000) } },
   });
 
-  // Schedule new moves
+  // Global cap check
+  const activeCount = await prisma.barbarianMove.count({ where: { status: 'MARCHING' } });
+  if (activeCount >= MAX_ACTIVE_MOVES) return;
+
   const camps = await prisma.barbarianCamp.findMany({
     where: { status: 'ACTIVE' },
     include: { moves: { where: { status: 'MARCHING' } } },
   });
 
+  const cities = await prisma.city.findMany({ select: { posX: true, posY: true, power: true } });
+  const { width, height } = LOCAL_WORLD_CONFIG.map;
+
+  let created = 0;
+  const allCampPositions = camps.map(c => ({ posX: c.posX, posY: c.posY }));
+
   for (const camp of camps) {
-    if (camp.moves.length > 0) continue; // already moving
+    if (activeCount + created >= MAX_ACTIVE_MOVES) break;
+    if (camp.moves.length > 0) continue;
+
+    const cooldownHours = MOVE_COOLDOWN_HOURS[camp.archetype] ?? 4;
+    if (camp.lastActionAt) {
+      const hoursSince = (Date.now() - camp.lastActionAt.getTime()) / 3_600_000;
+      if (hoursSince < cooldownHours) continue;
+    }
+
     const chance = MOVE_CHANCE[camp.archetype] ?? 0.01;
     if (Math.random() > chance) continue;
 
-    // Find a new valid position nearby
-    const angle = Math.random() * Math.PI * 2;
-    const d = 4_000 + Math.random() * MOVE_RADIUS;
-    const toX = Math.round(camp.posX + Math.cos(angle) * d);
-    const toY = Math.round(camp.posY + Math.sin(angle) * d);
+    const bias = getBiasedDestination(camp, allCampPositions, cities);
+
+    // Find last move to detect ping-pong
+    const lastMove = await prisma.barbarianMove.findFirst({
+      where: { campId: camp.id },
+      orderBy: { arrivesAt: 'desc' },
+    });
+
+    let toX = 0, toY = 0, validDest = false;
+    for (let attempt = 0; attempt < 12; attempt++) {
+      // Add jitter to the biased angle
+      const angle = bias.angle + (Math.random() - 0.5) * Math.PI * 0.8;
+      const d = bias.minDist + Math.random() * (bias.maxDist - bias.minDist);
+      const cx = Math.round(camp.posX + Math.cos(angle) * d);
+      const cy = Math.round(camp.posY + Math.sin(angle) * d);
+
+      if (!isBuildableTerrain(cx, cy, width, height)) continue;
+      if (Math.hypot(cx - camp.posX, cy - camp.posY) < 2_500) continue;
+      if (lastMove && Math.hypot(cx - lastMove.fromX, cy - lastMove.fromY) < 3_000) continue;
+
+      toX = cx; toY = cy; validDest = true; break;
+    }
+    if (!validDest) continue;
 
     const travel = travelSecs(dist(camp.posX, camp.posY, toX, toY));
     const now = new Date();
-    await prisma.barbarianMove.create({
-      data: {
-        id: crypto.randomUUID(),
-        campId: camp.id,
-        fromX: camp.posX,
-        fromY: camp.posY,
-        toX,
-        toY,
-        status: 'MARCHING',
-        startedAt: now,
-        arrivesAt: new Date(now.getTime() + travel * 1000),
-      },
-    });
+    await prisma.$transaction([
+      prisma.barbarianMove.create({
+        data: {
+          id: crypto.randomUUID(),
+          campId: camp.id,
+          fromX: camp.posX,
+          fromY: camp.posY,
+          toX,
+          toY,
+          status: 'MARCHING',
+          startedAt: now,
+          arrivesAt: new Date(now.getTime() + travel * 1000),
+        },
+      }),
+      prisma.barbarianCamp.update({
+        where: { id: camp.id },
+        data: { lastActionAt: now },
+      }),
+    ]);
+    created++;
   }
 }
 
@@ -132,7 +245,6 @@ export async function processBarbarianDuels(): Promise<void> {
 
     const now = new Date();
     if (battleResult.victory) {
-      // Attacker wins: absorb fraction of defender army, possibly level up
       const absorbed: Record<string, number> = {};
       for (const [type, count] of Object.entries(defenderUnits)) {
         absorbed[type] = Math.floor(count * 0.4);
@@ -143,14 +255,12 @@ export async function processBarbarianDuels(): Promise<void> {
       }
       const newAttackerPower = Object.values(newAttackerUnits).reduce((s, n) => s + n, 0) * 10;
 
-      // Defender loses half its army
       const newDefenderUnits: Record<string, number> = {};
       for (const [type, count] of Object.entries(defenderUnits)) {
         newDefenderUnits[type] = Math.max(0, Math.floor(count * 0.5));
       }
       const newDefenderPower = Object.values(newDefenderUnits).reduce((s, n) => s + n, 0) * 10;
 
-      // Level up attacker with 40% chance
       const levelGain = Math.random() < 0.4 && attackerCamp.level < 10 ? 1 : 0;
 
       await prisma.$transaction([
@@ -172,7 +282,6 @@ export async function processBarbarianDuels(): Promise<void> {
         }),
       ]);
     } else {
-      // Defender wins: attacker loses half, defender gains fraction
       const newAttackerUnits: Record<string, number> = {};
       for (const [type, count] of Object.entries(attackerUnits)) {
         newAttackerUnits[type] = Math.max(0, Math.floor(count * 0.5));
@@ -209,10 +318,19 @@ export async function processBarbarianDuels(): Promise<void> {
     }
   }
 
-  // Schedule new duels — find rival-archetype pairs within range with no active duel
+  // Global cap check
+  const activeCount = await prisma.barbarianDuel.count({ where: { status: 'MARCHING' } });
+  if (activeCount >= MAX_ACTIVE_DUELS) {
+    await prisma.barbarianDuel.deleteMany({
+      where: { status: 'RESOLVED', resolvedAt: { lte: new Date(Date.now() - 2 * 3600_000) } },
+    });
+    return;
+  }
+
   const activeCamps = await prisma.barbarianCamp.findMany({
     where: { status: 'ACTIVE' },
     include: {
+      army: true,
       duelsAsAttacker: { where: { status: 'MARCHING' } },
       duelsAsDefender: { where: { status: 'MARCHING' } },
     },
@@ -226,39 +344,61 @@ export async function processBarbarianDuels(): Promise<void> {
   }
 
   const freeCamps = activeCamps.filter(c => !busyCampIds.has(c.id));
-
-  // Track which camps get paired this tick
   const pairedThisTick = new Set<string>();
+  let created = 0;
+
   for (const attacker of freeCamps) {
+    if (activeCount + created >= MAX_ACTIVE_DUELS) break;
     if (pairedThisTick.has(attacker.id)) continue;
     const rivals = RIVAL_OF[attacker.archetype] ?? [];
     if (rivals.length === 0) continue;
-    if (Math.random() > 0.08) continue; // 8% chance per tick to initiate a duel
 
-    // Find nearby rival camp
-    const target = freeCamps.find(c =>
-      !pairedThisTick.has(c.id) &&
-      c.id !== attacker.id &&
-      rivals.includes(c.archetype) &&
-      dist(attacker.posX, attacker.posY, c.posX, c.posY) <= DUEL_RADIUS
-    );
+    // Cooldown check
+    if (attacker.lastActionAt) {
+      const hoursSince = (Date.now() - attacker.lastActionAt.getTime()) / 3_600_000;
+      if (hoursSince < DUEL_COOLDOWN_HOURS) continue;
+    }
+
+    if (Math.random() > 0.03) continue;
+
+    // Score candidates: prefer more powerful + closer rivals
+    const candidates = freeCamps
+      .filter(c =>
+        !pairedThisTick.has(c.id) &&
+        c.id !== attacker.id &&
+        rivals.includes(c.archetype) &&
+        dist(attacker.posX, attacker.posY, c.posX, c.posY) <= DUEL_RADIUS
+      )
+      .map(c => ({
+        camp: c,
+        score: (c.army?.power ?? 0) * 0.6 +
+          (1 - dist(attacker.posX, attacker.posY, c.posX, c.posY) / DUEL_RADIUS) * 0.4,
+      }))
+      .sort((a, b) => b.score - a.score);
+
+    const target = candidates[0]?.camp;
     if (!target) continue;
 
     const d = dist(attacker.posX, attacker.posY, target.posX, target.posY);
-    const travel = travelSecs(d / 2); // meet halfway
+    const travel = travelSecs(d / 2);
     const now = new Date();
-    await prisma.barbarianDuel.create({
-      data: {
-        id: crypto.randomUUID(),
-        attackerCampId: attacker.id,
-        defenderCampId: target.id,
-        status: 'MARCHING',
-        startedAt: now,
-        arrivesAt: new Date(now.getTime() + travel * 1000),
-      },
-    });
+    await prisma.$transaction([
+      prisma.barbarianDuel.create({
+        data: {
+          id: crypto.randomUUID(),
+          attackerCampId: attacker.id,
+          defenderCampId: target.id,
+          status: 'MARCHING',
+          startedAt: now,
+          arrivesAt: new Date(now.getTime() + travel * 1000),
+        },
+      }),
+      prisma.barbarianCamp.update({ where: { id: attacker.id }, data: { lastActionAt: now } }),
+      prisma.barbarianCamp.update({ where: { id: target.id }, data: { lastActionAt: now } }),
+    ]);
     pairedThisTick.add(attacker.id);
     pairedThisTick.add(target.id);
+    created++;
   }
 
   // Clean up old resolved duels
@@ -299,12 +439,15 @@ export async function processBarbarianCampTrades(): Promise<void> {
     where: { status: 'DONE', arrivesAt: { lte: new Date(Date.now() - 2 * 3600_000) } },
   });
 
-  // Schedule new trades
+  // Global cap check
+  const activeCount = await prisma.barbarianCampTrade.count({ where: { status: { in: ['MARCHING', 'RETURNING'] } } });
+  if (activeCount >= MAX_ACTIVE_TRADES) return;
+
   const activeCamps = await prisma.barbarianCamp.findMany({
     where: { status: 'ACTIVE' },
     include: {
       tradesFrom: { where: { status: { in: ['MARCHING', 'RETURNING'] } } },
-      tradesTo: { where: { status: { in: ['MARCHING', 'RETURNING'] } } },
+      tradesTo:   { where: { status: { in: ['MARCHING', 'RETURNING'] } } },
     },
   });
 
@@ -315,12 +458,21 @@ export async function processBarbarianCampTrades(): Promise<void> {
 
   const freeCamps = activeCamps.filter(c => !busyCampIds.has(c.id));
   const pairedThisTick = new Set<string>();
+  let created = 0;
 
   for (const sender of freeCamps) {
+    if (activeCount + created >= MAX_ACTIVE_TRADES) break;
     if (pairedThisTick.has(sender.id)) continue;
     const partners = TRADES_WITH[sender.archetype] ?? [];
     if (partners.length === 0) continue;
-    if (Math.random() > 0.06) continue; // 6% per tick
+
+    // Cooldown check
+    if (sender.lastActionAt) {
+      const hoursSince = (Date.now() - sender.lastActionAt.getTime()) / 3_600_000;
+      if (hoursSince < TRADE_COOLDOWN_HOURS) continue;
+    }
+
+    if (Math.random() > 0.025) continue;
 
     const target = freeCamps.find(c =>
       !pairedThisTick.has(c.id) &&
@@ -332,17 +484,22 @@ export async function processBarbarianCampTrades(): Promise<void> {
 
     const d = dist(sender.posX, sender.posY, target.posX, target.posY);
     const travel = travelSecs(d);
-    await prisma.barbarianCampTrade.create({
-      data: {
-        id: crypto.randomUUID(),
-        fromCampId: sender.id,
-        toCampId: target.id,
-        status: 'MARCHING',
-        startedAt: now,
-        arrivesAt: new Date(now.getTime() + travel * 1000),
-      },
-    });
+    await prisma.$transaction([
+      prisma.barbarianCampTrade.create({
+        data: {
+          id: crypto.randomUUID(),
+          fromCampId: sender.id,
+          toCampId: target.id,
+          status: 'MARCHING',
+          startedAt: now,
+          arrivesAt: new Date(now.getTime() + travel * 1000),
+        },
+      }),
+      prisma.barbarianCamp.update({ where: { id: sender.id }, data: { lastActionAt: now } }),
+      prisma.barbarianCamp.update({ where: { id: target.id }, data: { lastActionAt: now } }),
+    ]);
     pairedThisTick.add(sender.id);
     pairedThisTick.add(target.id);
+    created++;
   }
 }
