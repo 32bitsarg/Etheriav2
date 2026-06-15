@@ -22,6 +22,7 @@ import {
 } from "../domain/buildings.js";
 import { applyTrainingCostReduction, getUnitCost, getTrainingTime, getUnitStats } from "../domain/units.js";
 import { calculateTravelTime } from "../domain/battles.js";
+import { TERRAIN_ALGO_VERSION } from "../domain/terrainTileStore.js";
 import {
   attackCityAction,
   CityActionError,
@@ -847,7 +848,7 @@ cityRouter.get("/world-map", async (c) => {
   }));
 
   const m = config.map;
-  const terrainVersion = `${config.updatedAt ?? ""}-${m.terrainSeed}-${m.terrainCols}-${m.terrainRows}-${m.width}-${m.height}`;
+  const terrainVersion = `${TERRAIN_ALGO_VERSION}-${config.updatedAt ?? ""}-${m.terrainSeed}-${m.terrainCols}-${m.terrainRows}-${m.width}-${m.height}`;
 
   return c.json({
     map: { ...config.map, terrainVersion },

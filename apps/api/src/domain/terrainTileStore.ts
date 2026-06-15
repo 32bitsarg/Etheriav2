@@ -8,8 +8,15 @@ const TILE_CACHE_DIR =
     ? '/opt/etheria/tile-cache'
     : path.join(process.cwd(), '.tile-cache'));
 
+// Bump this whenever the terrain GENERATION algorithm changes (not the seed/dims).
+// It is baked into both the server tile-cache path and the client cache-buster
+// (?v=) so a deploy + restart fully regenerates tiles and forces browsers to
+// refetch — without changing the seed or touching the DB.
+// v2: inland water-body cleanup ("lagitos" fix).
+export const TERRAIN_ALGO_VERSION = 'v2';
+
 export function tileStoreVersion(seed: number, cols: number, rows: number, width: number, height: number): string {
-  return `bake-${seed}-${cols}-${rows}-${width}-${height}`;
+  return `bake-${TERRAIN_ALGO_VERSION}-${seed}-${cols}-${rows}-${width}-${height}`;
 }
 
 function versionDir(version: string): string {
