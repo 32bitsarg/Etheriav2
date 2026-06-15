@@ -27,27 +27,27 @@ const TRADES_WITH: Record<string, string[]> = {
 };
 
 const MOVE_CHANCE: Record<string, number> = {
-  NOMADS:    0.025,
-  RAIDERS:   0.012,
-  HUNTERS:   0.012,
-  MARAUDERS: 0.006,
-  WARHOST:   0.003,
+  NOMADS:    0.008,
+  RAIDERS:   0.004,
+  HUNTERS:   0.004,
+  MARAUDERS: 0.002,
+  WARHOST:   0.001,
 };
 
 // Cooldown hours between actions per archetype (move)
 const MOVE_COOLDOWN_HOURS: Record<string, number> = {
-  NOMADS:    2,
-  RAIDERS:   6,
-  HUNTERS:   4,
-  MARAUDERS: 8,
-  WARHOST:   12,
+  NOMADS:    6,
+  RAIDERS:   18,
+  HUNTERS:   12,
+  MARAUDERS: 24,
+  WARHOST:   48,
 };
-const DUEL_COOLDOWN_HOURS  = 8;
-const TRADE_COOLDOWN_HOURS = 5;
+const DUEL_COOLDOWN_HOURS  = 24;
+const TRADE_COOLDOWN_HOURS = 16;
 
-const MAX_ACTIVE_MOVES  = 25;
-const MAX_ACTIVE_DUELS  = 12;
-const MAX_ACTIVE_TRADES = 15;
+const MAX_ACTIVE_MOVES  = 8;
+const MAX_ACTIVE_DUELS  = 4;
+const MAX_ACTIVE_TRADES = 6;
 
 const DUEL_RADIUS  = 18_000;
 const TRADE_RADIUS = 22_000;
@@ -142,8 +142,17 @@ export async function processBarbarianMoves(): Promise<void> {
     where: { status: 'ARRIVED', arrivesAt: { lte: new Date(Date.now() - 2 * 3600_000) } },
   });
 
-  // Global cap check
-  const activeCount = await prisma.barbarianMove.count({ where: { status: 'MARCHING' } });
+  // Enforce global cap — delete oldest MARCHING moves if over the limit
+  const activeMoves = await prisma.barbarianMove.findMany({
+    where: { status: 'MARCHING' },
+    orderBy: { startedAt: 'asc' },
+    select: { id: true },
+  });
+  if (activeMoves.length > MAX_ACTIVE_MOVES) {
+    const toDelete = activeMoves.slice(0, activeMoves.length - MAX_ACTIVE_MOVES).map(m => m.id);
+    await prisma.barbarianMove.deleteMany({ where: { id: { in: toDelete } } });
+  }
+  const activeCount = activeMoves.length - Math.max(0, activeMoves.length - MAX_ACTIVE_MOVES);
   if (activeCount >= MAX_ACTIVE_MOVES) return;
 
   const camps = await prisma.barbarianCamp.findMany({
@@ -318,8 +327,17 @@ export async function processBarbarianDuels(): Promise<void> {
     }
   }
 
-  // Global cap check
-  const activeCount = await prisma.barbarianDuel.count({ where: { status: 'MARCHING' } });
+  // Enforce global cap — delete oldest MARCHING duels if over the limit
+  const activeDuels = await prisma.barbarianDuel.findMany({
+    where: { status: 'MARCHING' },
+    orderBy: { startedAt: 'asc' },
+    select: { id: true },
+  });
+  if (activeDuels.length > MAX_ACTIVE_DUELS) {
+    const toDelete = activeDuels.slice(0, activeDuels.length - MAX_ACTIVE_DUELS).map(d => d.id);
+    await prisma.barbarianDuel.deleteMany({ where: { id: { in: toDelete } } });
+  }
+  const activeCount = activeDuels.length - Math.max(0, activeDuels.length - MAX_ACTIVE_DUELS);
   if (activeCount >= MAX_ACTIVE_DUELS) {
     await prisma.barbarianDuel.deleteMany({
       where: { status: 'RESOLVED', resolvedAt: { lte: new Date(Date.now() - 2 * 3600_000) } },
@@ -439,8 +457,17 @@ export async function processBarbarianCampTrades(): Promise<void> {
     where: { status: 'DONE', arrivesAt: { lte: new Date(Date.now() - 2 * 3600_000) } },
   });
 
-  // Global cap check
-  const activeCount = await prisma.barbarianCampTrade.count({ where: { status: { in: ['MARCHING', 'RETURNING'] } } });
+  // Enforce global cap — delete oldest MARCHING trades if over the limit
+  const activeTrades = await prisma.barbarianCampTrade.findMany({
+    where: { status: { in: ['MARCHING', 'RETURNING'] } },
+    orderBy: { startedAt: 'asc' },
+    select: { id: true },
+  });
+  if (activeTrades.length > MAX_ACTIVE_TRADES) {
+    const toDelete = activeTrades.slice(0, activeTrades.length - MAX_ACTIVE_TRADES).map(t => t.id);
+    await prisma.barbarianCampTrade.deleteMany({ where: { id: { in: toDelete } } });
+  }
+  const activeCount = activeTrades.length - Math.max(0, activeTrades.length - MAX_ACTIVE_TRADES);
   if (activeCount >= MAX_ACTIVE_TRADES) return;
 
   const activeCamps = await prisma.barbarianCamp.findMany({
