@@ -26,6 +26,7 @@ export class MarkersLayer extends Container {
   private onDoubleClickMyCity?: () => void;
   private cityContainers = new Map<string, Container>();
   private campContainers = new Map<string, Container>();
+  private campGlows = new Map<string, Graphics>();
   private villageTexture?: Texture;
   private campTexture?: Texture;
   private texturesLoaded = false;
@@ -136,7 +137,7 @@ export class MarkersLayer extends Container {
   setCamps(camps: BarbarianCamp[]) {
     const ids = new Set(camps.map(c => c.id));
     for (const [id, c] of this.campContainers) {
-      if (!ids.has(id)) { c.destroy({ children: true }); this.campContainers.delete(id); }
+      if (!ids.has(id)) { c.destroy({ children: true }); this.campContainers.delete(id); this.campGlows.delete(id); }
     }
     for (const camp of camps) {
       if (camp.status !== "ACTIVE") continue;
@@ -156,6 +157,17 @@ export class MarkersLayer extends Container {
     c.x = camp.posX; c.y = camp.posY;
     c.eventMode = "static"; c.cursor = "pointer";
     const color = ARCHETYPE_COLORS[camp.archetype] ?? 0xd75f43;
+
+    // Campfire glow — pre-drawn warm radial, animated (alpha/scale) in the ticker.
+    // Sits behind the icon so the camp looks lived-in and breathing.
+    const glow = new Graphics();
+    const glowR = 26;
+    for (let i = 6; i >= 1; i--) {
+      glow.circle(0, -4, (glowR * i) / 6).fill({ color: 0xff8a3d, alpha: 0.06 });
+    }
+    glow.circle(0, -4, 5).fill({ color: 0xffd27a, alpha: 0.5 });
+    c.addChild(glow);
+    this.campGlows.set(camp.id, glow);
 
     let icon: Sprite | Graphics;
     if (this.campTexture) {
@@ -204,11 +216,22 @@ export class MarkersLayer extends Container {
       c.visible = inView;
       if (inView) c.scale.set(s);
     }
-    for (const [, c] of this.campContainers) {
+    const now = performance.now();
+    for (const [id, c] of this.campContainers) {
       const inView = c.x >= vis.x - margin && c.x <= vis.x + vis.width + margin
         && c.y >= vis.y - margin && c.y <= vis.y + vis.height + margin;
       c.visible = inView;
-      if (inView) c.scale.set(s);
+      if (!inView) continue;
+      c.scale.set(s);
+      // Flicker the campfire: each camp offset by its id hash so they don't pulse in unison.
+      const glow = this.campGlows.get(id);
+      if (glow) {
+        const phase = (id.charCodeAt(0) + id.charCodeAt(id.length - 1)) * 0.7;
+        const flick = Math.sin(now * 0.004 + phase) * 0.5 + Math.sin(now * 0.013 + phase) * 0.5;
+        glow.alpha = 0.65 + flick * 0.35;
+        const gs = 1 + flick * 0.12;
+        glow.scale.set(gs);
+      }
     }
   }
 }

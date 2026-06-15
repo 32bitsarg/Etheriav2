@@ -1473,7 +1473,9 @@
       "BATTLE_MAJOR_VICTORY": "crushed",
       "BARBARIAN_CAMP_CLEARED": "cleared a barbarian camp",
       "ALLIANCE_FORMED": "founded a new alliance",
-      "PLAYER_JOINED": "joined the world"
+      "PLAYER_JOINED": "joined the world",
+      "WORLD_BARBARIAN_CLASH": "defeated",
+      "WORLD_BARBARIAN_WARLORD": "rose as a warlord"
     },
     "conquest": {
       "siege": "Siege"

@@ -1473,7 +1473,9 @@
       "BATTLE_MAJOR_VICTORY": "aplastó a",
       "BARBARIAN_CAMP_CLEARED": "arrasó un campamento bárbaro",
       "ALLIANCE_FORMED": "fundó una nueva alianza",
-      "PLAYER_JOINED": "se unió al mundo"
+      "PLAYER_JOINED": "se unió al mundo",
+      "WORLD_BARBARIAN_CLASH": "derrotó a",
+      "WORLD_BARBARIAN_WARLORD": "se alzó como señor de la guerra"
     },
     "conquest": {
       "siege": "Asedio"

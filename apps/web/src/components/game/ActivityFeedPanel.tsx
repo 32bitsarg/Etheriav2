@@ -24,6 +24,8 @@ const TYPE_ICONS: Record<string, string> = {
   FIRST_VICTORY: "🏆",
   RALLY_LAUNCHED: "🚩",
   ACHIEVEMENT_UNLOCKED: "🥇",
+  WORLD_BARBARIAN_CLASH: "⚔️",
+  WORLD_BARBARIAN_WARLORD: "🪓",
 };
 
 export function ActivityFeedPanel({ onClose }: { onClose: () => void }) {
@@ -37,6 +39,8 @@ export function ActivityFeedPanel({ onClose }: { onClose: () => void }) {
       case "WONDER_VICTORY": return t("play.feed.WONDER_VICTORY");
       case "BATTLE_MAJOR_VICTORY": return `${t("play.feed.BATTLE_MAJOR_VICTORY")} ${entry.payload.defenderName ?? ""}`;
       case "BARBARIAN_CAMP_CLEARED": return t("play.feed.BARBARIAN_CAMP_CLEARED");
+      case "WORLD_BARBARIAN_CLASH": return `${t("play.feed.WORLD_BARBARIAN_CLASH")} ${entry.payload.loser ?? ""}`;
+      case "WORLD_BARBARIAN_WARLORD": return t("play.feed.WORLD_BARBARIAN_WARLORD");
       case "ALLIANCE_FORMED": return t("play.feed.ALLIANCE_FORMED");
       case "PLAYER_JOINED": return t("play.feed.PLAYER_JOINED");
       case "RALLY_LAUNCHED": return t("play.activityFeed.rally");

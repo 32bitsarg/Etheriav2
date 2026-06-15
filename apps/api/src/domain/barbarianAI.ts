@@ -8,6 +8,56 @@ import { LOCAL_WORLD_CONFIG } from './worldConfigData.js';
 
 const BARBARIAN_SPEED_PX_PER_SEC = 22;
 
+// ─── World chronicle ──────────────────────────────────────────────────────────
+// Spanish archetype labels for the activity feed, and a thin helper that writes
+// emergent barbarian events into the existing feed so the world feels alive.
+
+const ARCHETYPE_ES: Record<string, string> = {
+  RAIDERS:   'los Saqueadores',
+  MARAUDERS: 'los Merodeadores',
+  WARHOST:   'la Horda de Guerra',
+  HUNTERS:   'los Cazadores',
+  NOMADS:    'los Nómadas',
+};
+
+async function chronicle(
+  type: string,
+  actorName: string,
+  actorId: string,
+  payload: Record<string, unknown>
+): Promise<void> {
+  try {
+    const { createActivityFeedEntry } = await import('../routes/activityFeed.js');
+    await createActivityFeedEntry(type, actorName, actorId, payload, true);
+  } catch {
+    // Feed write is best-effort; never block AI on it.
+  }
+}
+
+type ChronicleCamp = { id: string; name: string; archetype: string; level: number };
+
+async function chronicleDuel(
+  winner: ChronicleCamp,
+  loser: ChronicleCamp,
+  levelGain: number
+): Promise<void> {
+  const winnerLevel = winner.level + levelGain;
+  // A camp that levels up past 6 becomes a feared warlord — rarer, epic event.
+  if (levelGain && winnerLevel >= 6) {
+    await chronicle('WORLD_BARBARIAN_WARLORD', winner.name, winner.id, {
+      archetype: ARCHETYPE_ES[winner.archetype] ?? winner.archetype,
+      level: winnerLevel,
+      defeated: loser.name,
+    });
+    return;
+  }
+  await chronicle('WORLD_BARBARIAN_CLASH', winner.name, winner.id, {
+    winnerArchetype: ARCHETYPE_ES[winner.archetype] ?? winner.archetype,
+    loserArchetype: ARCHETYPE_ES[loser.archetype] ?? loser.archetype,
+    loser: loser.name,
+  });
+}
+
 // ─── Archetype relationships ──────────────────────────────────────────────────
 
 const RIVAL_OF: Record<string, string[]> = {
@@ -290,6 +340,7 @@ export async function processBarbarianDuels(): Promise<void> {
           data: { status: 'RESOLVED', resolvedAt: now, result: { winner: 'ATTACKER', levelGain } },
         }),
       ]);
+      await chronicleDuel(attackerCamp, defenderCamp, levelGain);
     } else {
       const newAttackerUnits: Record<string, number> = {};
       for (const [type, count] of Object.entries(attackerUnits)) {
@@ -324,6 +375,7 @@ export async function processBarbarianDuels(): Promise<void> {
           data: { status: 'RESOLVED', resolvedAt: now, result: { winner: 'DEFENDER', levelGain } },
         }),
       ]);
+      await chronicleDuel(defenderCamp, attackerCamp, levelGain);
     }
   }
 
