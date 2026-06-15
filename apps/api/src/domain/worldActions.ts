@@ -1,6 +1,6 @@
 import { prisma } from "@etheria/database";
 import type { WorldMovement } from "@etheria/shared";
-import { calculateWalkablePath } from "./worldTerrainConfigData.js";
+import { calculateWalkablePath, isBuildableTerrain } from "./worldTerrainConfigData.js";
 import { LOCAL_WORLD_CONFIG } from "./worldConfigData.js";
 
 // Short TTL cache: every connected client polls this endpoint every ~10s and
@@ -18,13 +18,15 @@ export async function getActiveMovements(): Promise<WorldMovement[]> {
 }
 
 async function computeActiveMovements(): Promise<WorldMovement[]> {
+  const now = new Date();
   const [battles, barbarianBattles, barbarianAttacks, caravans, barbarianMoves, duels, campTrades] = await Promise.all([
     prisma.battle.findMany({ where: { status: { in: ["MARCHING", "RETURNING"] as any } } }),
     prisma.barbarianBattle.findMany({ where: { status: { in: ["MARCHING", "RETURNING"] as any } } }),
     prisma.barbarianAttack.findMany({ where: { status: { in: ["MARCHING", "RETURNING"] as any } } }),
     prisma.tradeCaravan.findMany({ where: { status: { in: ["MARCHING", "RETURNING"] as any } } }),
-    prisma.barbarianMove.findMany({ where: { status: 'MARCHING' } }),
-    prisma.barbarianDuel.findMany({ where: { status: 'MARCHING' } }),
+    // Exclude stale MARCHING moves (arrivesAt already passed — cleanup job hasn't run yet)
+    prisma.barbarianMove.findMany({ where: { status: 'MARCHING', arrivesAt: { gte: now } } }),
+    prisma.barbarianDuel.findMany({ where: { status: 'MARCHING', arrivesAt: { gte: now } } }),
     prisma.barbarianCampTrade.findMany({ where: { status: { in: ['MARCHING', 'RETURNING'] } } }),
   ]);
 
@@ -88,6 +90,7 @@ async function computeActiveMovements(): Promise<WorldMovement[]> {
 
   const movements: WorldMovement[] = [];
   const { width, height } = LOCAL_WORLD_CONFIG.map;
+  const buildable = (x: number, y: number) => isBuildableTerrain(x, y, width, height);
 
   const getPath = (fx: number, fy: number, tx: number, ty: number) =>
     calculateWalkablePath(fx, fy, tx, ty, width, height);
@@ -179,6 +182,8 @@ async function computeActiveMovements(): Promise<WorldMovement[]> {
   for (const m of barbarianMoves) {
     const camp = campMap.get(m.campId);
     if (!camp) continue;
+    // Skip stale records with water destinations (pre-terrain-check data)
+    if (!buildable(m.toX, m.toY)) continue;
     movements.push({
       id: m.id,
       type: "BARBARIAN_MOVE",
@@ -196,6 +201,8 @@ async function computeActiveMovements(): Promise<WorldMovement[]> {
     const attacker = campMap.get(d.attackerCampId);
     const defender = campMap.get(d.defenderCampId);
     if (!attacker || !defender) continue;
+    // Skip if either camp is in water (stale data)
+    if (!buildable(attacker.posX, attacker.posY) || !buildable(defender.posX, defender.posY)) continue;
     const midX = Math.round((attacker.posX + defender.posX) / 2);
     const midY = Math.round((attacker.posY + defender.posY) / 2);
     movements.push({
@@ -215,6 +222,9 @@ async function computeActiveMovements(): Promise<WorldMovement[]> {
     const from = campMap.get(t.fromCampId);
     const to = campMap.get(t.toCampId);
     if (!from || !to) continue;
+    if (!buildable(from.posX, from.posY) || !buildable(to.posX, to.posY)) continue;
+    // Skip RETURNING trades that already expired
+    if (t.status === 'RETURNING' && t.returnsAt && t.returnsAt < now) continue;
     movements.push({
       id: t.id,
       type: "BARBARIAN_TRADE",
