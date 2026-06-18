@@ -140,6 +140,8 @@ adminOpsRouter.post("/reset-world", async (c) => {
     const world = await prisma.world.findFirst({ orderBy: { createdAt: "asc" } });
     if (world) {
       const existing = typeof world.config === "string" ? JSON.parse(world.config) : (world.config as any) ?? {};
+      // Generate a new random seed so every reset produces a different world shape.
+      const newSeed = (Math.random() * 0x7fffffff) | 0;
       const newConfig = {
         ...existing,
         map: {
@@ -153,10 +155,12 @@ adminOpsRouter.post("/reset-world", async (c) => {
           terrainCols: LOCAL_WORLD_CONFIG.map.terrainCols,
           terrainRows: LOCAL_WORLD_CONFIG.map.terrainRows,
           tileSize: LOCAL_WORLD_CONFIG.map.tileSize,
+          terrainSeed: newSeed,
         },
         spawn: LOCAL_WORLD_CONFIG.spawn,
         updatedAt: new Date().toISOString(),
       };
+      log.push(`New terrain seed: ${newSeed}`);
       await prisma.world.update({ where: { id: world.id }, data: { config: newConfig, playerCount: 0 } });
       log.push(`Updated world config: ${world.id}`);
     } else {
