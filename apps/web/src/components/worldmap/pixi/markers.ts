@@ -161,11 +161,11 @@ export class MarkersLayer extends Container {
     // Campfire glow — pre-drawn warm radial, animated (alpha/scale) in the ticker.
     // Sits behind the icon so the camp looks lived-in and breathing.
     const glow = new Graphics();
-    const glowR = 26;
+    const glowR = 42;
     for (let i = 6; i >= 1; i--) {
-      glow.circle(0, -4, (glowR * i) / 6).fill({ color: 0xff8a3d, alpha: 0.06 });
+      glow.circle(0, -6, (glowR * i) / 6).fill({ color: 0xff8a3d, alpha: 0.06 });
     }
-    glow.circle(0, -4, 5).fill({ color: 0xffd27a, alpha: 0.5 });
+    glow.circle(0, -6, 7).fill({ color: 0xffd27a, alpha: 0.5 });
     c.addChild(glow);
     this.campGlows.set(camp.id, glow);
 
@@ -173,7 +173,7 @@ export class MarkersLayer extends Container {
     if (this.campTexture) {
       icon = new Sprite(this.campTexture);
       icon.anchor.set(0.5, 0.85);
-      icon.width = 80; icon.height = 80;
+      icon.width = 130; icon.height = 130;
       icon.tint = color;
     } else {
       const g = new Graphics();
@@ -184,16 +184,16 @@ export class MarkersLayer extends Container {
 
     const lv = new Text({
       text: `Lv.${camp.level}`,
-      style: { fontSize: 8, fontWeight: "700", fill: 0xff6b6b, dropShadow: { color: 0x000000, alpha: 0.95, blur: 3, distance: 0 } }
+      style: { fontSize: 10, fontWeight: "700", fill: 0xff6b6b, dropShadow: { color: 0x000000, alpha: 0.95, blur: 3, distance: 0 } }
     });
-    lv.anchor.set(0.5, 1); lv.y = -12;
+    lv.anchor.set(0.5, 1); lv.y = -16;
     c.addChild(lv);
 
     const lbl = new Text({
       text: camp.name,
-      style: { fontSize: 9, fill: color, dropShadow: { color: 0x000000, alpha: 0.95, blur: 4, distance: 0 } }
+      style: { fontSize: 11, fill: color, dropShadow: { color: 0x000000, alpha: 0.95, blur: 4, distance: 0 } }
     });
-    lbl.anchor.set(0.5, 0); lbl.y = 6;
+    lbl.anchor.set(0.5, 0); lbl.y = 8;
     c.addChild(lbl);
 
     c.on("pointertap", (e: any) => {

@@ -73,10 +73,11 @@ export const LOCAL_SEASONAL_SPAWN_CONFIG: SeasonalSpawnConfig = {
   maxEscalationLevel: 10,
 };
 
-// Distances are in world-space pixels. Map is 40000×40000px (2× expansion).
+// Distances are in world-space pixels. Map is 80000×80000px.
 // minDistanceToCities: keep camps away from player cities
-// minDistanceBetweenCamps: spread camps so they don't cluster
-// maxDensity: max simultaneous camps per zone (7 zones, ~328 camps total for the 2× world)
+// minDistanceBetweenCamps: spread camps so they don't cluster visually.
+//   Scaled up 1.6× from original values to match the larger 130px camp sprite
+//   (was 80px; at zoom 0.16 a 130px sprite covers ~812 world units).
 export const LOCAL_BARBARIAN_ZONE_CONFIGS: BarbarianZoneConfig[] = [
   {
     zoneId: 'north_frozen',
@@ -84,8 +85,8 @@ export const LOCAL_BARBARIAN_ZONE_CONFIGS: BarbarianZoneConfig[] = [
     levelMin: 4,
     levelMax: 8,
     allowedArchetypes: ['RAIDERS', 'MARAUDERS', 'WARHOST'],
-    minDistanceToCities: 760,
-    minDistanceBetweenCamps: 1300,
+    minDistanceToCities: 1200,
+    minDistanceBetweenCamps: 2100,
     spawnIntervalSeconds: 300,
   },
   {
@@ -94,8 +95,8 @@ export const LOCAL_BARBARIAN_ZONE_CONFIGS: BarbarianZoneConfig[] = [
     levelMin: 2,
     levelMax: 6,
     allowedArchetypes: ['RAIDERS', 'HUNTERS', 'NOMADS'],
-    minDistanceToCities: 680,
-    minDistanceBetweenCamps: 1160,
+    minDistanceToCities: 1100,
+    minDistanceBetweenCamps: 1860,
     spawnIntervalSeconds: 240,
   },
   {
@@ -104,8 +105,8 @@ export const LOCAL_BARBARIAN_ZONE_CONFIGS: BarbarianZoneConfig[] = [
     levelMin: 1,
     levelMax: 5,
     allowedArchetypes: ['RAIDERS', 'HUNTERS', 'NOMADS'],
-    minDistanceToCities: 680,
-    minDistanceBetweenCamps: 1160,
+    minDistanceToCities: 1100,
+    minDistanceBetweenCamps: 1860,
     spawnIntervalSeconds: 240,
   },
   {
@@ -114,8 +115,8 @@ export const LOCAL_BARBARIAN_ZONE_CONFIGS: BarbarianZoneConfig[] = [
     levelMin: 2,
     levelMax: 5,
     allowedArchetypes: ['RAIDERS', 'NOMADS'],
-    minDistanceToCities: 600,
-    minDistanceBetweenCamps: 1300,
+    minDistanceToCities: 960,
+    minDistanceBetweenCamps: 2100,
     spawnIntervalSeconds: 360,
   },
   {
@@ -124,8 +125,8 @@ export const LOCAL_BARBARIAN_ZONE_CONFIGS: BarbarianZoneConfig[] = [
     levelMin: 3,
     levelMax: 7,
     allowedArchetypes: ['RAIDERS', 'MARAUDERS', 'HUNTERS'],
-    minDistanceToCities: 700,
-    minDistanceBetweenCamps: 1220,
+    minDistanceToCities: 1120,
+    minDistanceBetweenCamps: 1950,
     spawnIntervalSeconds: 300,
   },
   {
@@ -134,8 +135,8 @@ export const LOCAL_BARBARIAN_ZONE_CONFIGS: BarbarianZoneConfig[] = [
     levelMin: 1,
     levelMax: 5,
     allowedArchetypes: ['HUNTERS', 'RAIDERS', 'NOMADS'],
-    minDistanceToCities: 600,
-    minDistanceBetweenCamps: 1100,
+    minDistanceToCities: 960,
+    minDistanceBetweenCamps: 1760,
     spawnIntervalSeconds: 180,
   },
   {
@@ -144,8 +145,8 @@ export const LOCAL_BARBARIAN_ZONE_CONFIGS: BarbarianZoneConfig[] = [
     levelMin: 1,
     levelMax: 4,
     allowedArchetypes: ['RAIDERS', 'NOMADS', 'HUNTERS'],
-    minDistanceToCities: 600,
-    minDistanceBetweenCamps: 1100,
+    minDistanceToCities: 960,
+    minDistanceBetweenCamps: 1760,
     spawnIntervalSeconds: 200,
   },
 ];

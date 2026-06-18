@@ -139,19 +139,22 @@ function traceFluxRivers(
     if (bestNb >= 0) flux[bestNb] += flux[i];
   }
 
-  // Top 0.5% by flux → wide river (WATER); next 0.5% → narrow tributary (COAST).
-  // Only cells that are themselves in RIVER_BIOMES can become rivers.
-  const landFluxValues = landCells.filter(i => RIVER_BIOMES.has(cells[i] as TerrainKind)).map(i => flux[i]).filter(f => f > 0);
+  // Only top 0.08% of flux (within RIVER_BIOMES) become narrow tributaries,
+  // and top 0.02% become wide rivers. At 2200×2200 with ~30% river biomes
+  // that is ~1150 tributary cells and ~290 wide-river cells — a handful of
+  // rivers visible at any zoom level, not a web scattered across every forest.
+  const riverBiomeCells = landCells.filter(i => RIVER_BIOMES.has(cells[i] as TerrainKind));
+  const landFluxValues = riverBiomeCells.map(i => flux[i]).filter(f => f > 0);
   landFluxValues.sort((a, b) => a - b);
-  const pct995 = landFluxValues[Math.floor(landFluxValues.length * 0.995)] ?? 999999;
-  const pct999 = landFluxValues[Math.floor(landFluxValues.length * 0.999)] ?? 999999;
+  const pct9992 = landFluxValues[Math.floor(landFluxValues.length * 0.9992)] ?? 999999;
+  const pct9998 = landFluxValues[Math.floor(landFluxValues.length * 0.9998)] ?? 999999;
 
   for (let i = 0; i < N; i++) {
     if (h[i] < 20 || h[i] >= 72) continue;
     if (!RIVER_BIOMES.has(cells[i] as TerrainKind)) continue;
-    if (flux[i] >= pct999) {
+    if (flux[i] >= pct9998) {
       cells[i] = "WATER"; // wide river (dilated below)
-    } else if (flux[i] >= pct995) {
+    } else if (flux[i] >= pct9992) {
       cells[i] = "COAST"; // narrow tributaries
     }
   }

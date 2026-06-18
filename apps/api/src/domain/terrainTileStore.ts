@@ -15,7 +15,8 @@ const TILE_CACHE_DIR =
 // v2: inland water-body cleanup ("lagitos" fix).
 // v3: biome-aware precipitation (no desert rivers) + post-river lagito cleanup.
 // v4: flux-sink for dry biomes — plains/savanna/desert absorb runoff instead of carrying rivers.
-export const TERRAIN_ALGO_VERSION = 'v4';
+// v5: much tighter thresholds (top 0.08%/0.02%) so only major river channels appear.
+export const TERRAIN_ALGO_VERSION = 'v5';
 
 export async function deleteTileCacheVersion(version: string): Promise<void> {
   try { await fs.promises.rm(versionDir(version), { recursive: true, force: true }); } catch {}
