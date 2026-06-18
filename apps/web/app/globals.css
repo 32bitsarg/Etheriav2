@@ -173,7 +173,7 @@ h1, h2, h3, h4, .font-display, .font-serif {
   overflow-y: auto;
   border-radius: 18px;
   z-index: 40;
-  width: 68px;
+  width: 148px;
   display: flex;
   flex-direction: column;
   background: rgba(10, 14, 12, 0.8);
@@ -281,20 +281,20 @@ h1, h2, h3, h4, .font-display, .font-serif {
 /* ─── Nav Item ─── */
 .grepolis-nav-item {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   width: 100%;
-  height: 52px;
-  padding: 0;
+  min-height: 40px;
+  padding: 0 8px;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   background: transparent;
   cursor: pointer;
   position: relative;
   transition: background 0.13s ease, color 0.13s ease;
   color: rgba(255, 255, 255, 0.6);
-  gap: 2px;
+  gap: 8px;
 }
 
 .grepolis-nav-item:hover {
@@ -335,13 +335,16 @@ h1, h2, h3, h4, .font-display, .font-serif {
 /* ─── Label ─── */
 .grepolis-nav-item__label {
   font-family: var(--font-body);
-  font-size: 8.5px;
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   line-height: 1;
   text-transform: uppercase;
   color: inherit;
   text-shadow: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ─── Badge ─── */
@@ -367,13 +370,14 @@ h1, h2, h3, h4, .font-display, .font-serif {
 
 /* ─── Group label (HUD v3) ─── */
 .grepolis-sidebar__group-label {
-  padding: 4px 0 2px;
-  text-align: center;
-  font-size: 7px;
+  padding: 6px 8px 3px;
+  text-align: left;
+  font-size: 7.5px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(252, 211, 77, 0.5);
+  color: rgba(252, 211, 77, 0.45);
+  white-space: nowrap;
 }
 
 /* ─── Divider ─── */
@@ -426,36 +430,31 @@ h1, h2, h3, h4, .font-display, .font-serif {
   }
 }
 
-/* Tablet (md-only 768-1023px): sidebar collapses to icon-only, expands on hover */
+/* Tablet (md-only 768-1023px): sidebar same as desktop — always expanded */
 @media (min-width: 768px) and (max-width: 1023px) {
-  .grepolis-sidebar {
-    width: 52px;
-    transition: width 200ms ease;
-    overflow: hidden;
-  }
-  .grepolis-sidebar:hover {
-    width: 160px;
-  }
-  .grepolis-sidebar__group-label {
-    opacity: 0;
-    transition: opacity 150ms ease;
-    white-space: nowrap;
-    overflow: hidden;
-  }
-  .grepolis-sidebar:hover .grepolis-sidebar__group-label {
-    opacity: 1;
-  }
-  .grepolis-nav-item__label {
-    display: none;
-  }
-  .grepolis-sidebar:hover .grepolis-nav-item__label {
-    display: inline;
-  }
-  /* City plaque shifts right with collapsed sidebar */
   .desktop-city-cluster {
-    left: 68px !important;
+    left: 164px !important;
   }
 }
+
+/* ─── March sidebar (right) ─── */
+.march-sidebar {
+  position: absolute;
+  right: 8px;
+  top: calc(var(--topbar-height) + 8px);
+  max-height: calc(100vh - var(--topbar-height) - 24px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-radius: 14px;
+  z-index: 40;
+  width: 180px;
+  background: rgba(10, 14, 12, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.38);
+}
+.march-sidebar::-webkit-scrollbar { display: none; }
 
 .village-topbar {
   position: relative;

@@ -9,6 +9,7 @@ import { DailyEventBanner } from "@/components/game/DailyEventBanner";
 import { NotificationBell } from "@/components/game/NotificationBell";
 import { SidebarNavIcon } from "@/components/ui/SidebarNavIcon";
 import { ChecklistIcon, WonderIcon, LaurelsIcon, FeedIcon, GearIcon, SpeechIcon } from "./HudIcons";
+import { MarchSidebar } from "./MarchSidebar";
 import type { HudActions } from "./hudTypes";
 
 // HUD v3 (desktop): no full-width topbar — the game takes the whole viewport
@@ -149,6 +150,9 @@ export const DesktopHUD = memo(function DesktopHUD({
           ))}
         </nav>
       </aside>
+
+      {/* Right sidebar: active marches countdown */}
+      <MarchSidebar />
     </>
   );
 });
