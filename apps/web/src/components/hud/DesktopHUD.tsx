@@ -128,7 +128,7 @@ export const DesktopHUD = memo(function DesktopHUD({
           {navGroups.map((group, gi) => (
             <div key={group.label}>
               {gi > 0 && <div className="grepolis-sidebar__divider" />}
-              <div className="grepolis-sidebar__group-label md:opacity-0 md:group-hover/sidebar:opacity-100 md:transition-opacity">{group.label}</div>
+              <div className="grepolis-sidebar__group-label">{group.label}</div>
               {group.items.map((item) => (
                 <button
                   key={item.key}
@@ -142,7 +142,7 @@ export const DesktopHUD = memo(function DesktopHUD({
                       <span className="grepolis-nav-item__badge">{item.badge}</span>
                     )}
                   </span>
-                  <span className="grepolis-nav-item__label md:hidden md:group-hover/sidebar:inline">{item.label}</span>
+                  <span className="grepolis-nav-item__label">{item.label}</span>
                 </button>
               ))}
             </div>

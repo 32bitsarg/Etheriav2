@@ -102,10 +102,15 @@ function traceFluxRivers(
   // Precipitation per biome: deserts/tundra get almost no rain so their flux
   // never crosses the river threshold. This is the main lever that prevents
   // 20-river deserts. Values are multipliers on base rain (1.0 = normal).
+  // Precipitation per biome. Only JUNGLE/SWAMP accumulate enough flux to
+  // reliably cross the river threshold; everything else drains much less
+  // so rivers concentrate along mountain-fed channels, not scattered everywhere.
   const BIOME_PREC: Partial<Record<TerrainKind, number>> = {
-    JUNGLE: 1.8, SWAMP: 1.5, FOREST: 1.3, TAIGA: 0.9,
-    PLAINS: 0.8, HILLS: 0.9, SAVANNA: 0.4,
-    DESERT: 0.05, TUNDRA: 0.15, MOUNTAIN: 0.6, COAST: 0.7,
+    JUNGLE: 1.6, SWAMP: 1.4,
+    FOREST: 0.55, TAIGA: 0.40,
+    PLAINS: 0.30, HILLS: 0.45,
+    SAVANNA: 0.12, COAST: 0.25,
+    DESERT: 0.02, TUNDRA: 0.08, MOUNTAIN: 0.50,
   };
   const prec = new Float32Array(N);
   for (let i = 0; i < N; i++) {
