@@ -597,7 +597,54 @@ export function generateTerrainData(seed: number, cols: number, rows: number): T
     for (let i = 0; i < N; i++) cells[i] = coastOf[i];
   }
 
-  // ── Step 7: Final light cleanup of isolated water specks ──────────────────
+  // ── Step 7: Post-river lagitos cleanup ────────────────────────────────────
+  // Rivers (Step 6) create new WATER cells after the earlier lagitos pass (5.7),
+  // so isolated tiny water blobs produced by river tributaries are removed here.
+  // Threshold is smaller than 5.7 (rivers are intentionally thin lines) — only
+  // blobs fully disconnected from the ocean/large-lakes are filled.
+  {
+    const MIN_RIVER_ISLAND = 8; // blobs smaller than this that don't touch border → fill
+    const visited2 = new Uint8Array(N);
+    for (let start = 0; start < N; start++) {
+      if (visited2[start] || cells[start] !== "WATER") continue;
+      const component: number[] = [];
+      const queue = [start];
+      visited2[start] = 1;
+      let head = 0;
+      let touchesBorder = false;
+      while (head < queue.length) {
+        const ci = queue[head++];
+        component.push(ci);
+        const cc = ci % cols, cr = Math.floor(ci / cols);
+        if (cc === 0 || cr === 0 || cc === cols - 1 || cr === rows - 1) touchesBorder = true;
+        for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]] as const) {
+          const nr = cr + dr, nc = cc + dc;
+          if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+          const ni = nr * cols + nc;
+          if (!visited2[ni] && cells[ni] === "WATER") { visited2[ni] = 1; queue.push(ni); }
+        }
+      }
+      if (touchesBorder || component.length >= MIN_RIVER_ISLAND) continue;
+      const neighborCounts: Record<string, number> = {};
+      for (const ci of component) {
+        const cc = ci % cols, cr = Math.floor(ci / cols);
+        for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]] as const) {
+          const nr = cr + dr, nc = cc + dc;
+          if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+          const nk = cells[nr * cols + nc];
+          if (nk !== "WATER") neighborCounts[nk] = (neighborCounts[nk] || 0) + 1;
+        }
+      }
+      let bestBiome: TerrainKind = "PLAINS", bestCount = 0;
+      for (const [bk, bc] of Object.entries(neighborCounts)) {
+        if (bc > bestCount) { bestCount = bc; bestBiome = bk as TerrainKind; }
+      }
+      if (bestBiome === "COAST") bestBiome = "PLAINS";
+      for (const ci of component) cells[ci] = bestBiome;
+    }
+  }
+
+  // ── Step 7b: Final single-cell speck removal ───────────────────────────────
   const smoothed = cells.slice();
   for (let row = 1; row < rows - 1; row++) {
     for (let col = 1; col < cols - 1; col++) {
