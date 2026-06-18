@@ -99,24 +99,19 @@ function traceFluxRivers(
 ): void {
   const N = cols * rows;
 
-  // Precipitation per biome: deserts/tundra get almost no rain so their flux
-  // never crosses the river threshold. This is the main lever that prevents
-  // 20-river deserts. Values are multipliers on base rain (1.0 = normal).
-  // Precipitation per biome. Only JUNGLE/SWAMP accumulate enough flux to
-  // reliably cross the river threshold; everything else drains much less
-  // so rivers concentrate along mountain-fed channels, not scattered everywhere.
+  // Biomes that can carry/generate rivers. Biomes NOT in this set act as
+  // sinks: they absorb flux without passing it downstream, preventing mountain
+  // runoff from creating rivers in plains/savanna/desert that have no rainfall.
+  const RIVER_BIOMES = new Set<TerrainKind>(["JUNGLE","SWAMP","FOREST","TAIGA","HILLS","MOUNTAIN","COAST"]);
+  // Base precipitation only for source biomes (multiplier on 1.0).
   const BIOME_PREC: Partial<Record<TerrainKind, number>> = {
-    JUNGLE: 1.6, SWAMP: 1.4,
-    FOREST: 0.55, TAIGA: 0.40,
-    PLAINS: 0.30, HILLS: 0.45,
-    SAVANNA: 0.12, COAST: 0.25,
-    DESERT: 0.02, TUNDRA: 0.08, MOUNTAIN: 0.50,
+    JUNGLE: 2.0, SWAMP: 1.6, FOREST: 1.0, TAIGA: 0.7, HILLS: 0.6, MOUNTAIN: 0.5, COAST: 0.3,
   };
   const prec = new Float32Array(N);
   for (let i = 0; i < N; i++) {
     if (h[i] < 20) continue;
-    const mult = BIOME_PREC[cells[i]] ?? 0.8;
-    prec[i] = mult * (0.8 + rng() * 0.4);
+    const mult = BIOME_PREC[cells[i] as TerrainKind] ?? 0;
+    if (mult > 0) prec[i] = mult * (0.8 + rng() * 0.4);
   }
 
   // Sort land cells high→low
@@ -127,8 +122,12 @@ function traceFluxRivers(
   const flux = new Float32Array(N);
   for (const i of landCells) flux[i] = prec[i];
 
-  // Accumulate flux downhill — 4-directional only (NSEW) to avoid diagonal rivers
+  // Accumulate flux downhill — 4-directional only (NSEW).
+  // Flux is ABSORBED (not passed on) when it enters a non-river biome
+  // (plains, savanna, desert, tundra). This means mountain runoff cannot
+  // create rivers in flat dry biomes.
   for (const i of landCells) {
+    if (!RIVER_BIOMES.has(cells[i] as TerrainKind)) continue; // sink: don't pass flux on
     const col = i % cols, row = Math.floor(i / cols);
     let bestNb = -1, bestH = h[i];
     for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]] as const) {
@@ -140,21 +139,19 @@ function traceFluxRivers(
     if (bestNb >= 0) flux[bestNb] += flux[i];
   }
 
-  // Top 0.6% of land-flux → wide river (WATER); top 0.2% extra = main channels.
-  // Tighter than before (was 2%/0.4%) to reduce total river count globally.
-  const landFluxValues = landCells.map(i => flux[i]).filter(f => f > 0);
+  // Top 0.5% by flux → wide river (WATER); next 0.5% → narrow tributary (COAST).
+  // Only cells that are themselves in RIVER_BIOMES can become rivers.
+  const landFluxValues = landCells.filter(i => RIVER_BIOMES.has(cells[i] as TerrainKind)).map(i => flux[i]).filter(f => f > 0);
   landFluxValues.sort((a, b) => a - b);
-  const pct994 = landFluxValues[Math.floor(landFluxValues.length * 0.994)] ?? 999999;
-  const pct998 = landFluxValues[Math.floor(landFluxValues.length * 0.998)] ?? 999999;
+  const pct995 = landFluxValues[Math.floor(landFluxValues.length * 0.995)] ?? 999999;
+  const pct999 = landFluxValues[Math.floor(landFluxValues.length * 0.999)] ?? 999999;
 
   for (let i = 0; i < N; i++) {
     if (h[i] < 20 || h[i] >= 72) continue;
-    // Skip desert/tundra cells — rivers don't cross parched land visually
-    const bk = cells[i];
-    if (bk === "DESERT" || bk === "TUNDRA") continue;
-    if (flux[i] >= pct998) {
+    if (!RIVER_BIOMES.has(cells[i] as TerrainKind)) continue;
+    if (flux[i] >= pct999) {
       cells[i] = "WATER"; // wide river (dilated below)
-    } else if (flux[i] >= pct994) {
+    } else if (flux[i] >= pct995) {
       cells[i] = "COAST"; // narrow tributaries
     }
   }
