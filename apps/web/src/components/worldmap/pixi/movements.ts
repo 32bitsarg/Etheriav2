@@ -1,21 +1,37 @@
 import { Container, Graphics, Text } from "pixi.js";
 
+// Centripetal Catmull-Rom (α=0.5): unlike the uniform variant it never overshoots
+// or loops between waypoints, so the rendered curve stays inside the water-avoiding
+// corridor the A* path defines (no bowing back across lakes).
 function catmullRomDensify(
   pts: { x: number; y: number }[],
-  segmentsPerSpan = 6
+  segmentsPerSpan = 4
 ): { x: number; y: number }[] {
   if (pts.length < 2) return pts;
   const ext = [pts[0], ...pts, pts[pts.length - 1]];
   const out: { x: number; y: number }[] = [];
+  const ALPHA = 0.5;
+  const knot = (ti: number, a: { x: number; y: number }, b: { x: number; y: number }) =>
+    ti + Math.pow(Math.hypot(b.x - a.x, b.y - a.y), ALPHA);
+
   for (let i = 1; i < ext.length - 2; i++) {
     const p0 = ext[i - 1], p1 = ext[i], p2 = ext[i + 1], p3 = ext[i + 2];
+    const t0 = 0;
+    const t1 = knot(t0, p0, p1);
+    const t2 = knot(t1, p1, p2);
+    const t3 = knot(t2, p2, p3);
+    const L = (a: { x: number; y: number }, b: { x: number; y: number }, ta: number, tb: number, t: number) => {
+      const f = tb === ta ? 0 : (t - ta) / (tb - ta);
+      return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f };
+    };
     for (let s = 0; s < segmentsPerSpan; s++) {
-      const t = s / segmentsPerSpan;
-      const t2 = t * t, t3 = t2 * t;
-      out.push({
-        x: 0.5 * ((2*p1.x) + (-p0.x+p2.x)*t + (2*p0.x-5*p1.x+4*p2.x-p3.x)*t2 + (-p0.x+3*p1.x-3*p2.x+p3.x)*t3),
-        y: 0.5 * ((2*p1.y) + (-p0.y+p2.y)*t + (2*p0.y-5*p1.y+4*p2.y-p3.y)*t2 + (-p0.y+3*p1.y-3*p2.y+p3.y)*t3),
-      });
+      const t = t1 + (t2 - t1) * (s / segmentsPerSpan);
+      const a1 = L(p0, p1, t0, t1, t);
+      const a2 = L(p1, p2, t1, t2, t);
+      const a3 = L(p2, p3, t2, t3, t);
+      const b1 = L(a1, a2, t0, t2, t);
+      const b2 = L(a2, a3, t1, t3, t);
+      out.push(L(b1, b2, t1, t2, t));
     }
   }
   out.push(pts[pts.length - 1]);
@@ -226,12 +242,10 @@ export class MovementsLayer extends Container {
         ? new Date(m.returnsAt!).getTime()
         : new Date(m.arrivesAt).getTime();
       const duration = endT - startT;
-      let progress = duration > 0 ? Math.min(1, Math.max(0, (now - startT) / duration)) : NaN;
-      if (!Number.isFinite(progress)) {
-        const hash = [...m.id].reduce((acc, ch) => ((acc * 31) ^ ch.charCodeAt(0)) >>> 0, 0);
-        const cycleMs = 45000 + (hash % 12000);
-        progress = 0.08 + ((now + (hash % cycleMs)) % cycleMs) / cycleMs * 0.84;
-      }
+      // Real time-based progress. On bad/missing timestamps, park the icon at its
+      // destination instead of the old hash-cycle that made icons drift endlessly
+      // back and forth with no relation to the actual ETA.
+      const progress = duration > 0 ? Math.min(1, Math.max(0, (now - startT) / duration)) : 1;
 
       const pts = catmullRomDensify(this.pathPoints(m));
       const pos = this.pointAlongPath(pts, progress);

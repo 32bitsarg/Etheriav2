@@ -8,6 +8,27 @@ import { LOCAL_WORLD_CONFIG } from "./worldConfigData.js";
 const MOVEMENTS_CACHE_TTL_MS = 8_000;
 let movementsCache: { at: number; data: WorldMovement[] } | null = null;
 
+/** Returns the arc-length midpoint of a path and the sub-path leading to it.
+ * Used for barbarian duels so the meeting point always lies on the walkable
+ * route (never the geometric midpoint, which can fall in water). */
+function halfPath(path: { x: number; y: number }[]): { mid: { x: number; y: number }; sub: { x: number; y: number }[] } {
+  if (path.length < 2) return { mid: path[0] ?? { x: 0, y: 0 }, sub: path };
+  const seg: number[] = [0];
+  let total = 0;
+  for (let i = 1; i < path.length; i++) {
+    total += Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
+    seg.push(total);
+  }
+  const half = total / 2;
+  let i = 1;
+  while (i < path.length - 1 && seg[i] < half) i++;
+  const prev = path[i - 1], cur = path[i];
+  const segLen = seg[i] - seg[i - 1];
+  const t = segLen > 0 ? (half - seg[i - 1]) / segLen : 0;
+  const mid = { x: Math.round(prev.x + (cur.x - prev.x) * t), y: Math.round(prev.y + (cur.y - prev.y) * t) };
+  return { mid, sub: [...path.slice(0, i), mid] };
+}
+
 export async function getActiveMovements(): Promise<WorldMovement[]> {
   if (movementsCache && Date.now() - movementsCache.at < MOVEMENTS_CACHE_TTL_MS) {
     return movementsCache.data;
@@ -203,17 +224,16 @@ async function computeActiveMovements(): Promise<WorldMovement[]> {
     if (!attacker || !defender) continue;
     // Skip if either camp is in water (stale data)
     if (!buildable(attacker.posX, attacker.posY) || !buildable(defender.posX, defender.posY)) continue;
-    const midX = Math.round((attacker.posX + defender.posX) / 2);
-    const midY = Math.round((attacker.posY + defender.posY) / 2);
+    const { mid, sub } = halfPath(getPath(attacker.posX, attacker.posY, defender.posX, defender.posY));
     movements.push({
       id: d.id,
       type: "BARBARIAN_VS_BARBARIAN",
       status: "MARCHING",
       from: { x: attacker.posX, y: attacker.posY, name: attacker.name },
-      to: { x: midX, y: midY, name: `${attacker.name} vs ${defender.name}` },
+      to: { x: mid.x, y: mid.y, name: `${attacker.name} vs ${defender.name}` },
       startedAt: d.startedAt.toISOString(),
       arrivesAt: d.arrivesAt.toISOString(),
-      path: getPath(attacker.posX, attacker.posY, midX, midY),
+      path: sub,
     });
   }
 

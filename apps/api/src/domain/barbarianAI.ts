@@ -3,10 +3,23 @@
 
 import { prisma } from '@etheria/database';
 import { resolveBattle } from './battles.js';
-import { isBuildableTerrain } from './worldTerrainConfigData.js';
+import { isBuildableTerrain, isPathReachable, calculatePathSpeedMultiplier } from './worldTerrainConfigData.js';
 import { LOCAL_WORLD_CONFIG } from './worldConfigData.js';
 
 const BARBARIAN_SPEED_PX_PER_SEC = 22;
+
+// Per-region cap so barbarian relocations stay distributed across the map instead
+// of all clustering into one area ("líneas para todos lados"). The world is split
+// into REGION_DIM×REGION_DIM cells; each may host at most MAX_MOVES_PER_REGION
+// concurrent marches originating inside it.
+const REGION_DIM = 4;
+const MAX_MOVES_PER_REGION = 2;
+
+function regionKey(x: number, y: number, width: number, height: number): number {
+  const nx = Math.min(REGION_DIM - 1, Math.max(0, Math.floor(((x + width / 2) / width) * REGION_DIM)));
+  const ny = Math.min(REGION_DIM - 1, Math.max(0, Math.floor(((y + height / 2) / height) * REGION_DIM)));
+  return ny * REGION_DIM + nx;
+}
 
 // ─── World chronicle ──────────────────────────────────────────────────────────
 // Spanish archetype labels for the activity feed, and a thin helper that writes
@@ -111,6 +124,15 @@ function travelSecs(d: number) {
   return Math.max(120, Math.floor(d / BARBARIAN_SPEED_PX_PER_SEC));
 }
 
+// Travel time that accounts for the detour around water/mountains, so the stored
+// ETA matches the (longer) route the client actually animates the icon along —
+// fixing icons that "raced" because timing used straight-line distance.
+function pathTravelSecs(fx: number, fy: number, tx: number, ty: number, width: number, height: number) {
+  const straight = dist(fx, fy, tx, ty);
+  const mult = calculatePathSpeedMultiplier(fx, fy, tx, ty, width, height);
+  return travelSecs(straight / Math.max(0.15, mult));
+}
+
 // ─── Movement intelligence helpers ───────────────────────────────────────────
 
 function angleAwayFromCluster(
@@ -192,18 +214,28 @@ export async function processBarbarianMoves(): Promise<void> {
     where: { status: 'ARRIVED', arrivesAt: { lte: new Date(Date.now() - 2 * 3600_000) } },
   });
 
+  const { width, height } = LOCAL_WORLD_CONFIG.map;
+
   // Enforce global cap — delete oldest MARCHING moves if over the limit
   const activeMoves = await prisma.barbarianMove.findMany({
     where: { status: 'MARCHING' },
     orderBy: { startedAt: 'asc' },
-    select: { id: true },
+    select: { id: true, fromX: true, fromY: true },
   });
   if (activeMoves.length > MAX_ACTIVE_MOVES) {
     const toDelete = activeMoves.slice(0, activeMoves.length - MAX_ACTIVE_MOVES).map(m => m.id);
     await prisma.barbarianMove.deleteMany({ where: { id: { in: toDelete } } });
+    activeMoves.splice(0, activeMoves.length - MAX_ACTIVE_MOVES);
   }
-  const activeCount = activeMoves.length - Math.max(0, activeMoves.length - MAX_ACTIVE_MOVES);
+  const activeCount = activeMoves.length;
   if (activeCount >= MAX_ACTIVE_MOVES) return;
+
+  // Tally active marches per region so we keep new ones spread across the map.
+  const regionCounts = new Map<number, number>();
+  for (const m of activeMoves) {
+    const k = regionKey(m.fromX, m.fromY, width, height);
+    regionCounts.set(k, (regionCounts.get(k) ?? 0) + 1);
+  }
 
   const camps = await prisma.barbarianCamp.findMany({
     where: { status: 'ACTIVE' },
@@ -211,7 +243,6 @@ export async function processBarbarianMoves(): Promise<void> {
   });
 
   const cities = await prisma.city.findMany({ select: { posX: true, posY: true, power: true } });
-  const { width, height } = LOCAL_WORLD_CONFIG.map;
 
   let created = 0;
   const allCampPositions = camps.map(c => ({ posX: c.posX, posY: c.posY }));
@@ -219,6 +250,10 @@ export async function processBarbarianMoves(): Promise<void> {
   for (const camp of camps) {
     if (activeCount + created >= MAX_ACTIVE_MOVES) break;
     if (camp.moves.length > 0) continue;
+
+    // Per-region cap: don't pile more marches into an already-busy area.
+    const campRegion = regionKey(camp.posX, camp.posY, width, height);
+    if ((regionCounts.get(campRegion) ?? 0) >= MAX_MOVES_PER_REGION) continue;
 
     const cooldownHours = MOVE_COOLDOWN_HOURS[camp.archetype] ?? 4;
     if (camp.lastActionAt) {
@@ -248,12 +283,14 @@ export async function processBarbarianMoves(): Promise<void> {
       if (!isBuildableTerrain(cx, cy, width, height)) continue;
       if (Math.hypot(cx - camp.posX, cy - camp.posY) < 2_500) continue;
       if (lastMove && Math.hypot(cx - lastMove.fromX, cy - lastMove.fromY) < 3_000) continue;
+      // Only commit to destinations actually reachable on foot (no water-locked targets).
+      if (!isPathReachable(camp.posX, camp.posY, cx, cy, width, height)) continue;
 
       toX = cx; toY = cy; validDest = true; break;
     }
     if (!validDest) continue;
 
-    const travel = travelSecs(dist(camp.posX, camp.posY, toX, toY));
+    const travel = pathTravelSecs(camp.posX, camp.posY, toX, toY, width, height);
     const now = new Date();
     await prisma.$transaction([
       prisma.barbarianMove.create({
@@ -274,6 +311,7 @@ export async function processBarbarianMoves(): Promise<void> {
         data: { lastActionAt: now },
       }),
     ]);
+    regionCounts.set(campRegion, (regionCounts.get(campRegion) ?? 0) + 1);
     created++;
   }
 }
@@ -449,8 +487,10 @@ export async function processBarbarianDuels(): Promise<void> {
     const target = candidates[0]?.camp;
     if (!target) continue;
 
-    const d = dist(attacker.posX, attacker.posY, target.posX, target.posY);
-    const travel = travelSecs(d / 2);
+    // Both camps march to the midpoint, so each covers ~half the route. Path-aware
+    // so the ETA matches the curved route rendered on the map.
+    const { width, height } = LOCAL_WORLD_CONFIG.map;
+    const travel = Math.max(120, Math.floor(pathTravelSecs(attacker.posX, attacker.posY, target.posX, target.posY, width, height) / 2));
     const now = new Date();
     await prisma.$transaction([
       prisma.barbarianDuel.create({
@@ -481,6 +521,7 @@ export async function processBarbarianDuels(): Promise<void> {
 
 export async function processBarbarianCampTrades(): Promise<void> {
   const now = new Date();
+  const { width, height } = LOCAL_WORLD_CONFIG.map;
 
   // Resolve arrivals → flip to RETURNING
   const arrived = await prisma.barbarianCampTrade.findMany({
@@ -488,8 +529,7 @@ export async function processBarbarianCampTrades(): Promise<void> {
     include: { fromCamp: true, toCamp: true },
   });
   for (const trade of arrived) {
-    const d = dist(trade.fromCamp.posX, trade.fromCamp.posY, trade.toCamp.posX, trade.toCamp.posY);
-    const returnSecs = travelSecs(d);
+    const returnSecs = pathTravelSecs(trade.fromCamp.posX, trade.fromCamp.posY, trade.toCamp.posX, trade.toCamp.posY, width, height);
     await prisma.barbarianCampTrade.update({
       where: { id: trade.id },
       data: { status: 'RETURNING', returnsAt: new Date(now.getTime() + returnSecs * 1000) },
@@ -561,8 +601,7 @@ export async function processBarbarianCampTrades(): Promise<void> {
     );
     if (!target) continue;
 
-    const d = dist(sender.posX, sender.posY, target.posX, target.posY);
-    const travel = travelSecs(d);
+    const travel = pathTravelSecs(sender.posX, sender.posY, target.posX, target.posY, width, height);
     await prisma.$transaction([
       prisma.barbarianCampTrade.create({
         data: {
