@@ -167,7 +167,7 @@ adminOpsRouter.post("/reset-world", async (c) => {
     invalidateWorldTerrain();
     invalidateTerrainImageCache();
     log.push("Invalidated terrain cache");
-    setImmediate(() => prewarmTiles().catch(err => console.error('[prewarm] reset error:', err)));
+    setImmediate(() => prewarmTiles('local', { force: true }).catch(err => console.error('[prewarm] reset error:', err)));
 
     // 3. Wipe all Prisma game entities (order matters for FK constraints)
     const prismaDeletes = await Promise.allSettled([

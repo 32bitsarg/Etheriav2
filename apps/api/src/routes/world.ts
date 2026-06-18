@@ -21,7 +21,7 @@ import { requireMatecitoAuth } from '../infrastructure/authMiddleware.js';
 import { calculatePathSpeedMultiplier } from '../domain/worldTerrainConfigData.js';
 import { ensureWorldTerrain, invalidateWorldTerrain } from '../domain/worldTerrainRuntime.js';
 import { renderTileRaw, renderOverviewRaw, KIND_CODE, CODE_KIND, type TerrainSource } from '../domain/terrainRender.js';
-import { initTileStore, tileStoreVersion, readTile, writeTile, readOverview, writeOverview, pruneOldVersions } from '../domain/terrainTileStore.js';
+import { initTileStore, tileStoreVersion, readTile, writeTile, readOverview, writeOverview, pruneOldVersions, deleteTileCacheVersion } from '../domain/terrainTileStore.js';
 import * as pool from '../domain/tileRenderPool.js';
 import { repairWorldEntityPlacements } from '../domain/worldTerrainRepair.js';
 import { getUnitStats } from '../domain/units.js';
@@ -605,9 +605,11 @@ function isAllWater(src: TerrainSource, z: number, tx: number, ty: number): bool
   return true;
 }
 
-export async function prewarmTiles(worldId = 'local'): Promise<void> {
+export async function prewarmTiles(worldId = 'local', opts?: { force?: boolean }): Promise<void> {
   await initTileStore();
   const src = await getTerrainSource(worldId);
+  // On force-reset, delete the entire version directory so every tile re-renders.
+  if (opts?.force) await deleteTileCacheVersion(src.version);
   pool.ensurePool(src);
 
   // Overviews first

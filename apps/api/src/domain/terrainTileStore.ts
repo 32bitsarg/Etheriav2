@@ -13,7 +13,12 @@ const TILE_CACHE_DIR =
 // (?v=) so a deploy + restart fully regenerates tiles and forces browsers to
 // refetch — without changing the seed or touching the DB.
 // v2: inland water-body cleanup ("lagitos" fix).
-export const TERRAIN_ALGO_VERSION = 'v2';
+// v3: biome-aware precipitation (no desert rivers) + post-river lagito cleanup.
+export const TERRAIN_ALGO_VERSION = 'v3';
+
+export async function deleteTileCacheVersion(version: string): Promise<void> {
+  try { await fs.promises.rm(versionDir(version), { recursive: true, force: true }); } catch {}
+}
 
 export function tileStoreVersion(seed: number, cols: number, rows: number, width: number, height: number): string {
   return `bake-${TERRAIN_ALGO_VERSION}-${seed}-${cols}-${rows}-${width}-${height}`;
