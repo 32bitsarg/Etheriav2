@@ -142,41 +142,36 @@ export class MovementsLayer extends Container {
     const isBarbMove = m.type === "BARBARIAN_MOVE";
     const isBarbDuel = m.type === "BARBARIAN_VS_BARBARIAN";
 
-    const isReturning = m.status === "RETURNING";
-    const dx = isReturning ? m.from.x - m.to.x : m.to.x - m.from.x;
-    const dy = isReturning ? m.from.y - m.to.y : m.to.y - m.from.y;
-    const angleDeg = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
-    const angleRad = angleDeg * (Math.PI / 180);
-
+    // Inner graphic that rotates — we keep it separate from the container so
+    // hover/scale logic on `c` doesn't fight with rotation updates.
     const g = new Graphics();
+    (c as any).__gfx = g;
+
     if (isBarbMove) {
+      // Barbarian relocation: circle with a small cross
       g.circle(0, 0, 9).fill({ color });
+      g.rect(-1.5, -6, 3, 12).fill({ color: 0x000000, alpha: 0.45 });
+      g.rect(-6, -1.5, 12, 3).fill({ color: 0x000000, alpha: 0.45 });
     } else if (isTrade) {
-      // Rotated square = diamond
-      g.rect(-8, -8, 16, 16).fill({ color });
-      g.rotation = Math.PI / 4;
+      // Trade caravan: diamond with inner dot
+      const s = 8;
+      g.poly([0, -s, s, 0, 0, s, -s, 0]).fill({ color });
+      g.circle(0, 0, 2.5).fill({ color: 0x000000, alpha: 0.5 });
     } else if (isBarbDuel) {
-      const r = angleRad;
-      g.poly([
-        Math.cos(r) * 0 - Math.sin(r) * -10, Math.sin(r) * 0 + Math.cos(r) * -10,
-        Math.cos(r) * 8 - Math.sin(r) * 6, Math.sin(r) * 8 + Math.cos(r) * 6,
-        Math.cos(r) * -8 - Math.sin(r) * 6, Math.sin(r) * -8 + Math.cos(r) * 6,
-      ]).fill({ color });
-      const g2 = new Graphics();
-      g2.poly([
-        Math.cos(r) * 0 - Math.sin(r) * 10, Math.sin(r) * 0 + Math.cos(r) * 10,
-        Math.cos(r) * 8 - Math.sin(r) * -6, Math.sin(r) * 8 + Math.cos(r) * -6,
-        Math.cos(r) * -8 - Math.sin(r) * -6, Math.sin(r) * -8 + Math.cos(r) * -6,
-      ]).fill({ color, alpha: 0.55 });
-      c.addChild(g2);
+      // Two clashing triangles (crossed swords hint)
+      g.poly([0, -10, 8, 6, -8, 6]).fill({ color });
+      g.poly([0, 10, 8, -6, -8, -6]).fill({ color, alpha: 0.55 });
     } else {
-      // Attack triangle — rotated toward destination
-      const r = angleRad;
-      g.poly([
-        Math.cos(r) * 0 - Math.sin(r) * -10, Math.sin(r) * 0 + Math.cos(r) * -10,
-        Math.cos(r) * 8 - Math.sin(r) * 6, Math.sin(r) * 8 + Math.cos(r) * 6,
-        Math.cos(r) * -8 - Math.sin(r) * 6, Math.sin(r) * -8 + Math.cos(r) * 6,
-      ]).fill({ color });
+      // Marching squad: arrowhead (body) + two "soldier" dots — always points up,
+      // rotated dynamically in update() to face movement direction.
+      g.poly([0, -11, 9, 5, 0, 1, -9, 5]).fill({ color });          // arrowhead body
+      g.poly([0, -11, 4, -6, 0, -4, -4, -6]).fill({ color: 0xffffff, alpha: 0.35 }); // highlight
+      // Two flanking soldier silhouettes
+      g.circle(-5, 7, 2.5).fill({ color });
+      g.circle(5, 7, 2.5).fill({ color });
+      g.circle(0, 9, 2.5).fill({ color });
+      // Dark outline for contrast on any map colour
+      g.poly([0, -11, 9, 5, 0, 1, -9, 5]).stroke({ color: 0x000000, width: 1, alpha: 0.6 });
     }
     c.addChild(g);
 
@@ -251,6 +246,20 @@ export class MovementsLayer extends Container {
       const pos = this.pointAlongPath(pts, progress);
       c.x = pos.x;
       c.y = pos.y;
+
+      // Rotate inner graphic to face movement direction (tangent at current progress).
+      // We sample a point slightly ahead on the path to get the forward vector.
+      const lookAhead = Math.min(1, progress + 0.02);
+      if (lookAhead > progress) {
+        const ahead = this.pointAlongPath(pts, lookAhead);
+        const dx = ahead.x - pos.x;
+        const dy = ahead.y - pos.y;
+        if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
+          // atan2 gives angle from +X axis; our icons point up (−Y), so offset by −π/2
+          const gfx = (c as any).__gfx;
+          if (gfx) gfx.rotation = Math.atan2(dy, dx) + Math.PI / 2;
+        }
+      }
     }
   }
 
