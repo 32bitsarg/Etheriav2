@@ -1,8 +1,11 @@
 import { Assets, Sprite, Container, Texture } from "pixi.js";
 import type { Viewport } from "pixi-viewport";
 
+// Tiles are now served at 512×512px (doubled from 256). We keep TILE_PX at 256
+// in the z-selection formula so the same number of tiles cover the viewport —
+// the tiles are just twice as dense, giving crisp results at high zoom.
 const TILE_PX = 256;
-const TILE_ZMAX = 9;
+const TILE_ZMAX = 10;
 const PREWARM_RETAIN = 6; // desktop
 const MOBILE_RETAIN = 3;
 const PREFETCH_D = 3;
@@ -131,6 +134,7 @@ export class TileLayer extends Container {
       if (this.tiles.has(key)) return;
       const tex = Texture.from(img);
       tex.source.autoGenerateMipmaps = true;
+      tex.source.scaleMode = "linear";
       const sprite = new Sprite(tex);
       sprite.x = left;
       sprite.y = top;

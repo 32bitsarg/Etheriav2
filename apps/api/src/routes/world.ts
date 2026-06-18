@@ -560,13 +560,12 @@ worldRouter.get('/terrain-tile/:z/:x/:y', async (c) => {
     try {
       buf = await pool.renderTile(z, tx, ty);
     } catch {
-      // Fallback: render in main thread
+      // Fallback: render in main thread — serve at full 512px, no downscale
       const { default: sharp } = await import('sharp');
-      const dim = TILE_PX * 2;
+      const dim = TILE_PX * 2; // 512
       const raw = renderTileRaw(src, z, tx, ty);
       buf = await sharp(raw, { raw: { width: dim, height: dim, channels: 3 } })
-        .resize(TILE_PX, TILE_PX, { kernel: 'lanczos3' })
-        .webp({ quality: 82, effort: 2 })
+        .webp({ quality: 88, effort: 2 })
         .toBuffer();
     }
     writeTile(src.version, z, tx, ty, buf).catch(() => {});

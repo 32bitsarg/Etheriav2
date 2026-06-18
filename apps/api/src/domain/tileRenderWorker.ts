@@ -7,19 +7,22 @@ import type { TerrainSource } from './terrainRender.js';
 
 const src: TerrainSource = workerData as TerrainSource;
 
+// Tiles are rendered at 512×512 (TILE_PX * TILE_SS = 256*2).
+// We no longer downscale to 256 — serving at native 512px means Pixi never
+// has to upscale them, eliminating pixelation at high zoom levels.
 const TILE_PX = 256;
-const TILE_SS = 2;
+const TILE_SS = 2; // render dim = TILE_PX * TILE_SS = 512
 
 async function handleMessage(msg: { id: number; kind: 'tile' | 'overview'; z?: number; x?: number; y?: number; variant?: string }) {
   const { default: sharp } = await import('sharp');
 
   if (msg.kind === 'tile') {
     const { z = 0, x = 0, y = 0 } = msg;
-    const dim = TILE_PX * TILE_SS;
+    const dim = TILE_PX * TILE_SS; // 512
     const raw = renderTileRaw(src, z, x, y);
+    // Serve at full 512px — no downscale. Sharp still handles RGB→WebP conversion.
     const buf = await sharp(raw, { raw: { width: dim, height: dim, channels: 3 } })
-      .resize(TILE_PX, TILE_PX, { kernel: 'lanczos3' })
-      .webp({ quality: 82, effort: 2 })
+      .webp({ quality: 88, effort: 2 })
       .toBuffer();
     parentPort!.postMessage({ id: msg.id, buf }, [buf.buffer as ArrayBuffer]);
   } else {

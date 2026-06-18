@@ -16,7 +16,8 @@ const TILE_CACHE_DIR =
 // v3: biome-aware precipitation (no desert rivers) + post-river lagito cleanup.
 // v4: flux-sink for dry biomes — plains/savanna/desert absorb runoff instead of carrying rivers.
 // v5: much tighter thresholds (top 0.08%/0.02%) so only major river channels appear.
-export const TERRAIN_ALGO_VERSION = 'v5';
+// v6: tiles served at 512×512px (was 256) for crisp high-zoom rendering.
+export const TERRAIN_ALGO_VERSION = 'v6';
 
 export async function deleteTileCacheVersion(version: string): Promise<void> {
   try { await fs.promises.rm(versionDir(version), { recursive: true, force: true }); } catch {}
