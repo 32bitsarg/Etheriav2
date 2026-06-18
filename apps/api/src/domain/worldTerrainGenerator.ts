@@ -98,10 +98,20 @@ function traceFluxRivers(
   rng: () => number
 ): void {
   const N = cols * rows;
-  // Precipitation: slightly randomized per cell so rivers are organic
+
+  // Precipitation per biome: deserts/tundra get almost no rain so their flux
+  // never crosses the river threshold. This is the main lever that prevents
+  // 20-river deserts. Values are multipliers on base rain (1.0 = normal).
+  const BIOME_PREC: Partial<Record<TerrainKind, number>> = {
+    JUNGLE: 1.8, SWAMP: 1.5, FOREST: 1.3, TAIGA: 0.9,
+    PLAINS: 0.8, HILLS: 0.9, SAVANNA: 0.4,
+    DESERT: 0.05, TUNDRA: 0.15, MOUNTAIN: 0.6, COAST: 0.7,
+  };
   const prec = new Float32Array(N);
   for (let i = 0; i < N; i++) {
-    if (h[i] >= 20) prec[i] = 0.8 + rng() * 0.4; // land gets rain
+    if (h[i] < 20) continue;
+    const mult = BIOME_PREC[cells[i]] ?? 0.8;
+    prec[i] = mult * (0.8 + rng() * 0.4);
   }
 
   // Sort land cells high→low
@@ -110,7 +120,6 @@ function traceFluxRivers(
   landCells.sort((a, b) => h[b] - h[a]);
 
   const flux = new Float32Array(N);
-  // Seed flux with precipitation
   for (const i of landCells) flux[i] = prec[i];
 
   // Accumulate flux downhill — 4-directional only (NSEW) to avoid diagonal rivers
@@ -126,18 +135,21 @@ function traceFluxRivers(
     if (bestNb >= 0) flux[bestNb] += flux[i];
   }
 
-  // MIN_FLUX threshold — percent of max flux so rivers scale correctly regardless of grid size.
-  // Top 2% of land-flux cells are rivers (tributaries); top 0.4% are wide river/WATER.
+  // Top 0.6% of land-flux → wide river (WATER); top 0.2% extra = main channels.
+  // Tighter than before (was 2%/0.4%) to reduce total river count globally.
   const landFluxValues = landCells.map(i => flux[i]).filter(f => f > 0);
   landFluxValues.sort((a, b) => a - b);
-  const pct980 = landFluxValues[Math.floor(landFluxValues.length * 0.980)] ?? 999999;
-  const pct996 = landFluxValues[Math.floor(landFluxValues.length * 0.996)] ?? 999999;
+  const pct994 = landFluxValues[Math.floor(landFluxValues.length * 0.994)] ?? 999999;
+  const pct998 = landFluxValues[Math.floor(landFluxValues.length * 0.998)] ?? 999999;
 
   for (let i = 0; i < N; i++) {
     if (h[i] < 20 || h[i] >= 72) continue;
-    if (flux[i] >= pct996) {
+    // Skip desert/tundra cells — rivers don't cross parched land visually
+    const bk = cells[i];
+    if (bk === "DESERT" || bk === "TUNDRA") continue;
+    if (flux[i] >= pct998) {
       cells[i] = "WATER"; // wide river (dilated below)
-    } else if (flux[i] >= pct980) {
+    } else if (flux[i] >= pct994) {
       cells[i] = "COAST"; // narrow tributaries
     }
   }
